@@ -1,0 +1,81 @@
+plugins {
+    id 'java'
+    id 'idea'
+    id 'maven-publish'
+    id 'org.springframework.boot' version '2.7.3'
+    id 'io.spring.dependency-management' version '1.0.13.RELEASE'
+    id 'io.github.gradle-nexus.publish-plugin' version '1.1.0'
+}
+
+group = 'io.micrc.core'
+version = '0.0.1'
+sourceCompatibility = '11'
+
+bootJar.enabled = false
+jar.enabled = true
+
+ext {
+    set('camel.version', '3.18.1')
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+    maven {
+        url "${colibri_nexus}"
+        credentials {
+            username "${colibri_nexus_user}"
+            password "${colibri_nexus_pass}"
+        }
+    }
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.apache.camel.springboot:camel-spring-boot-bom:${property('camel.version')}"
+    }
+}
+
+dependencies {
+    // annotation
+    implementation "io.micrc.core:micrc-annotations:0.0.1"
+
+    // for lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // persistence
+    implementation "com.h2database:h2"
+
+    // integration
+    implementation "org.apache.camel.springboot:camel-spring-boot-starter"
+    implementation "org.apache.camel.springboot:camel-bean-starter"
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+// 执行publishToMavenLocal后，其他工程可正常引入
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+}
+
+nexusPublishing {
+    repositories {
+        create("colibri") {
+            nexusUrl.set(uri("${colibri_nexus}"))
+            snapshotRepositoryUrl.set(uri("${colibri_nexus}"))
+            username.set("${colibri_nexus_user}")
+            password.set("${colibri_nexus_pass}")
+        }
+    }
+}
