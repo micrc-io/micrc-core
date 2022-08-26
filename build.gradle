@@ -43,21 +43,33 @@ dependencyManagement {
 }
 
 dependencies {
-    // annotation
+    // annotation - micrc-annotations: gradle task - publishToMavenLocal
     implementation "io.micrc.core:micrc-annotations:0.0.1"
 
     // for lombok
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
+    compileOnly "org.projectlombok:lombok"
+    annotationProcessor "org.projectlombok:lombok"
 
-    // persistence
+    // persistence - db for dev
     implementation "com.h2database:h2"
 
-    // integration
+    // integration camel for spring-boot base
     implementation "org.apache.camel.springboot:camel-spring-boot-starter"
+    // bean integration
     implementation "org.apache.camel.springboot:camel-bean-starter"
 
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    // http/websocket endpoints for consuming and producing, used by rest openapi and rest
+    implementation "org.apache.camel.springboot:camel-undertow-starter"
+    // openapi producer - derivatives producer adapter
+    implementation "org.apache.camel.springboot:camel-rest-openapi-starter"
+    // rest consumer - presentations and derivatives consumer adapter
+    implementation "org.apache.camel.springboot:camel-rest-starter"
+
+    // message endpoints for consuming and producing - message producer and consumer adapter
+    implementation "org.apache.camel.springboot:camel-spring-rabbitmq-starter"
+
+    // unit/integrate test
+    testImplementation "org.springframework.boot:spring-boot-starter-test"
 }
 
 // 执行publishToMavenLocal后，其他工程可正常引入

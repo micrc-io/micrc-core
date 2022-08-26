@@ -1,6 +1,12 @@
 package io.micrc.core.application.businesses.springboot;
 
+import org.apache.camel.CamelContext;
+import org.apache.camel.spi.RouteTemplateParameterSource;
+import org.apache.camel.spring.boot.CamelContextConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteTemplateParameterSource;
 
 /**
  * 业务服务支持springboot自动配置
@@ -11,5 +17,21 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 public class BusinessesServiceAutoConfiguration {
-    
+
+    @Bean
+    public CamelContextConfiguration contextConfiguration(
+            ApplicationBusinessesServiceRouteTemplateParameterSource source) {
+        return new CamelContextConfiguration() {
+            @Override
+            public void beforeApplicationStart(CamelContext camelContext) {
+                camelContext.getRegistry().bind("ApplicationBusinessesServiceRouteTemplateParameterSource",
+                        RouteTemplateParameterSource.class, source);
+            }
+
+            @Override
+            public void afterApplicationStart(CamelContext camelContext) {
+                // leave it out
+            }
+        };
+    }
 }
