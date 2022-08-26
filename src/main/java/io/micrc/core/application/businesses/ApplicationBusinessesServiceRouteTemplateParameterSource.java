@@ -10,6 +10,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.ApplicationBusinessesServiceDefinition;
 
+/**
+ * 应用业务服务路由模版参数源，注入camel context，通过内部参数bean定义构造路由
+ *
+ * @author weiguan
+ * @since 0.0.1
+ * @date 2022-08-27 21:02
+ */
 public class ApplicationBusinessesServiceRouteTemplateParameterSource implements RouteTemplateParameterSource {
     private final Map<String, ApplicationBusinessesServiceDefinition> parameters = new LinkedHashMap<>();
 

@@ -7,6 +7,14 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
 
+/**
+ * 应用业务服务路由定义和参数bean定义
+ * 业务服务具体执行逻辑由模版定义，外部注解通过属性声明逻辑变量，由这些参数和路由模版构造执行路由
+ *
+ * @author weiguan
+ * @since 0.0.1
+ * @date 2022-08-27 21:02
+ */
 public class ApplicationBusinessesServiceRouteConfiguration extends RouteBuilder {
     // 路由模版ID
     public static final String ROUTE_TMPL_BUSINESSES_SERVICE =
@@ -23,6 +31,13 @@ public class ApplicationBusinessesServiceRouteConfiguration extends RouteBuilder
         //          而是在integration/persistence中，这里配置的时候会依赖这些定义
     }
 
+    /**
+     * 应用业务服务路由参数Bean
+     *
+     * @author weiguan
+     * @since 0.0.1
+     * @date 2022-08-27 23:02
+     */
     @EqualsAndHashCode(callSuper = true)
     @Data
     @SuperBuilder

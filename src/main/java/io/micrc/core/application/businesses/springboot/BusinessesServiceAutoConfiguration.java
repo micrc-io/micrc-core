@@ -12,12 +12,20 @@ import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteTem
  * 业务服务支持springboot自动配置
  *
  * @author weiguan
- * @version 0.0.1
+ * @since 0.0.1
  * @date 2022-08-23 21:02
  */
 @Configuration
 public class BusinessesServiceAutoConfiguration {
 
+    /**
+     * camel context config
+     * before start中注入业务服务路由模版参数源
+     * NOTE: CamelContextConfiguration可以存在多个，每个都会执行。也就是说，其他路由模版参数源也可以重新定义和注入
+     *
+     * @param source 业务服务路由模版参数源
+     * @return
+     */
     @Bean
     public CamelContextConfiguration contextConfiguration(
             ApplicationBusinessesServiceRouteTemplateParameterSource source) {

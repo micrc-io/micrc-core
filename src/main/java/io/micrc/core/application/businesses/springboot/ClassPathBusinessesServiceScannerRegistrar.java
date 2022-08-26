@@ -28,6 +28,13 @@ import io.micrc.core.application.businesses.EnableBusinessesService;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.ApplicationBusinessesServiceDefinition;
 import lombok.SneakyThrows;
 
+/**
+ * 应用业务服务路由参数源bean注册器
+ *
+ * @author weiguan
+ * @since 0.0.1
+ * @date 2022-08-23 21:02
+ */
 @Component
 public class ClassPathBusinessesServiceScannerRegistrar implements ImportBeanDefinitionRegistrar, ResourceLoaderAware {
 
@@ -76,6 +83,14 @@ public class ClassPathBusinessesServiceScannerRegistrar implements ImportBeanDef
     
 }
 
+/**
+ * 应用业务服务注解扫描器，用于扫描@BusinessesService及其exec方法的command参数类型和属性的注解
+ * 获取注解中的声明逻辑的属性，构造路由模版源，最终注入camel context用于构造执行路由
+ *
+ * @author weiguan
+ * @since 0.0.1
+ * @date 2022-08-23 21:02
+ */
 class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner {
     private static final AtomicInteger INDEX = new AtomicInteger();
     private final ApplicationBusinessesServiceRouteTemplateParameterSource sourceDefinition;

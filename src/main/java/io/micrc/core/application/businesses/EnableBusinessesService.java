@@ -10,7 +10,7 @@ import java.lang.annotation.Target;
  * 业务服务启动注解，用于客户端程序启用业务服务支持
  *
  * @author weiguan
- * @version 0.0.1
+ * @since 0.0.1
  * @date 2022-08-23 21:02
  */
 @Retention(RetentionPolicy.RUNTIME)
