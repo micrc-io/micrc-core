@@ -16,6 +16,9 @@ jar.enabled = true
 
 ext {
     set('camel.version', '3.18.1')
+    set('colibri_nexus', "https://nexus.colibrierp.com.br/repository/maven-local/")
+    set('colibri_nexus_user', "admin")
+    set('colibri_nexus_pass', "wsx1qaz@WSX")
 }
 
 configurations {
