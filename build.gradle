@@ -2,7 +2,7 @@ plugins {
     id 'java'
     id 'idea'
     id 'maven-publish'
-    id 'org.springframework.boot' version '2.7.3'
+    id 'org.springframework.boot' version '2.7.3' apply false
     id 'io.spring.dependency-management' version '1.0.13.RELEASE'
     id 'io.github.gradle-nexus.publish-plugin' version '1.1.0'
 }
@@ -10,9 +10,6 @@ plugins {
 group = 'io.micrc.core'
 version = '0.0.1'
 sourceCompatibility = '11'
-
-bootJar.enabled = false
-jar.enabled = true
 
 ext {
     set('camel.version', '3.18.1')
@@ -38,7 +35,7 @@ repositories {
 
 dependencyManagement {
     imports {
-        mavenBom "org.apache.camel.springboot:camel-spring-boot-bom:${property('camel.version')}"
+        mavenBom org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES
     }
 }
 
@@ -46,27 +43,37 @@ dependencies {
     // annotation - micrc-annotations: gradle task - publishToMavenLocal
     implementation "io.micrc.core:micrc-annotations:0.0.1"
 
+    implementation "org.springframework.boot:spring-boot-starter"
+
     // for lombok
     compileOnly "org.projectlombok:lombok"
     annotationProcessor "org.projectlombok:lombok"
 
-    // persistence - db for dev
+    // persistence
+    runtimeOnly "mysql:mysql-connector-java"
+    // db for init, local
     implementation "com.h2database:h2"
+    implementation "org.liquibase:liquibase-core"
+    implementation "org.springframework.boot:spring-boot-starter-data-jpa"
+    implementation "com.zaxxer:HikariCP"
 
     // integration camel for spring-boot base
-    implementation "org.apache.camel.springboot:camel-spring-boot-starter"
+    implementation "org.apache.camel.springboot:camel-spring-boot-starter:${property('camel.version')}"
     // bean integration
-    implementation "org.apache.camel.springboot:camel-bean-starter"
+    implementation "org.apache.camel.springboot:camel-bean-starter:${property('camel.version')}"
 
     // http/websocket endpoints for consuming and producing, used by rest openapi and rest
-    implementation "org.apache.camel.springboot:camel-undertow-starter"
+    implementation "org.apache.camel.springboot:camel-undertow-starter:${property('camel.version')}"
     // openapi producer - derivatives producer adapter
-    implementation "org.apache.camel.springboot:camel-rest-openapi-starter"
+    implementation "org.apache.camel.springboot:camel-rest-openapi-starter:${property('camel.version')}"
     // rest consumer - presentations and derivatives consumer adapter
-    implementation "org.apache.camel.springboot:camel-rest-starter"
+    implementation "org.apache.camel.springboot:camel-rest-starter:${property('camel.version')}"
 
     // message endpoints for consuming and producing - message producer and consumer adapter
-    implementation "org.apache.camel.springboot:camel-spring-rabbitmq-starter"
+    implementation "org.apache.camel.springboot:camel-spring-rabbitmq-starter:${property('camel.version')}"
+
+    // metrics
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
     // unit/integrate test
     testImplementation "org.springframework.boot:spring-boot-starter-test"
@@ -88,6 +95,8 @@ nexusPublishing {
             snapshotRepositoryUrl.set(uri("${colibri_nexus}"))
             username.set("${colibri_nexus_user}")
             password.set("${colibri_nexus_pass}")
+        }
+        create("central") {
         }
     }
 }

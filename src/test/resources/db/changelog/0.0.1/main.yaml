@@ -1,0 +1,10 @@
+
+databaseChangeLog:
+  - includeAll:
+      path: aggre1
+      errorIfMissingOrEmpty: false
+      relativeToChangelogFile: true
+  - includeAll:
+      path: aggre2
+      errorIfMissingOrEmpty: false
+      relativeToChangelogFile: true
