@@ -16,7 +16,7 @@ import io.micrc.core.EnableMicrcSupport;
 import io.micrc.core.MicrcApplication;
 import io.micrc.core.persistence.springboot.PersistenceAutoConfiguration;
 
-@SpringBootTest(properties = { "abc=@project.version@" }, classes = { PersistenceTest.Application.class, PersistenceAutoConfiguration.class })
+@SpringBootTest(properties = { "application.version=0.0.1" }, classes = { PersistenceTest.Application.class, PersistenceAutoConfiguration.class })
 public class PersistenceTest {
 
     @Test

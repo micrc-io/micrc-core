@@ -23,7 +23,6 @@ public class MicrcEnvironmentProcessor implements EnvironmentPostProcessor {
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
         log.info("Processing Environment For Micrc...");
         Properties properties = new Properties();
-        properties.setProperty("camel.springboot.main-run-controller", "true");
         PropertiesPropertySource source = new PropertiesPropertySource("micrc", properties);
         environment.getPropertySources().addLast(source);
     }

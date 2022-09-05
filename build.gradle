@@ -44,6 +44,7 @@ dependencies {
     implementation "io.micrc.core:micrc-annotations:0.0.1"
 
     implementation "org.springframework.boot:spring-boot-starter"
+    implementation "org.springframework.boot:spring-boot-starter-web"
 
     // for lombok
     compileOnly "org.projectlombok:lombok"
