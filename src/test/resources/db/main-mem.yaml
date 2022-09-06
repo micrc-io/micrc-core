@@ -1,7 +1,8 @@
 
 databaseChangeLog:
-  - include:
-      file: db/snapshot/${version}/snapshot.yaml
+  - includeAll:
+      path: db/snapshot/${version}
+      errorIfMissingOrEmpty: false
       relativeToChangelogFile: false
   - includeAll:
       path: db/changelog/${version}
