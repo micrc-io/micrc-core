@@ -8,12 +8,14 @@ import java.lang.annotation.Target;
 
 import org.springframework.context.annotation.Import;
 
+import io.micrc.core.message.springboot.MessageAutoConfiguration;
 import io.micrc.core.persistence.springboot.PersistenceAutoConfiguration;
+import io.micrc.core.rpc.springboot.RpcAutoConfiguration;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 @Documented
-@Import(PersistenceAutoConfiguration.class)
+@Import({ PersistenceAutoConfiguration.class, RpcAutoConfiguration.class, MessageAutoConfiguration.class })
 public @interface EnableMicrcSupport {
     
 }

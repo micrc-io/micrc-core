@@ -78,7 +78,10 @@ dependencies {
     implementation "org.apache.camel.springboot:camel-spring-rabbitmq-starter:${property('camel.version')}"
 
     // metrics
-    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation "org.springframework.boot:spring-boot-starter-actuator"
+
+    // mock server rpc
+    implementation "org.mock-server:mockserver-netty-no-dependencies:5.14.0"
 
     // unit/integrate test
     testImplementation "org.springframework.boot:spring-boot-starter-test"
