@@ -14,13 +14,17 @@ import org.springframework.beans.factory.support.GenericBeanDefinition;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.ClassPathBeanDefinitionScanner;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
+import org.springframework.core.annotation.AnnotationAttributes;
 import org.springframework.core.env.Environment;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.core.type.StandardAnnotationMetadata;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
+import org.springframework.stereotype.Component;
 
+import io.micrc.core.EnableMicrcSupport;
 import io.micrc.core.annotations.BusinessesService;
 
+@Component
 public class RpcMockServerScanner implements ImportBeanDefinitionRegistrar, EnvironmentAware {
 
     private Environment env;
@@ -34,8 +38,14 @@ public class RpcMockServerScanner implements ImportBeanDefinitionRegistrar, Envi
         if (!profiles.contains("local") && !profiles.contains("default")) {
             return;
         }
-        String[] basePackages = new String[]{((StandardAnnotationMetadata) importingClassMetadata)
-            .getIntrospectedClass().getPackage().getName()};
+        AnnotationAttributes attributes = AnnotationAttributes
+                .fromMap(importingClassMetadata.getAnnotationAttributes(EnableMicrcSupport.class.getName()));
+        assert attributes != null;
+        String[] basePackages = attributes.getStringArray("basePackages");
+        if (basePackages.length == 0 && importingClassMetadata instanceof StandardAnnotationMetadata) {
+            basePackages = new String[]{((StandardAnnotationMetadata) importingClassMetadata)
+                    .getIntrospectedClass().getPackage().getName()};
+        }
         if (basePackages.length == 0) {
             return;
         }

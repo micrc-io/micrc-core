@@ -82,6 +82,8 @@ dependencies {
 
     // mock server rpc
     implementation "org.mock-server:mockserver-netty-no-dependencies:5.14.0"
+    // mock rabbitmq msg
+    implementation "com.github.fridujo:rabbitmq-mock:1.1.1"
 
     // unit/integrate test
     testImplementation "org.springframework.boot:spring-boot-starter-test"
