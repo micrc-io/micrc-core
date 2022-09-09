@@ -1,12 +1,16 @@
 package io.micrc.core.application.businesses.springboot;
 
+import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration;
+import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteTemplateParameterSource;
 import org.apache.camel.CamelContext;
+import org.apache.camel.component.bean.BeanComponent;
+import org.apache.camel.component.direct.DirectComponent;
+import org.apache.camel.component.rest.RestComponent;
 import org.apache.camel.spi.RouteTemplateParameterSource;
 import org.apache.camel.spring.boot.CamelContextConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteTemplateParameterSource;
+import org.springframework.context.annotation.Import;
 
 /**
  * 业务服务支持springboot自动配置
@@ -16,6 +20,7 @@ import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteTem
  * @date 2022-08-23 21:02
  */
 @Configuration
+@Import({ApplicationBusinessesServiceRouteConfiguration.class})
 public class BusinessesServiceAutoConfiguration {
 
     /**
@@ -27,7 +32,7 @@ public class BusinessesServiceAutoConfiguration {
      * @return
      */
     @Bean
-    public CamelContextConfiguration contextConfiguration(
+    public CamelContextConfiguration applicationBusinessesServiceContextConfiguration(
             ApplicationBusinessesServiceRouteTemplateParameterSource source) {
         return new CamelContextConfiguration() {
             @Override
@@ -41,5 +46,23 @@ public class BusinessesServiceAutoConfiguration {
                 // leave it out
             }
         };
+    }
+
+    @Bean("repository")
+    public BeanComponent repository() {
+        BeanComponent repository = new BeanComponent();
+        return repository;
+    }
+
+    @Bean("logic")
+    public RestComponent logic() {
+        RestComponent logic = new RestComponent();
+        return logic;
+    }
+
+    @Bean("businesses")
+    public DirectComponent businesses() {
+        DirectComponent businesses = new DirectComponent();
+        return businesses;
     }
 }

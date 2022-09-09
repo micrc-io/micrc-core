@@ -1,8 +1,10 @@
 package io.micrc.core.application.businesses.springboot;
 
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
-
+import io.micrc.core.annotations.application.businesses.*;
+import io.micrc.core.application.businesses.*;
+import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.ApplicationBusinessesServiceDefinition;
+import io.micrc.core.framework.json.JsonUtil;
+import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinitionHolder;
@@ -21,19 +23,19 @@ import org.springframework.core.type.filter.AnnotationTypeFilter;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
-import io.micrc.core.annotations.BusinessesService;
-import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration;
-import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteTemplateParameterSource;
-import io.micrc.core.application.businesses.EnableBusinessesService;
-import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.ApplicationBusinessesServiceDefinition;
-import lombok.SneakyThrows;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 /**
  * 应用业务服务路由参数源bean注册器
  *
  * @author weiguan
- * @since 0.0.1
  * @date 2022-08-23 21:02
+ * @since 0.0.1
  */
 @Component
 public class ClassPathBusinessesServiceScannerRegistrar implements ImportBeanDefinitionRegistrar, ResourceLoaderAware {
@@ -56,15 +58,15 @@ public class ClassPathBusinessesServiceScannerRegistrar implements ImportBeanDef
         if (basePackages.length == 0) {
             return;
         }
-        
+
         ApplicationBusinessesServiceRouteTemplateParameterSource source =
                 new ApplicationBusinessesServiceRouteTemplateParameterSource();
 
         // application business service scanner
-        ApplicationBusinessesServiceScanner producerScanner =
+        ApplicationBusinessesServiceScanner applicationBusinessesServiceScanner =
                 new ApplicationBusinessesServiceScanner(registry, source);
-        producerScanner.setResourceLoader(resourceLoader);
-        producerScanner.doScan(basePackages);
+        applicationBusinessesServiceScanner.setResourceLoader(resourceLoader);
+        applicationBusinessesServiceScanner.doScan(basePackages);
 
         // registering
         BeanDefinition beanDefinition = BeanDefinitionBuilder
@@ -73,14 +75,14 @@ public class ClassPathBusinessesServiceScannerRegistrar implements ImportBeanDef
                         () -> source)
                 .getRawBeanDefinition();
         registry.registerBeanDefinition(importBeanNameGenerator.generateBeanName(beanDefinition, registry),
-                                        beanDefinition);
+                beanDefinition);
     }
 
     @Override
     public void setResourceLoader(ResourceLoader resourceLoader) {
         this.resourceLoader = resourceLoader;
     }
-    
+
 }
 
 /**
@@ -88,8 +90,8 @@ public class ClassPathBusinessesServiceScannerRegistrar implements ImportBeanDef
  * 获取注解中的声明逻辑的属性，构造路由模版源，最终注入camel context用于构造执行路由
  *
  * @author weiguan
- * @since 0.0.1
  * @date 2022-08-23 21:02
+ * @since 0.0.1
  */
 class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner {
     private static final AtomicInteger INDEX = new AtomicInteger();
@@ -115,16 +117,80 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
         for (BeanDefinitionHolder holder : holders) {
             GenericBeanDefinition beanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
             beanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
-            BusinessesService messageProducer =
-                    beanDefinition.getBeanClass().getAnnotation(BusinessesService.class);
-            // todo 还得获取ApplicationBusinessesService的exec方法的参数，获取它的参数 - command
-            // todo command上及其属性上还有注解，从这些注解上获取属性
-            // todo 填充到下面的ApplicationBusinessesServiceDefinition的builder中
+            BusinessesService businessesService = beanDefinition.getBeanClass().getAnnotation(BusinessesService.class);
+            Method[] methods = beanDefinition.getBeanClass().getMethods();
+            List<Method> executeMethods = Arrays.stream(methods).filter(method -> method.getName().equals("execute") && !method.isBridge()).collect(Collectors.toList());
+            if (executeMethods.size() != 1) {
+                throw new ServiceDesignException("the " + beanDefinition.getBeanClass().getName() + " don`t have only one execute method, please check this application service....");
+            }
+            Parameter[] parameters = executeMethods.get(0).getParameters();
+            if (parameters.length != 1) {
+                throw new ServiceDesignException("the " + beanDefinition.getBeanClass().getName() + " execute method don`t have only one command param, please check this application service....");
+            }
+            Field[] commandFields = parameters[0].getType().getDeclaredFields();
+            List<Field> targetFields = Arrays.stream(commandFields).filter(field -> field.getName().equals("target")).collect(Collectors.toList());
+            if (targetFields.size() != 1) {
+                throw new ServiceDesignException("the " + parameters[0].getType() + " don`t have only one target field, please check this command....");
+            }
+            // 获取ApplicationService注解参数
+            String serviceName = beanDefinition.getBeanClass().getSimpleName();
+            String commandPath = parameters[0].getType().getName();
+            String logicName = parameters[0].getType().getSimpleName().substring(0, parameters[0].getType().getSimpleName().length() - 7);
+            String aggregationName = targetFields.get(0).getType().getSimpleName();
+            String repositoryName = lowerStringFirst(aggregationName) + "Repository";
+            String aggregationPath = targetFields.get(0).getType().getName();
+            // 获取Command身上的注解
+            CommandLogic commandLogic = parameters[0].getType().getAnnotation(CommandLogic.class);
+            if (null == commandLogic) {
+                throw new ServiceDesignException("the " + parameters[0].getType().getSimpleName() + "not have CommandLogic annotation, please check this command");
+            }
+            LogicIntegration logicIntegration = new LogicIntegration();
+            String targetIdPath = commandLogic.targetIdPath();
+            LogicMapping[] logicMappings = commandLogic.toLogicMappings();
+            TargetMapping[] targetMappings = commandLogic.toTargetMappings();
+
+            if (null == targetMappings || targetMappings.length == 0) {
+                throw new ServiceDesignException("the " + parameters[0].getType().getSimpleName() + "not have TargetMapping, please check this command");
+            }
+            Map<String, String> outMappingMap = new HashMap<>();
+            Arrays.asList(logicMappings).stream().forEach(logicMapping -> {
+                outMappingMap.put(logicMapping.name(), logicMapping.mapping());
+            });
+            logicIntegration.setOutMappings(outMappingMap);
+            Map<String, String> enterMappingMap = new HashMap<>();
+            Arrays.asList(targetMappings).stream().forEach(targetMapping -> {
+                enterMappingMap.put(targetMapping.name(), targetMapping.mapping());
+            });
+            logicIntegration.setEnterMappings(enterMappingMap);
+            // 获取Command身上的参数的服务集成注解
+            List<CommandParamIntegration> commandParamIntegrations = new ArrayList<>();
+            Arrays.stream(commandFields).forEach(field -> {
+                DeriveIntegration deriveIntegration = field.getAnnotation(DeriveIntegration.class);
+                if (null != deriveIntegration) {
+                    String objectTreePath = deriveIntegration.objectTreePath();
+                    if ("/".equals(objectTreePath)) {
+                        objectTreePath = objectTreePath + field.getName();
+                    }
+                    CommandParamIntegration commandParamIntegration = new CommandParamIntegration(field.getName(), objectTreePath, deriveIntegration.protocolPath());
+                    commandParamIntegrations.add(commandParamIntegration);
+                }
+            });
+
+            String logicIntegrationJson = Base64.getEncoder().encodeToString(JsonUtil.writeValueAsString(logicIntegration).getBytes());
+
             sourceDefinition.addParameter(
-                    routeId(messageProducer),
+                    routeId(serviceName),
                     ApplicationBusinessesServiceDefinition.builder()
                             .templateId(ApplicationBusinessesServiceRouteConfiguration.ROUTE_TMPL_BUSINESSES_SERVICE)
-                            // todo 设置其他模版参数
+                            .serviceName(serviceName)
+                            .commandPath(commandPath)
+                            .logicName(logicName)
+                            .targetIdPath(targetIdPath)
+                            .aggregationName(aggregationName)
+                            .repositoryName(repositoryName)
+                            .aggregationPath(aggregationPath)
+                            .commandParamIntegrationsJson(JsonUtil.writeValueAsString(commandParamIntegrations))
+                            .logicIntegrationJson(logicIntegrationJson)
                             .build());
         }
         holders.clear();
@@ -136,11 +202,17 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
         // nothing to do. leave it out.
     }
 
-    private String routeId(BusinessesService businessesService) {
-        String routeId = businessesService.id();
+    private String routeId(String id) {
+        String routeId = id;
         if (!StringUtils.hasText(routeId)) {
             routeId = String.valueOf(INDEX.getAndIncrement());
         }
         return ApplicationBusinessesServiceRouteConfiguration.ROUTE_TMPL_BUSINESSES_SERVICE + "-" + routeId;
+    }
+
+    private String lowerStringFirst(String str) {
+        char[] strChars = str.toCharArray();
+        strChars[0] += 32;
+        return String.valueOf(strChars);
     }
 }

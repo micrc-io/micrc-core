@@ -1,10 +1,10 @@
 package io.micrc.core.application.businesses;
 
-import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import io.micrc.core.application.businesses.springboot.BusinessesServiceAutoConfiguration;
+import io.micrc.core.application.businesses.springboot.ClassPathBusinessesServiceScannerRegistrar;
+import org.springframework.context.annotation.Import;
+
+import java.lang.annotation.*;
 
 /**
  * 业务服务启动注解，用于客户端程序启用业务服务支持
@@ -16,6 +16,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 @Documented
+@Import({ClassPathBusinessesServiceScannerRegistrar.class, BusinessesServiceAutoConfiguration.class})
 public @interface EnableBusinessesService {
     String[] servicePackages() default {};
 }

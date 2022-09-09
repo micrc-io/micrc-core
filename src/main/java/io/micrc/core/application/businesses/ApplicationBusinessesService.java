@@ -8,5 +8,5 @@ package io.micrc.core.application.businesses;
  * @date 2022-08-23 21:02
  */
 public interface ApplicationBusinessesService<T> {
-    void exec(T command);
+    void execute(T command);
 }

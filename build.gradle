@@ -16,6 +16,7 @@ jar.enabled = true
 
 ext {
     set('camel.version', '3.18.1')
+    set("hibernateTypesVersion", '2.18.0')
 }
 
 configurations {
@@ -58,6 +59,24 @@ dependencies {
     // bean integration
     implementation "org.apache.camel.springboot:camel-bean-starter"
 
+    // json jackson support
+    implementation "org.apache.camel.springboot:camel-jackson-starter"
+
+    // dynamic route support
+    implementation "org.apache.camel.springboot:camel-dynamic-router-starter"
+
+    // json path support
+    implementation "org.apache.camel.springboot:camel-jsonpath-starter"
+
+    // jslt support
+    implementation "org.apache.camel.springboot:camel-jslt-starter"
+
+    // groovy support
+    implementation "org.apache.camel.springboot:camel-groovy-starter"
+
+    // json patch support
+    implementation "org.apache.camel.springboot:camel-json-patch-starter"
+
     // http/websocket endpoints for consuming and producing, used by rest openapi and rest
     implementation "org.apache.camel.springboot:camel-undertow-starter"
     // openapi producer - derivatives producer adapter
@@ -67,6 +86,11 @@ dependencies {
 
     // message endpoints for consuming and producing - message producer and consumer adapter
     implementation "org.apache.camel.springboot:camel-spring-rabbitmq-starter"
+    // jpa repository adapter
+    implementation "org.apache.camel.springboot:camel-jpa-starter"
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    // jpa-json-plugin
+    implementation "com.vladmihalcea:hibernate-types-55:${hibernateTypesVersion}"
 
     // unit/integrate test
     testImplementation "org.springframework.boot:spring-boot-starter-test"
