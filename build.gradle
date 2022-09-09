@@ -88,6 +88,20 @@ dependencies {
 
     // unit/integrate test
     testImplementation "org.springframework.boot:spring-boot-starter-test"
+
+    // temp dependency
+    // groovy support
+    implementation "org.apache.camel.springboot:camel-groovy-starter:${property('camel.version')}"
+    // json patch support
+    implementation "org.apache.camel.springboot:camel-json-patch-starter:${property('camel.version')}"
+    // jslt support
+    implementation "org.apache.camel.springboot:camel-jslt-starter:${property('camel.version')}"
+    // json path support
+    implementation "org.apache.camel.springboot:camel-jsonpath-starter:${property('camel.version')}"
+    // json jackson support
+    implementation "org.apache.camel.springboot:camel-jackson-starter:${property('camel.version')}"
+
+
 }
 
 processTestResources {

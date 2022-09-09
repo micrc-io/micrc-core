@@ -1,10 +1,8 @@
 package io.micrc.core.application.businesses;
 
-import com.vladmihalcea.hibernate.type.json.JsonType;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.Type;
-import org.hibernate.annotations.TypeDef;
 
 import javax.persistence.*;
 import java.util.UUID;
@@ -26,7 +24,7 @@ import java.util.UUID;
         @Index(columnList = "sequence"),
         @Index(columnList = "sequence, region")
 })
-@TypeDef(name = "json", typeClass = JsonType.class)
+// @TypeDef(name = "json", typeClass = JsonType.class)
 public class StoredEvent {
 
     @Id
