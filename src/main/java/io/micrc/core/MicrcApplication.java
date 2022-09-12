@@ -16,6 +16,17 @@ import org.springframework.context.annotation.Import;
 
 import lombok.extern.java.Log;
 
+/**
+ * micrc core application
+ * support default(local), local(local cluster), dev(dev cluster),
+ *         production(pre-/production cluster), verify(test cluster) profile
+ * support dbinit standalone app in container
+ * start h2 tcp server for local profile with local cluster env
+ *
+ * @author weiguan
+ * @since 0.0.1
+ * @date 2022-08-25 22:42
+ */
 @Log
 public final class MicrcApplication {
     private MicrcApplication() {

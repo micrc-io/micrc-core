@@ -1,0 +1,21 @@
+{
+  "openapi" : "3.0.3",
+  "info" : {
+    "version" : "1.0.0"
+  },
+  "servers" : [ {
+    "url" : "/api"
+  } ],
+  "paths" : {
+    "/test" : {
+      "get" : {
+        "responses" : {
+          "200" : { }
+        },
+        "operationId" : "verb1",
+        "summary" : "test rest"
+      }
+    }
+  },
+  "components" : { }
+}

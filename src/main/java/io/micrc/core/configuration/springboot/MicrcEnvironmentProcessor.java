@@ -18,6 +18,13 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.util.StringUtils;
 
+/**
+ * micro 全局环境配置，读取自定义micrc.properties文件注入配置，处理profiles、banner等
+ *
+ * @author weiguan
+ * @since 0.0.1
+ * @date 2022-08-30 16:38
+ */
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class MicrcEnvironmentProcessor implements EnvironmentPostProcessor {
 

@@ -14,6 +14,13 @@ import org.springframework.core.env.Environment;
 import org.springframework.core.env.PropertiesPropertySource;
 import org.springframework.util.StringUtils;
 
+/**
+ * persistence env processor. h2, jpa and liquibase config
+ *
+ * @author weiguan
+ * @since 0.0.1
+ * @date 2022-09-01 15:36
+ */
 public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor {
 
     private final Log log;

@@ -19,12 +19,19 @@ import org.springframework.core.env.Environment;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.core.type.StandardAnnotationMetadata;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
-import org.springframework.stereotype.Component;
 
 import io.micrc.core.EnableMicrcSupport;
 import io.micrc.core.annotations.BusinessesService;
+import lombok.extern.slf4j.Slf4j;
 
-@Component
+/**
+ * rpc调用在default，local环境下的mock服务端
+ * 扫描所有rpc集成请求的注解，获取其openapi spec，以创建Expectation用于校验request并fake response
+ * 
+ * @author weiguan
+ * @since 0.0.1
+ * @date 2022-09-08 21:45
+ */
 public class RpcMockServerScanner implements ImportBeanDefinitionRegistrar, EnvironmentAware {
 
     private Environment env;
@@ -52,6 +59,7 @@ public class RpcMockServerScanner implements ImportBeanDefinitionRegistrar, Envi
         new RPCRequestScanner(registry).doScan(basePackages);
     }
 
+    @Slf4j
     private static class RPCRequestScanner extends ClassPathBeanDefinitionScanner {
 
         public RPCRequestScanner(BeanDefinitionRegistry registry) {
@@ -71,14 +79,16 @@ public class RpcMockServerScanner implements ImportBeanDefinitionRegistrar, Envi
             // this.addIncludeFilter(new AnnotationTypeFilter(annotationType)); // 衍生逻辑的集成
             Set<BeanDefinitionHolder> holders = super.doScan(basePackages);
             ClientAndServer server = ClientAndServer.startClientAndServer(1080); // 启动mock server
+            log.error(server.toString());
             for (BeanDefinitionHolder holder : holders) {
                 GenericBeanDefinition beanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
+                log.error(beanDefinition.toString());
                 // TODO 业务逻辑: 获取command的属性上的集成注解，得到openapi协议classpath路径specPath
-                // TODO server.upsert(OpenAPIExpectation.openAPIExpectation(specPath));
+                // TODO server.upsert(OpenAPIExpectation.openAPIExpectation(specPath)); // 导入openapi创建expectation
                 // TODO 展示逻辑: 获取注解上的集成中的openapi协议classpath路径
-                // TODO server.upsert(OpenAPIExpectation.openAPIExpectation(specPath));
+                // TODO server.upsert(OpenAPIExpectation.openAPIExpectation(specPath)); // 导入openapi创建expectation
                 // TODO 衍生逻辑: 获取注解上的集成中的openapi协议classpath路径
-                // TODO server.upsert(OpenAPIExpectation.openAPIExpectation(specPath));
+                // TODO server.upsert(OpenAPIExpectation.openAPIExpectation(specPath)); // 导入openapi创建expectation
             }
             holders.clear();
             // TODO 可以以mockServer为beanName，将server注册进去
