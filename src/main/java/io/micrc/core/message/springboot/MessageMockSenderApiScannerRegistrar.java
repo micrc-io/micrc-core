@@ -25,7 +25,7 @@ import lombok.extern.slf4j.Slf4j;
  * @date 2022-09-08 21:45
  */
 @Slf4j
-public class MessageMockSenderApiScanner implements ImportBeanDefinitionRegistrar, EnvironmentAware {
+public class MessageMockSenderApiScannerRegistrar implements ImportBeanDefinitionRegistrar, EnvironmentAware {
 
     private Environment env;
 

@@ -10,9 +10,11 @@ import org.springframework.context.annotation.Import;
 
 import io.micrc.core.application.EnableApplicationService;
 import io.micrc.core.integration.EnableIntegration;
+import io.micrc.core.message.springboot.ClassPathMessageSubscriberScannerRegistrar;
 import io.micrc.core.message.springboot.MessageAutoConfiguration;
-import io.micrc.core.message.springboot.MessageMockSenderApiScanner;
+import io.micrc.core.message.springboot.MessageMockSenderApiScannerRegistrar;
 import io.micrc.core.persistence.springboot.PersistenceAutoConfiguration;
+import io.micrc.core.rpc.springboot.ClassPathRestEndpointScannerRegistrar;
 import io.micrc.core.rpc.springboot.RpcAutoConfiguration;
 import io.micrc.core.rpc.springboot.RpcMockServerScanner;
 
@@ -31,9 +33,11 @@ import io.micrc.core.rpc.springboot.RpcMockServerScanner;
 @Import({
     PersistenceAutoConfiguration.class,
     RpcAutoConfiguration.class,
+    ClassPathRestEndpointScannerRegistrar.class,
     RpcMockServerScanner.class,
     MessageAutoConfiguration.class,
-    MessageMockSenderApiScanner.class
+    ClassPathMessageSubscriberScannerRegistrar.class,
+    MessageMockSenderApiScannerRegistrar.class
 })
 public @interface EnableMicrcSupport {
     String[] basePackages() default {};

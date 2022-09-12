@@ -10,9 +10,12 @@ import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Profile;
 
 import com.github.fridujo.rabbitmq.mock.MockConnectionFactory;
+
+import io.micrc.core.message.MessageRouteConfiguration;
 
 /**
  * message auto configuration. 注册publish/subscribe组件，创建消息队列mock connection
@@ -23,6 +26,7 @@ import com.github.fridujo.rabbitmq.mock.MockConnectionFactory;
  */
 @Configuration
 @EnableAutoConfiguration(exclude = SpringRabbitMQComponentAutoConfiguration.class)
+@Import({ MessageRouteConfiguration.class })
 public class MessageAutoConfiguration {
 
     @Bean

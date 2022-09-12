@@ -11,7 +11,10 @@ import org.apache.camel.component.rest.springboot.RestComponentAutoConfiguration
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Profile;
+
+import io.micrc.core.rpc.RpcRestRouteConfiguration;
 
 /**
  * rpc auto configuration，注册rpc路由组件，配置camel rest dsl
@@ -24,6 +27,7 @@ import org.springframework.context.annotation.Profile;
 @EnableAutoConfiguration(
     exclude = { RestOpenApiComponentAutoConfiguration.class, RestComponentAutoConfiguration.class }
 )
+@Import({ RpcRestRouteConfiguration.class })
 public class RpcAutoConfiguration {
     
     @Bean("req")
