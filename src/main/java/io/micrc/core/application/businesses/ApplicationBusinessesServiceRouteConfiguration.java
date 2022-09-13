@@ -14,7 +14,6 @@ import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.ExchangeProperties;
 import org.apache.camel.builder.RouteBuilder;
-import org.apache.camel.component.jackson.JacksonDataFormat;
 import org.apache.camel.model.dataformat.JsonLibrary;
 import org.springframework.beans.BeanUtils;
 
@@ -45,10 +44,6 @@ public class ApplicationBusinessesServiceRouteConfiguration extends RouteBuilder
 
     @Override
     public void configure() throws Exception {
-
-        JacksonDataFormat format = new JacksonDataFormat();
-        format.setAllowUnmarshallType(true);
-
         routeTemplate(ROUTE_TMPL_BUSINESSES_SERVICE)
                 .templateParameter("serviceName", null, "the business service name")
                 .templateParameter("commandPath", null, "the command full path")
@@ -60,7 +55,6 @@ public class ApplicationBusinessesServiceRouteConfiguration extends RouteBuilder
                 .templateParameter("repositoryName", null, "the repositoryName name")
                 .templateParameter("aggregationPath", null, "the aggregation full path")
                 .from("businesses:{{serviceName}}?exchangePattern=InOut")
-                .process("echoProcessor")
                 .setProperty("command", body())
                 .setProperty("target", simple("${in.body.target}"))
                 .setProperty("commandPath", constant("{{commandPath}}"))

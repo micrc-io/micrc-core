@@ -100,7 +100,10 @@ dependencies {
     implementation "org.apache.camel.springboot:camel-jsonpath-starter:${property('camel.version')}"
     // json jackson support
     implementation "org.apache.camel.springboot:camel-jackson-starter:${property('camel.version')}"
-
+    // jpa support
+    implementation "org.apache.camel.springboot:camel-jpa-starter:${property('camel.version')}"
+    // jpa-json-plugin
+    implementation "com.vladmihalcea:hibernate-types-55:2.18.0"
 
 }
 
