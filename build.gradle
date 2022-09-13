@@ -45,8 +45,13 @@ dependencies {
     // annotation - micrc-annotations: gradle task - publishToMavenLocal
     implementation "io.micrc.core:micrc-annotations:0.0.1"
 
+    // springboot basic
     implementation "org.springframework.boot:spring-boot-starter"
     implementation "org.springframework.boot:spring-boot-starter-web"
+    // metrics
+    implementation "org.springframework.boot:spring-boot-starter-actuator"
+    // unit/integrate test
+    testImplementation "org.springframework.boot:spring-boot-starter-test"
 
     // for lombok
     compileOnly "org.projectlombok:lombok"
@@ -67,27 +72,24 @@ dependencies {
     // bean integration
     implementation "org.apache.camel.springboot:camel-bean-starter:${property('camel.version')}"
 
-    // http/websocket endpoints for consuming and producing, used by rest openapi and rest
+    // http/websocket endpoints producing, used by rest openapi component
     implementation "org.apache.camel.springboot:camel-undertow-starter:${property('camel.version')}"
+    // http endpoints consuming, used by rest component
+    implementation "org.apache.camel.springboot:camel-servlet-starter:${property('camel.version')}"
     // openapi producer - derivatives producer adapter
     implementation "org.apache.camel.springboot:camel-rest-openapi-starter:${property('camel.version')}"
     // rest consumer - presentations and derivatives consumer adapter
     implementation "org.apache.camel.springboot:camel-rest-starter:${property('camel.version')}"
+    // rest api doc
+    implementation "org.springdoc:springdoc-openapi-ui:1.6.11"
+    // mock server for rpc producer
+    implementation "org.mock-server:mockserver-netty-no-dependencies:5.14.0"
 
     // message endpoints for consuming and producing - message producer and consumer adapter
     implementation "org.apache.camel.springboot:camel-spring-rabbitmq-starter:${property('camel.version')}"
-
-    // metrics
-    implementation "org.springframework.boot:spring-boot-starter-actuator"
-
-    // mock server rpc
-    implementation "org.mock-server:mockserver-netty-no-dependencies:5.14.0"
     // mock rabbitmq msg
     implementation "com.github.fridujo:rabbitmq-mock:1.1.1"
     // implementation "com.playtika.testcontainers:embedded-rabbitmq:2.2.6" // 备用。当rabbitmq-mock不适用时使用
-
-    // unit/integrate test
-    testImplementation "org.springframework.boot:spring-boot-starter-test"
 
     // temp dependency
     // groovy support

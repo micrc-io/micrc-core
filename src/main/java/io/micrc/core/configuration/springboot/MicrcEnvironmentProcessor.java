@@ -18,6 +18,13 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.util.StringUtils;
 
+/**
+ * micro 全局环境配置，读取自定义micrc.properties文件注入配置，处理profiles、banner等
+ *
+ * @author weiguan
+ * @since 0.0.1
+ * @date 2022-08-30 16:38
+ */
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class MicrcEnvironmentProcessor implements EnvironmentPostProcessor {
 
@@ -39,6 +46,7 @@ public class MicrcEnvironmentProcessor implements EnvironmentPostProcessor {
             log.info("Local Default Environment, Disable Kubernetes Configmap Support. ");
             properties.setProperty("spring.cloud.kubernetes.enabled", "false");
         }
+        // TODO 处理banner: springboot版本，micrc版本，应用版本；micrc logo，应用logo；当前profile及描述
         PropertiesPropertySource source = new PropertiesPropertySource("micrc", properties);
         environment.getPropertySources().addLast(source);
     }
