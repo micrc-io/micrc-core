@@ -8,6 +8,7 @@ import java.lang.annotation.Target;
 
 import org.springframework.context.annotation.Import;
 
+import io.micrc.core._camel.CamelComponentTempConfiguration;
 import io.micrc.core.application.EnableApplicationService;
 import io.micrc.core.integration.EnableIntegration;
 import io.micrc.core.message.springboot.ClassPathMessageSubscriberScannerRegistrar;
@@ -31,6 +32,7 @@ import io.micrc.core.rpc.springboot.RpcMockServerScanner;
 @EnableApplicationService
 @EnableIntegration
 @Import({
+    CamelComponentTempConfiguration.class,
     PersistenceAutoConfiguration.class,
     RpcAutoConfiguration.class,
     ClassPathRestEndpointScannerRegistrar.class,
