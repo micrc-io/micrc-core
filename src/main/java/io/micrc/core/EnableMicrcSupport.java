@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Import;
 
 import io.micrc.core._camel.CamelComponentTempConfiguration;
 import io.micrc.core.application.EnableApplicationService;
+import io.micrc.core.cache.springboot.CacheAutoConfiguration;
 import io.micrc.core.integration.EnableIntegration;
 import io.micrc.core.message.springboot.ClassPathMessageSubscriberScannerRegistrar;
 import io.micrc.core.message.springboot.MessageAutoConfiguration;
@@ -39,7 +40,8 @@ import io.micrc.core.rpc.springboot.RpcMockServerScanner;
     RpcMockServerScanner.class,
     MessageAutoConfiguration.class,
     ClassPathMessageSubscriberScannerRegistrar.class,
-    MessageMockSenderApiScannerRegistrar.class
+    MessageMockSenderApiScannerRegistrar.class,
+    CacheAutoConfiguration.class
 })
 public @interface EnableMicrcSupport {
     String[] basePackages() default {};

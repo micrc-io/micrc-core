@@ -3,6 +3,7 @@ package io.micrc.core.cache.springboot;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 
 import redis.embedded.RedisServer;
@@ -16,17 +17,19 @@ import redis.embedded.RedisServer;
  */
 @Configuration
 public class CacheAutoConfiguration {
-    
+
+    // @Autowired
+    // private RedisProperties redisProperties; // 应该不用注入自建，自动配置创建集群环境下的RedisConnectionFactory
+
     @Profile({ "default", "local" })
-    @Bean
+    @Bean(destroyMethod = "stop")
     public RedisServer redisMockServer() {
-        RedisServer server = new RedisServer(6370);
-        server.start();
-        return server;
+        return RedisServer.builder().port(6370).build();
     }
 
-    @Bean
-    public LettuceConnectionFactory redisConnectionFactory() {
+    @Profile({ "default", "local" })
+    @Bean(destroyMethod = "destroy")
+    public RedisConnectionFactory redisConnectionFactory() {
         return new LettuceConnectionFactory("localhost", 6370);
     }
 }
