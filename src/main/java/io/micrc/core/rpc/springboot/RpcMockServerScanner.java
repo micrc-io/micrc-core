@@ -1,10 +1,8 @@
 package io.micrc.core.rpc.springboot;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-
+import io.micrc.core.EnableMicrcSupport;
+import io.micrc.core.annotations.application.businesses.BusinessesService;
+import lombok.extern.slf4j.Slf4j;
 import org.mockserver.integration.ClientAndServer;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinitionHolder;
@@ -20,17 +18,18 @@ import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.core.type.StandardAnnotationMetadata;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
 
-import io.micrc.core.EnableMicrcSupport;
-import io.micrc.core.annotations.BusinessesService;
-import lombok.extern.slf4j.Slf4j;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * rpc调用在default，local环境下的mock服务端
  * 扫描所有rpc集成请求的注解，获取其openapi spec，以创建Expectation用于校验request并fake response
- * 
+ *
  * @author weiguan
- * @since 0.0.1
  * @date 2022-09-08 21:45
+ * @since 0.0.1
  */
 public class RpcMockServerScanner implements ImportBeanDefinitionRegistrar, EnvironmentAware {
 
@@ -93,6 +92,11 @@ public class RpcMockServerScanner implements ImportBeanDefinitionRegistrar, Envi
             holders.clear();
             // TODO 可以以mockServer为beanName，将server注册进去
             return holders;
+        }
+
+        @Override
+        protected void registerBeanDefinition(BeanDefinitionHolder definitionHolder, BeanDefinitionRegistry routersInfo) {
+            // nothing to do. leave it out.
         }
     }
 

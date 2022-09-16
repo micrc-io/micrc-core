@@ -1,5 +1,6 @@
 package io.micrc.core.application.businesses;
 
+import io.micrc.core.rpc.ErrorInfo;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
@@ -12,7 +13,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Data
 @Slf4j
-public abstract class Command<T> {
+public abstract class Command {
 
     /**
      * 事件名称
@@ -20,12 +21,7 @@ public abstract class Command<T> {
     private String event;
 
     /**
-     * 执行过程中的错误编码
+     * 异常信息
      */
-    private String errorCode;
-
-    /**
-     * 错误消息
-     */
-    private String errorMessage;
+    private ErrorInfo error;
 }

@@ -1,8 +1,12 @@
 package io.micrc.core.application.businesses.springboot;
 
 import io.micrc.core.annotations.application.businesses.*;
-import io.micrc.core.application.businesses.*;
+import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.ApplicationBusinessesServiceDefinition;
+import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.CommandParamIntegration;
+import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.LogicIntegration;
+import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteTemplateParameterSource;
+import io.micrc.core.application.businesses.EnableBusinessesService;
 import io.micrc.core.framework.json.JsonUtil;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
@@ -121,16 +125,16 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
             Method[] methods = beanDefinition.getBeanClass().getMethods();
             List<Method> executeMethods = Arrays.stream(methods).filter(method -> method.getName().equals("execute") && !method.isBridge()).collect(Collectors.toList());
             if (executeMethods.size() != 1) {
-                throw new ServiceDesignException("the " + beanDefinition.getBeanClass().getName() + " don`t have only one execute method, please check this application service....");
+                throw new RuntimeException("the " + beanDefinition.getBeanClass().getName() + " don`t have only one execute method, please check this application service....");
             }
             Parameter[] parameters = executeMethods.get(0).getParameters();
             if (parameters.length != 1) {
-                throw new ServiceDesignException("the " + beanDefinition.getBeanClass().getName() + " execute method don`t have only one command param, please check this application service....");
+                throw new RuntimeException("the " + beanDefinition.getBeanClass().getName() + " execute method don`t have only one command param, please check this application service....");
             }
             Field[] commandFields = parameters[0].getType().getDeclaredFields();
             List<Field> targetFields = Arrays.stream(commandFields).filter(field -> field.getName().equals("target")).collect(Collectors.toList());
             if (targetFields.size() != 1) {
-                throw new ServiceDesignException("the " + parameters[0].getType() + " don`t have only one target field, please check this command....");
+                throw new RuntimeException("the " + parameters[0].getType() + " don`t have only one target field, please check this command....");
             }
             // 获取ApplicationService注解参数
             String serviceName = beanDefinition.getBeanClass().getSimpleName();
@@ -142,26 +146,25 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
             // 获取Command身上的注解
             CommandLogic commandLogic = parameters[0].getType().getAnnotation(CommandLogic.class);
             if (null == commandLogic) {
-                throw new ServiceDesignException("the " + parameters[0].getType().getSimpleName() + "not have CommandLogic annotation, please check this command");
+                throw new RuntimeException("the " + parameters[0].getType().getSimpleName() + "not have CommandLogic annotation, please check this command");
             }
-            LogicIntegration logicIntegration = new LogicIntegration();
+
             String targetIdPath = commandLogic.targetIdPath();
             LogicMapping[] logicMappings = commandLogic.toLogicMappings();
             TargetMapping[] targetMappings = commandLogic.toTargetMappings();
 
             if (null == targetMappings || targetMappings.length == 0) {
-                throw new ServiceDesignException("the " + parameters[0].getType().getSimpleName() + "not have TargetMapping, please check this command");
+                throw new RuntimeException("the " + parameters[0].getType().getSimpleName() + "not have TargetMapping, please check this command");
             }
             Map<String, String> outMappingMap = new HashMap<>();
             Arrays.asList(logicMappings).stream().forEach(logicMapping -> {
                 outMappingMap.put(logicMapping.name(), logicMapping.mapping());
             });
-            logicIntegration.setOutMappings(outMappingMap);
             Map<String, String> enterMappingMap = new HashMap<>();
             Arrays.asList(targetMappings).stream().forEach(targetMapping -> {
                 enterMappingMap.put(targetMapping.name(), targetMapping.mapping());
             });
-            logicIntegration.setEnterMappings(enterMappingMap);
+            LogicIntegration logicIntegration = LogicIntegration.builder().enterMappings(enterMappingMap).outMappings(outMappingMap).build();
             // 获取Command身上的参数的服务集成注解
             List<CommandParamIntegration> commandParamIntegrations = new ArrayList<>();
             Arrays.stream(commandFields).forEach(field -> {
@@ -171,7 +174,7 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
                     if ("/".equals(objectTreePath)) {
                         objectTreePath = objectTreePath + field.getName();
                     }
-                    CommandParamIntegration commandParamIntegration = new CommandParamIntegration(field.getName(), objectTreePath, deriveIntegration.protocolPath());
+                    CommandParamIntegration commandParamIntegration = CommandParamIntegration.builder().paramName(field.getName()).objectTreePath(objectTreePath).protocol(deriveIntegration.protocolPath()).build();
                     commandParamIntegrations.add(commandParamIntegration);
                 }
             });
@@ -183,14 +186,14 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
                     ApplicationBusinessesServiceDefinition.builder()
                             .templateId(ApplicationBusinessesServiceRouteConfiguration.ROUTE_TMPL_BUSINESSES_SERVICE)
                             .serviceName(serviceName)
-                            .commandPath(commandPath)
                             .logicName(logicName)
                             .targetIdPath(targetIdPath)
                             .aggregationName(aggregationName)
                             .repositoryName(repositoryName)
                             .aggregationPath(aggregationPath)
-                            .commandParamIntegrationsJson(JsonUtil.writeValueAsString(commandParamIntegrations))
+                            .logicName(logicName)
                             .logicIntegrationJson(logicIntegrationJson)
+                            .commandParamIntegrationsJson(JsonUtil.writeValueAsString(commandParamIntegrations))
                             .build());
         }
         holders.clear();

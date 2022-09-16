@@ -1,14 +1,12 @@
 package io.micrc.core.application.businesses;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrc.core.AbstractRouteTemplateParamDefinition;
+import org.apache.camel.spi.RouteTemplateParameterSource;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
-
-import org.apache.camel.spi.RouteTemplateParameterSource;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.ApplicationBusinessesServiceDefinition;
 
 /**
  * 应用业务服务路由模版参数源，注入camel context，通过内部参数bean定义构造路由
@@ -18,7 +16,7 @@ import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteCon
  * @date 2022-08-27 21:02
  */
 public class ApplicationBusinessesServiceRouteTemplateParameterSource implements RouteTemplateParameterSource {
-    private final Map<String, ApplicationBusinessesServiceDefinition> parameters = new LinkedHashMap<>();
+    private final Map<String, AbstractRouteTemplateParamDefinition> parameters = new LinkedHashMap<>();
 
     @SuppressWarnings("unchecked")
     @Override
@@ -31,11 +29,11 @@ public class ApplicationBusinessesServiceRouteTemplateParameterSource implements
         return parameters.keySet();
     }
 
-    public void addParameter(String routeId, ApplicationBusinessesServiceDefinition definition) {
+    public void addParameter(String routeId, AbstractRouteTemplateParamDefinition definition) {
         parameters.put(routeId, definition);
     }
 
-    public ApplicationBusinessesServiceDefinition parameter(String routeId) {
+    public AbstractRouteTemplateParamDefinition parameter(String routeId) {
         return parameters.get(routeId);
     }
 }

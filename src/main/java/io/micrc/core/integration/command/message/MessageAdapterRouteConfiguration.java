@@ -5,7 +5,6 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
 import org.apache.camel.builder.RouteBuilder;
-import org.apache.camel.component.jackson.JacksonDataFormat;
 
 /**
  * 消息接收适配器路由定义和参数bean定义
@@ -22,15 +21,13 @@ public class MessageAdapterRouteConfiguration extends RouteBuilder {
     @Override
     public void configure() throws Exception {
 
-        JacksonDataFormat format = new JacksonDataFormat();
-        format.setAllowUnmarshallType(true);
         routeTemplate(ROUTE_TMPL_MESSAGE)
                 .templateParameter("name", null, "the business adapter name")
                 .templateParameter("serviceName", null, "the business service name")
                 .templateParameter("commandPath", null, "the command full path")
                 .from("message-adapter://{{name}}")
                 .setHeader("CamelJacksonUnmarshalType").simple("{{commandPath}}")
-                .unmarshal(format)
+                .to("dataformat:jackson:unmarshal?allow-unmarshall-type=true")
                 .to("businesses://{{serviceName}}")
                 .end();
     }

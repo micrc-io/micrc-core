@@ -3,19 +3,19 @@ package io.micrc.core.application.businesses;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.github.fge.jsonpatch.JsonPatch;
 import com.github.fge.jsonpatch.JsonPatchException;
-import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.JsonPath;
 import com.jayway.jsonpath.Option;
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
+import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.CommandParamIntegration;
+import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.LogicIntegration;
 import io.micrc.core.framework.json.JsonUtil;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.ExchangeProperties;
 import org.apache.camel.builder.RouteBuilder;
-import org.apache.camel.model.dataformat.JsonLibrary;
-import org.springframework.beans.BeanUtils;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -46,71 +46,116 @@ public class ApplicationBusinessesServiceRouteConfiguration extends RouteBuilder
     public void configure() throws Exception {
         routeTemplate(ROUTE_TMPL_BUSINESSES_SERVICE)
                 .templateParameter("serviceName", null, "the business service name")
-                .templateParameter("commandPath", null, "the command full path")
                 .templateParameter("logicName", null, "the logicName")
                 .templateParameter("targetIdPath", null, "the targetIdPath")
                 .templateParameter("commandParamIntegrationsJson", null, "the command integration params")
-                .templateParameter("logicIntegrationJson", null, "the logic integration params")
                 .templateParameter("aggregationName", null, "the aggregation name")
                 .templateParameter("repositoryName", null, "the repositoryName name")
                 .templateParameter("aggregationPath", null, "the aggregation full path")
-                .from("businesses:{{serviceName}}?exchangePattern=InOut")
-                .setProperty("command", body())
-                .setProperty("target", simple("${in.body.target}"))
-                .setProperty("commandPath", constant("{{commandPath}}"))
-                .setProperty("commandParamIntegrationsJson", constant("{{commandParamIntegrationsJson}}"))
-                .setProperty("logicIntegrationJson").groovy("new String(java.util.Base64.getDecoder().decode('{{logicIntegrationJson}}'))")
-                .setProperty("aggregationPath", constant("{{aggregationPath}}"))
-                // 0 Json化Command-整个使用过程中,均要操作该属性,最后返回拷贝至原始对象中
-                .marshal().json(JsonLibrary.Jackson).convertBodyTo(String.class)
-                .setProperty("commandJson", body())
-                .setBody(exchangeProperty("commandParamIntegrationsJson"))
-                .unmarshal().json(JsonLibrary.Jackson, List.class)
-                .setProperty("commandParamIntegrations", body())
-                .setBody(exchangeProperty("commandJson"))
+                .templateParameter("logicName", null, "the logicName")
+                .templateParameter("logicIntegrationJson", null, "the logic integration params")
+                .from("businesses:{{serviceName}}")
+                .errorHandler(deadLetterChannel("direct://error"))
+                .transacted()
+                .marshal().json().convertBodyTo(String.class)
                 // 0.1 集成准备, 准备Source
-                .setBody(exchangeProperty("commandJson"))
-                .split().jsonpath("{{targetIdPath}}")
+                .setProperty("commandJson", body())
+                // FIXME 这里有个BUG要修
+                .setHeader("pointer", constant("{{targetIdPath}}"))
+                .to("json-patch://select")
                 .to("repository://{{repositoryName}}?method=findById")
-                //.bean("{{repositoryName}}", "findById(${in.body})")
                 .setProperty("source", simple("${in.body.get}"))
-                .setProperty("target", simple("${in.body.get}"))
                 .bean(TargetSourceClone.class, "clone(${exchange.properties.get(source)}, ${exchange.properties.get(commandJson)})")
                 .setProperty("commandJson", body())
+                // FIXME end
                 // 1 分发集成
-                // 使用DynamicRoute
+                .setProperty("commandParamIntegrationsJson", simple("{{commandParamIntegrationsJson}}"))
                 .dynamicRouter(method(IntegrationCommandParams.class, "integrate"))
                 // 2 执行逻辑
-                // 2.1 执行前置校验
+                .setProperty("logicName", simple("{{logicName}}"))
+                .setProperty("logicIntegrationJson").groovy("new String(java.util.Base64.getDecoder().decode('{{logicIntegrationJson}}'))")
                 .setBody(exchangeProperty("commandJson"))
-                .to("logic://post:/{{logicName}}/before?host=localhost:8080")
-                .unmarshal().json(JsonLibrary.Jackson, CheckResult.class)
-                .bean(logicCheckedResultCheck.class, "check(${body})")
-//                // 2.2 执行逻辑
+                .to("logic://logic-execute")
+                // TODO 仓库集成抽进repository路由内部
+                .setBody(exchangeProperty("commandJson"))
+                .setHeader("pointer", constant("/target"))
+                .to("json-patch://select")
+                .setHeader("CamelJacksonUnmarshalType").simple("{{aggregationPath}}")
+                .to("dataformat:jackson:unmarshal?allow-unmarshall-type=true")
+                .removeHeader("pointer")
+                .to("repository://{{repositoryName}}?method=save")
+                // TODO 仓库集成抽进repository路由内部 END
+                // 3 消息存储
+                .setBody(exchangeProperty("commandJson"))
+                .to("message://save")
+                .setBody(exchangeProperty("commandJson"))
+                .convertBodyTo(String.class)
+                .end();
+        from("direct://error")
+                // TODO 构造通用返回对象,错误异常码为999999999,标识该异常为不期望异常
+                .log(" TODO 构造通用返回对象,错误异常码为999999999,标识该异常为不期望异常")
+                .rollback()
+                .end();
+
+        from("direct://integration-params")
+                .log("integration-params")
+                // 得到需要集成的集成参数
+                .bean(IntegrationCommandParams.class, "executableIntegrationInfo(${exchange.properties.get(unIntegrateParams)}, ${exchange.properties.get(commandJson)})")
+                .setProperty("currentIntegrateParam", body())
+                .setBody(simple("${in.body.get(integrateParams)}"))
+                .marshal().json().convertBodyTo(String.class)
+                // 构造发送
+                .toD("rest-openapi://${exchange.properties.get(currentIntegrateParam).get(protocol)}#${exchange.properties.get(currentIntegrateParam).get(operationId)}?host=${exchange.properties.get(currentIntegrateParam).get(host)}")
+                // 处理返回
+                .convertBodyTo(String.class)
+                .process(exchange -> {
+                    String body = (String) exchange.getIn().getBody();
+                    String resultCode = JsonPath.parse(body).read("$.code");
+                    if (null != resultCode && "200".equals(resultCode)) {
+                        Map<String, String> currentIntegrateParam = (Map<String, String>) exchange.getProperties().get("currentIntegrateParam");
+                        Map<String, CommandParamIntegration> unIntegrateParams = (Map<String, CommandParamIntegration>) exchange.getProperties().get("unIntegrateParams");
+                        Object retval = JsonPath.read(body, "$.data");
+                        if (null == retval) {
+                            throw new RuntimeException("the param " + unIntegrateParams.get(currentIntegrateParam.get("paramName")) + " integrate return value is null, but the integrate result can`t be null, so you should check the protocol " + unIntegrateParams.get(currentIntegrateParam).getProtocol());
+                        }
+                        String data = JsonUtil.writeValueAsStringRetainNull(JsonPath.read(body, "$.data"));
+                        String commandJson = patch((String) exchange.getProperties().get("commandJson"), unIntegrateParams.get(currentIntegrateParam.get("paramName")).getObjectTreePath(), data);
+                        exchange.getProperties().put("commandJson", commandJson);
+                        // 标识该参数已成功
+                        unIntegrateParams.remove(currentIntegrateParam.get("paramName"));
+                    }
+                })
+                .end();
+
+        from("logic://logic-execute")
+                // 2.1 执行前置校验
+                .toD("logic-execute://post:/${exchange.properties.get(logicName)}/before?host=localhost:8888")
+                .unmarshal().json(HashMap.class)
+                .bean(ResultCheck.class, "check(${body})")
+                // TODO 逻辑检查异常是否存在及回滚事务
+                // 2.2 执行逻辑
                 .setBody(exchangeProperty("logicIntegrationJson"))
-                .unmarshal().json(JsonLibrary.Jackson, LogicIntegration.class)
+                .unmarshal().json(LogicIntegration.class)
                 .bean(LogicInParamsResolve.class, "toLogicParams(${body}, ${exchange.properties.get(commandJson)})")
-                .to("logic://post:/{{logicName}}/logic?host=localhost:8080")
-                .unmarshal().json(JsonLibrary.Jackson, HashMap.class)
+                .toD("logic-execute://post:/${exchange.properties.get(logicName)}/logic?host=localhost:8888")
+                .unmarshal().json(HashMap.class)
                 .bean(LogicInParamsResolve.class, "toTargetParams(${body}, ${exchange.properties.get(commandJson)}, ${exchange.properties.get(logicIntegrationJson)})")
                 .setProperty("commandJson", body())
-//                // 2.3 执行后置校验
-                .to("logic://post:/{{logicName}}/before?host=localhost:8080")
-                .unmarshal().json(JsonLibrary.Jackson, CheckResult.class)
-                .bean(logicCheckedResultCheck.class, "check(${body})")
-                .setBody(exchangeProperty("commandJson"))
-                .bean(RepositoryParamsResolve.class, "process(${exchange.properties.get(commandJson)}, ${exchange.properties.get(aggregationPath)})")
-                .setProperty("target", simple("${in.body}"))
-                .setBody(simple("${in.body}"))
-                .to("repository://{{repositoryName}}?method=save")
-                // 3 TODO  消息存储
-//                .bean(Message.class, "sendMessage(${exchange.properties.command}, ${exchange.properties.command.event)}")
-//                .bean("messageRepository", "save")
-                // 4.拷贝至原有target上
-                .bean(BeanCopy.class, "copy(${exchange.properties.get(commandJson)}, ${exchange.properties.get(command)})")
-                .setBody(exchangeProperty("command"))
-                .bean(BodyHandler.class, "getBody")
-        ;
+                // 2.3 执行后置校验
+                .toD("logic-execute://post:/${exchange.properties.get(logicName)}/before?host=localhost:8888")
+                .unmarshal().json(HashMap.class)
+                .bean(ResultCheck.class, "check(${body})")
+                // TODO 逻辑检查异常是否存在及回滚事务
+                .end();
+
+        from("message://save")
+                .setHeader("pointer", constant("/event"))
+                .to("json-patch://select")
+                .bean(StoredEvent.class, "store(${exchange.properties.get(commandJson)}, ${in.body})")
+                .setHeader("event", body())
+                .setBody(simple("insert into message_message_store (message_id, create_time, content, region) values ('${in.header.event.messageId}', ${in.header.event.createTime}, '${in.header.event.content}', '${in.header.event.region}')"))
+                .to("jdbc:datasource?useHeadersAsParameters=true")
+                .end();
     }
 
     /**
@@ -128,11 +173,6 @@ public class ApplicationBusinessesServiceRouteConfiguration extends RouteBuilder
          * 业务服务 - 内部获取
          */
         protected String serviceName;
-
-        /**
-         * 命令对象全路径名称 - 内部获取
-         */
-        protected String commandPath;
 
         /**
          * 执行逻辑名(截取Command的一部分) - 内部获取
@@ -170,6 +210,56 @@ public class ApplicationBusinessesServiceRouteConfiguration extends RouteBuilder
         protected String logicIntegrationJson;
     }
 
+    private String patch(String original, String path, String value) {
+        String patchCommand = "[{ \"op\": \"replace\", \"path\": \"{{path}}\", \"value\": {{value}} }]";
+
+        try {
+            String pathReplaced = patchCommand.replace("{{path}}", path);
+            String valueReplaced = pathReplaced.replace("{{value}}", value);
+            JsonPatch patch = JsonPatch.fromJson(JsonUtil.readTree(valueReplaced));
+            return JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(original)));
+        } catch (IOException | JsonPatchException e) {
+            throw new RuntimeException("patch fail... please check object...");
+        }
+    }
+
+    @Data
+    @SuperBuilder
+    @NoArgsConstructor
+    public static class CommandParamIntegration {
+
+        /**
+         * 属性名称-用来patch回原始CommandJson中  - 内部获取
+         */
+        private String paramName;
+
+        /**
+         * 参数所在对象图(Patch回去用,以/分割) - 注解输入
+         */
+        private String objectTreePath;
+
+        /**
+         * openApi集成协议 - 注解输入
+         */
+        private String protocol;
+    }
+
+    @Data
+    @SuperBuilder
+    @NoArgsConstructor
+    public static class LogicIntegration {
+
+        /**
+         * 出集成映射(调用时转换映射) jsonPath
+         */
+        private Map<String, String> outMappings;
+
+        /**
+         * 入集成映射(返回时转换映射)-转Target的 以target为根端点 PATCH
+         */
+        private Map<String, String> enterMappings;
+    }
+
     public static class TargetSourceClone {
         // TODO 考虑仓库集成于衍生集成混杂的情况
 
@@ -177,10 +267,10 @@ public class ApplicationBusinessesServiceRouteConfiguration extends RouteBuilder
 
         public static final String targetPatchString = "[{ \"op\": \"replace\", \"path\": \"/target\", \"value\": {{value}} }]";
 
-        public static String clone(Object target, String commandJson) {
+        public static String clone(Object source, String commandJson) {
             try {
-                String sourceReplacedJson = sourcePatchString.replace("{{value}}", JsonUtil.writeValueAsStringRetainNull(target));
-                String targetReplacedJson = targetPatchString.replace("{{value}}", JsonUtil.writeValueAsStringRetainNull(target));
+                String sourceReplacedJson = sourcePatchString.replace("{{value}}", JsonUtil.writeValueAsStringRetainNull(source));
+                String targetReplacedJson = targetPatchString.replace("{{value}}", JsonUtil.writeValueAsStringRetainNull(source));
                 // 先用jsonPatch更新指令
                 JsonPatch sourcePatch = JsonPatch.fromJson(JsonUtil.readTree(sourceReplacedJson));
                 JsonNode sourceReplacedApply = sourcePatch.apply(JsonUtil.readTree(commandJson));
@@ -188,171 +278,45 @@ public class ApplicationBusinessesServiceRouteConfiguration extends RouteBuilder
                 JsonNode targetReplacedApply = targetPatch.apply(sourceReplacedApply);
                 return JsonUtil.writeValueAsStringRetainNull(targetReplacedApply);
             } catch (IOException | JsonPatchException e) {
-                throw new ServiceExecuteException("patch to source failed, please check Target is inited?...");
+                throw new RuntimeException("patch to source failed, please check Target is inited?...");
             }
         }
     }
 
-    public static class logicCheckedResultCheck {
-        public static void check(CheckResult checkResult) {
-            if (null == checkResult.getCheckResult()) {
+    public static class ResultCheck {
+        public static void check(HashMap<String, Object> checkResult) {
+            if (null == checkResult.get("checkResult")) {
                 // 抛出一个异常
-                throw new LogicExecuteException("check result is null, please check dmn...");
+                throw new RuntimeException("check result is null, please check dmn...");
             }
-            if (!checkResult.getCheckResult()) {
+            if (!(Boolean) checkResult.get("checkResult")) {
                 // 抛出一个异常
-                throw new LogicExecuteException(checkResult.getErrorCode(), checkResult.getErrorMessage());
+                // throw new RuntimeException((String) checkResult.get("errorCode"), (String) checkResult.get("errorMessage"));
             }
         }
     }
 }
 
+@Data
+class StoredEvent {
 
-class IntegrationCommandParams {
+    private String messageId = System.currentTimeMillis() + java.util.UUID.randomUUID().toString().replaceAll("-", "");
 
-    public static final String patchString = "[{ \"op\": \"replace\", \"path\": \"{{path}}\", \"value\": {{value}} }]";
-    private static final String mappingJsonPath = "$.paths..requestBody.content..x-integrate-mapping";
-    private static final String serviceJsonPath = "$.servers";
-    private static final String operationIdJsonPath = "$.paths..operationId";
+    private Long createTime = System.currentTimeMillis();
 
-    public static String integrate(String body, @ExchangeProperties Map<String, Object> properties) {
-        List<CommandParamIntegration> commandParamIntegrations;
-        commandParamIntegrations = (List<CommandParamIntegration>) properties.get("commandParamIntegrations");
-        // camel的unmarshal不彻底,自己再转换一下
-        commandParamIntegrations = JsonUtil.writeObjectAsList(commandParamIntegrations, CommandParamIntegration.class);
-        // 本身无需集成
-        if (commandParamIntegrations.size() == 0) {
-            return null;
-        }
-        String commandJson = (String) properties.get("commandJson");
-        String currentIntegrateParam = (String) properties.get("currentIntegrateParam");
-        // 需要进行集成
-        if (null != currentIntegrateParam && commandParamIntegrations.size() > 0) {
-            // 将上次执行的结果放回至原有属性集成参数之中(当本次集成是失败的时候,不能重试,需要控制指针位移至下一个,跑圈)
-            Integer resultCode = JsonPath.read(body, "$.code");
-            if (null != resultCode && resultCode >= 200 && resultCode < 300) {
-                // 标识该参数已成功
-                List<CommandParamIntegration> controlParam = commandParamIntegrations.stream().filter(commandParamIntegration -> currentIntegrateParam.equals(commandParamIntegration.getParamName())).collect(Collectors.toList());
-                controlParam.get(0).setIntegrationComplete(true);
-                Object retval = JsonPath.read(body, "$.data");
-                if (null == retval) {
-                    throw new ServiceExecuteException("the param " + controlParam.get(0).getParamName() + " integrate return value is null, but the integrate result can`t be null, so you should check the protocol " + controlParam.get(0).getProtocol());
-                }
-                String data = JsonUtil.writeValueAsStringRetainNull(JsonPath.read(body, "$.data"));
-                commandJson = patch(commandJson, controlParam.get(0).getObjectTreePath(), data);
-                properties.put("commandJson", commandJson);
-                properties.put("commandParamIntegrations", commandParamIntegrations);
-            }
-        }
-        List<CommandParamIntegration> unIntegrateParams = commandParamIntegrations.stream().filter(commandParamIntegration -> commandParamIntegration.getIntegrationComplete() != true).collect(Collectors.toList());
-        // 成功完成
-        if (unIntegrateParams.size() == 0) {
-            body = commandJson;
-            return null;
-        }
-        // 未完成需要继续执行
-        Map<String, Object> executableIntegrationInfo = executableIntegrationInfo(unIntegrateParams, commandJson);
-        // 切换上下文
-        body = JsonUtil.writeValueAsStringRetainNull(executableIntegrationInfo.get("integrateParams"));
-        properties.put("currentIntegrateParam", executableIntegrationInfo.get("paramName"));
-        String routeEndPoint = "bean://io.micrc.core.application.businesses.BodyHandler?method=getBody(" + body + "),  rest-openapi://" + executableIntegrationInfo.get("protocol") + "#" + executableIntegrationInfo.get("operationId") + "?host=" + executableIntegrationInfo.get("host");
-        return routeEndPoint;
-    }
+    private String content;
 
-    private static String patch(String original, String path, String value) {
-        try {
-            String pathReplaced = patchString.replace("{{path}}", path);
-            String valueReplaced = pathReplaced.replace("{{value}}", value);
-            // 先用jsonPatch更新指令
-            JsonPatch patch = JsonPatch.fromJson(JsonUtil.readTree(valueReplaced));
-            return JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(original)));
-        } catch (IOException | JsonPatchException e) {
-            throw new ServiceExecuteException("integration result can not put command, please check objectTreePath...");
-        }
-    }
+    private Long sequence;
 
-    /**
-     * 得到一个可执行的集成的集成信息
-     *
-     * @param unIntegrateParams
-     * @return
-     */
-    private static Map<String, Object> executableIntegrationInfo(List<CommandParamIntegration> unIntegrateParams, String commandJson) {
-        Map<String, Object> executableIntegrationInfo = new HashMap<>();
-        Integer checkNumber = -1;
-        do {
-            checkNumber++;
-            // 没有可执行的集成了,抛异常
-            if (checkNumber >= unIntegrateParams.size()) {
-                throw new ServiceExecuteException("the integration file have error, command need integrate, but the param can not use... ");
-            }
-            String protocolContent = fileReader(unIntegrateParams.get(checkNumber).getProtocol());
-            Configuration conf = Configuration.builder().options(Option.AS_PATH_LIST).build();
-            List<String> integrationMappingsPaths = JsonPath.parse(protocolContent, conf).read(mappingJsonPath);
-            if (integrationMappingsPaths.size() != 1) {
-                throw new ServiceDesignException(unIntegrateParams.get(checkNumber).getProtocol() + " - the integration openapi mappings have error, please check... ");
-            }
-            Map<String, Object> integrateMappings = JsonPath.parse(protocolContent).read(integrationMappingsPaths.get(0));
-            // 要求当前集成的所有映射均能够获取到其参数
-            Boolean canExecute = integrateMappings.keySet().stream().allMatch(key -> {
-                Object integrateParamValue = JsonPath.read(commandJson, (String) integrateMappings.get(key));
-                return null != integrateParamValue;
-            });
-            // 如果当前循环的这个集成不能执行,则跳过该集成检查下一个
-            if (!canExecute) {
-                continue;
-            }
-            // 如果能够集成,收集信息,然后会自动跳出循环
-            executableIntegrationInfo.put("paramName", unIntegrateParams.get(checkNumber).getParamName());
-            executableIntegrationInfo.put("protocol", unIntegrateParams.get(checkNumber).getProtocol());
-            // 收集host
-            List<Map<String, Object>> servicesPaths = JsonPath.parse(protocolContent).read(serviceJsonPath);
-            if (servicesPaths.size() != 1) {
-                throw new ServiceDesignException(unIntegrateParams.get(checkNumber).getProtocol() + " - the openapi servers have error, we need only one services, but not found or found > 1.....");
-            }
-            Map<String, Object> serviceMaps = servicesPaths.get(0);
-            executableIntegrationInfo.put("host", serviceMaps.get("url"));
-            // 收集operationId
-            List<String> operationIdJsonPaths = JsonPath.parse(protocolContent, conf).read(operationIdJsonPath);
-            if (operationIdJsonPaths.size() != 1) {
-                throw new ServiceDesignException(unIntegrateParams.get(checkNumber).getProtocol() + " - we can not support muti-func openapi, please check... ");
-            }
-            executableIntegrationInfo.put("operationId", JsonPath.parse(protocolContent).read(operationIdJsonPaths.get(0)));
-            HashMap<String, String> integrateParams = new HashMap<>();
-            integrateMappings.keySet().stream().forEach(key -> {
-                String integrateParamValue = JsonUtil.writeValueAsStringRetainNull(JsonPath.read(commandJson, (String) integrateMappings.get(key)));
-                integrateParams.put(key, integrateParamValue);
-            });
-            executableIntegrationInfo.put("integrateParams", integrateParams);
-        } while (null == executableIntegrationInfo.get("paramName"));
-        return executableIntegrationInfo;
-    }
+    private String region;
 
-    /**
-     * 读取文件
-     *
-     * @param filePath
-     * @return
-     */
-    private static String fileReader(String filePath) {
-        StringBuffer fileContent = new StringBuffer();
-        try {
-            InputStream stream = Thread.currentThread().getContextClassLoader()
-                    .getResourceAsStream(filePath);
-            BufferedReader in = new BufferedReader(new InputStreamReader(stream, "UTF-8"));
-            String str = null;
-            int length = 0;
-            while ((str = in.readLine()) != null) {
-                fileContent.append(str);
-            }
-            in.close();
-        } catch (IOException e) {
-            throw new ServiceExecuteException(filePath + " file not found or can`t resolve...");
-        }
-        return fileContent.toString();
+    public StoredEvent store(String command, String event) {
+        StoredEvent storedEvent = new StoredEvent();
+        storedEvent.setContent(command);
+        storedEvent.setRegion(event);
+        return storedEvent;
     }
 }
-
 
 /**
  * 逻辑执行参数处理
@@ -362,26 +326,12 @@ class LogicInParamsResolve {
 
     public static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss.SSS";
 
-    public static final String patchString = "[{ \"op\": \"replace\", \"path\": \"{{path}}\", \"value\": {{value}} }]";
-
-    private static String patch(String original, String path, String value) {
-        try {
-            String pathReplaced = patchString.replace("{{path}}", path);
-            String valueReplaced = pathReplaced.replace("{{value}}", value);
-            // 先用jsonPatch更新指令
-            JsonPatch patch = JsonPatch.fromJson(JsonUtil.readTree(valueReplaced));
-            return JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(original)));
-        } catch (IOException | JsonPatchException e) {
-            throw new ServiceExecuteException("integration result can not put command, please check objectTreePath...");
-        }
-    }
-
     public String toLogicParams(LogicIntegration logicIntegration, String commandJson) {
         Map<String, Object> logicParams = new HashMap<>();
         logicIntegration.getOutMappings().keySet().stream().forEach(key -> {
             Object value = JsonPath.read(commandJson, logicIntegration.getOutMappings().get(key));
             if (null == value) {
-                throw new ServiceDesignException(logicIntegration.getOutMappings().get(key) + " - the params can`t get value, please check the annotation.like integration annotation error or toLogicMappings annotation have error ");
+                throw new RuntimeException(logicIntegration.getOutMappings().get(key) + " - the params can`t get value, please check the annotation.like integration annotation error or toLogicMappings annotation have error ");
             }
             logicParams.put(key, value);
         });
@@ -406,12 +356,25 @@ class LogicInParamsResolve {
         return commandJson;
     }
 
+    private String patch(String original, String path, String value) {
+        String patchCommand = "[{ \"op\": \"replace\", \"path\": \"{{path}}\", \"value\": {{value}} }]";
+
+        try {
+            String pathReplaced = patchCommand.replace("{{path}}", path);
+            String valueReplaced = pathReplaced.replace("{{value}}", value);
+            JsonPatch patch = JsonPatch.fromJson(JsonUtil.readTree(valueReplaced));
+            return JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(original)));
+        } catch (IOException | JsonPatchException e) {
+            throw new RuntimeException("patch fail... please check object...");
+        }
+    }
+
     private Object formatTimeValue(Object value) {
         if (null != value && value.toString().contains("-") && value.toString().contains("T") && value.toString().contains(".") && value.toString().contains("+") && value.toString().contains(":")) {
             try {
                 value = this.parseDate2Timestamp((String) value);
             } catch (ParseException e) {
-                throw new LogicExecuteException(e);
+                throw new RuntimeException(e);
             }
         }
         return value;
@@ -433,22 +396,111 @@ class LogicInParamsResolve {
     }
 }
 
-class RepositoryParamsResolve {
-    public Object process(String commandJson, String classPath) throws ClassNotFoundException {
-        HashMap targetMap = JsonPath.parse(commandJson).read("$.target");
-        return JsonUtil.writeObjectAsObject(targetMap, Class.forName(classPath));
+class IntegrationCommandParams {
+    private static final String mappingJsonPath = "$.paths..requestBody.content..x-integrate-mapping";
+    private static final String serviceJsonPath = "$.servers";
+    private static final String operationIdJsonPath = "$.paths..operationId";
+
+    public static String integrate(@ExchangeProperties Map<String, Object> properties) {
+        //1.判断是否有需要集成的参数
+        List<CommandParamIntegration> commandParamIntegrations = (List<CommandParamIntegration>) properties.get("commandParamIntegrations");
+        // 初始化动态路由集成控制信息
+        if (null == commandParamIntegrations) {
+            commandParamIntegrations = JsonUtil.writeValueAsList((String) properties.get("commandParamIntegrationsJson"), CommandParamIntegration.class);
+            properties.put("commandParamIntegrations", commandParamIntegrations);
+            Map<String, CommandParamIntegration> unIntegrateParams = commandParamIntegrations.stream().collect(Collectors.toMap(CommandParamIntegration::getParamName, integrate -> integrate));
+            properties.put("unIntegrateParams", unIntegrateParams);
+        }
+        Map<String, Object> unIntegrateParams = (Map<String, Object>) properties.get("unIntegrateParams");
+        if (unIntegrateParams.size() == 0) {
+            // 清除中间变量
+            properties.remove("currentIntegrateParam");
+            properties.remove("unIntegrateParams");
+            properties.remove("commandParamIntegrationsJson");
+            properties.remove("commandParamIntegrations");
+            return null;
+        }
+        return "direct://integration-params";
     }
-}
 
-class BodyHandler {
-    public static String getBody(String body) {
-        return body;
+    /**
+     * 得到一个可执行的集成的集成信息
+     *
+     * @param unIntegrateParams
+     * @return
+     */
+    public static Map<String, Object> executableIntegrationInfo(Map<String, CommandParamIntegration> unIntegrateParams, String commandJson) {
+        Map<String, Object> executableIntegrationInfo = new HashMap<>();
+        Integer checkNumber = -1;
+        for (String key : unIntegrateParams.keySet()) {
+            checkNumber++;
+            if (checkNumber >= unIntegrateParams.size()) {
+                throw new RuntimeException("the integration file have error, command need integrate, but the param can not use... ");
+            }
+            String protocolContent = fileReader(unIntegrateParams.get(key).getProtocol());
+            com.jayway.jsonpath.Configuration conf = com.jayway.jsonpath.Configuration.builder().options(Option.AS_PATH_LIST).build();
+            List<String> integrationMappingsPaths = JsonPath.parse(protocolContent, conf).read(mappingJsonPath);
+            if (integrationMappingsPaths.size() != 1) {
+                throw new RuntimeException(unIntegrateParams.get(key).getProtocol() + " - the integration openapi mappings have error, please check... ");
+            }
+            Map<String, Object> integrateMappings = JsonPath.parse(protocolContent).read(integrationMappingsPaths.get(0));
+            // 要求当前集成的所有映射均能够获取到其参数
+            Boolean canExecute = integrateMappings.keySet().stream().allMatch(mappingKey -> {
+                Object integrateParamValue = JsonPath.read(commandJson, (String) integrateMappings.get(mappingKey));
+                return null != integrateParamValue;
+            });
+            // 如果当前循环的这个集成不能执行,则跳过该集成检查下一个
+            if (!canExecute) {
+                continue;
+            }
+            // 如果能够集成,收集信息,然后会自动跳出循环
+            executableIntegrationInfo.put("paramName", unIntegrateParams.get(key).getParamName());
+            executableIntegrationInfo.put("protocol", unIntegrateParams.get(key).getProtocol());
+            // 收集host
+            List<Map<String, Object>> servicesPaths = JsonPath.parse(protocolContent).read(serviceJsonPath);
+            if (servicesPaths.size() != 1) {
+                throw new RuntimeException(unIntegrateParams.get(key).getProtocol() + " - the openapi servers have error, we need only one services, but not found or found > 1.....");
+            }
+            Map<String, Object> serviceMaps = servicesPaths.get(0);
+            executableIntegrationInfo.put("host", serviceMaps.get("url"));
+            // 收集operationId
+            List<String> operationIdJsonPaths = JsonPath.parse(protocolContent, conf).read(operationIdJsonPath);
+            if (operationIdJsonPaths.size() != 1) {
+                throw new RuntimeException(unIntegrateParams.get(key).getProtocol() + " - we can not support muti-func openapi, please check... ");
+            }
+            executableIntegrationInfo.put("operationId", JsonPath.parse(protocolContent).read(operationIdJsonPaths.get(0)));
+            HashMap<String, String> integrateParams = new HashMap<>();
+            integrateMappings.keySet().forEach(mappingKey -> {
+                String integrateParamValue = JsonUtil.writeValueAsStringRetainNull(JsonPath.read(commandJson, (String) integrateMappings.get(mappingKey)));
+                integrateParams.put(mappingKey, integrateParamValue);
+            });
+            executableIntegrationInfo.put("integrateParams", integrateParams);
+            break;
+        }
+        return executableIntegrationInfo;
     }
-}
 
-class BeanCopy {
-
-    void copy(Object source, Object target) {
-        BeanUtils.copyProperties(JsonUtil.writeValueAsObject((String) source, target.getClass()), target);
+    /**
+     * 读取文件
+     *
+     * @param filePath
+     * @return
+     */
+    private static String fileReader(String filePath) {
+        StringBuffer fileContent = new StringBuffer();
+        try {
+            InputStream stream = Thread.currentThread().getContextClassLoader()
+                    .getResourceAsStream(filePath);
+            BufferedReader in = new BufferedReader(new InputStreamReader(stream, "UTF-8"));
+            String str = null;
+            int length = 0;
+            while ((str = in.readLine()) != null) {
+                fileContent.append(str);
+            }
+            in.close();
+        } catch (IOException e) {
+            throw new RuntimeException(filePath + " file not found or can`t resolve...");
+        }
+        return fileContent.toString();
     }
 }

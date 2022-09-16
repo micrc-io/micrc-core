@@ -54,15 +54,28 @@ public class BusinessesServiceAutoConfiguration {
         return repository;
     }
 
-    @Bean("logic")
-    public RestComponent logic() {
-        RestComponent logic = new RestComponent();
-        return logic;
+    @Bean("logic-execute")
+    public RestComponent logicExecute() {
+        RestComponent logicExecute = new RestComponent();
+        return logicExecute;
     }
 
     @Bean("businesses")
     public DirectComponent businesses() {
         DirectComponent businesses = new DirectComponent();
         return businesses;
+    }
+
+
+    @Bean("logic")
+    public DirectComponent logic() {
+        DirectComponent logic = new DirectComponent();
+        return logic;
+    }
+
+    @Bean("message")
+    public DirectComponent messageStore() {
+        DirectComponent message = new DirectComponent();
+        return message;
     }
 }

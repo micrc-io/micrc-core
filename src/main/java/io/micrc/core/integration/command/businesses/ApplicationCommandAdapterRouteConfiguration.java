@@ -28,6 +28,7 @@ public class ApplicationCommandAdapterRouteConfiguration extends RouteBuilder {
 
     @Override
     public void configure() throws Exception {
+
         routeTemplate(ROUTE_TMPL_BUSINESSES_ADAPTER)
                 .templateParameter("name", null, "the adapter name")
                 .templateParameter("serviceName", null, "the business service name")
@@ -40,6 +41,12 @@ public class ApplicationCommandAdapterRouteConfiguration extends RouteBuilder {
                 .dynamicRouter(method(AdapterParamsHandler.class, "convert"))
                 .setBody(exchangeProperty("command"))
                 .to("businesses://{{serviceName}}")
+//                .setProperty("commandJson", body())
+//                .setHeader("pointer", simple("/error"))
+//                .to("json-patch://select")
+//                .setProperty("error", body())
+//                // TODO 设置command对Data的映射,使用protocol读取其x-result-mapping.暂时使用command替代
+//                .bean(Result.class, "result(${error}, ${commandJson})")
         ;
     }
 

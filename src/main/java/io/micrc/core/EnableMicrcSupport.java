@@ -1,13 +1,6 @@
 package io.micrc.core;
 
-import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-
-import org.springframework.context.annotation.Import;
-
+import io.micrc.core._camel.CamelComponentTempConfiguration;
 import io.micrc.core.application.EnableApplicationService;
 import io.micrc.core.integration.EnableIntegration;
 import io.micrc.core.message.springboot.ClassPathMessageSubscriberScannerRegistrar;
@@ -17,13 +10,16 @@ import io.micrc.core.persistence.springboot.PersistenceAutoConfiguration;
 import io.micrc.core.rpc.springboot.ClassPathRestEndpointScannerRegistrar;
 import io.micrc.core.rpc.springboot.RpcAutoConfiguration;
 import io.micrc.core.rpc.springboot.RpcMockServerScanner;
+import org.springframework.context.annotation.Import;
+
+import java.lang.annotation.*;
 
 /**
  * micrc core support on-off switch
  *
  * @author weiguan
- * @since 0.0.1
  * @date 2022-08-23 20:31
+ * @since 0.0.1
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
@@ -31,13 +27,14 @@ import io.micrc.core.rpc.springboot.RpcMockServerScanner;
 @EnableApplicationService
 @EnableIntegration
 @Import({
-    PersistenceAutoConfiguration.class,
-    RpcAutoConfiguration.class,
-    ClassPathRestEndpointScannerRegistrar.class,
-    RpcMockServerScanner.class,
-    MessageAutoConfiguration.class,
-    ClassPathMessageSubscriberScannerRegistrar.class,
-    MessageMockSenderApiScannerRegistrar.class
+        PersistenceAutoConfiguration.class,
+        RpcAutoConfiguration.class,
+        ClassPathRestEndpointScannerRegistrar.class,
+        RpcMockServerScanner.class,
+        MessageAutoConfiguration.class,
+        ClassPathMessageSubscriberScannerRegistrar.class,
+        MessageMockSenderApiScannerRegistrar.class,
+        CamelComponentTempConfiguration.class
 })
 public @interface EnableMicrcSupport {
     String[] basePackages() default {};
