@@ -19,9 +19,6 @@ import io.micrc.core.persistence.springboot.PersistenceAutoConfiguration;
 import io.micrc.core.rpc.springboot.ClassPathRestEndpointScannerRegistrar;
 import io.micrc.core.rpc.springboot.RpcAutoConfiguration;
 import io.micrc.core.rpc.springboot.RpcMockServerScanner;
-import org.springframework.context.annotation.Import;
-
-import java.lang.annotation.*;
 
 /**
  * micrc core support on-off switch
@@ -44,9 +41,7 @@ import java.lang.annotation.*;
         MessageAutoConfiguration.class,
         ClassPathMessageSubscriberScannerRegistrar.class,
         MessageMockSenderApiScannerRegistrar.class,
-        CacheAutoConfiguration.class,
-        CamelComponentTempConfiguration.class
-
+        CacheAutoConfiguration.class
 })
 public @interface EnableMicrcSupport {
     String[] basePackages() default {};

@@ -40,8 +40,8 @@ public class Result<T> {
         this.message = msg;
     }
 
-    public Result result(ErrorInfo error, T data) {
-        Result result = new Result<>();
+    public Result<T> result(ErrorInfo error, T data) {
+        Result<T> result = new Result<>();
         if (null != error) {
             result.setCode(error.getErrorCode());
         }
@@ -49,8 +49,8 @@ public class Result<T> {
         return result;
     }
 
-    public Result result(T data) {
-        Result result = new Result<>();
+    public Result<T> result(T data) {
+        Result<T> result = new Result<>();
         result.setCode("200");
         result.setData(data);
         return result;
