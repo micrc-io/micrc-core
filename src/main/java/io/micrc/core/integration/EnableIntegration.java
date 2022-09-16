@@ -2,6 +2,7 @@ package io.micrc.core.integration;
 
 import io.micrc.core.integration.command.businesses.EnableCommandAdapter;
 import io.micrc.core.integration.command.message.EnableMessageAdapter;
+import io.micrc.core.integration.presentations.EnablePresentationsAdapter;
 
 import java.lang.annotation.*;
 
@@ -17,6 +18,7 @@ import java.lang.annotation.*;
 @Documented
 @EnableMessageAdapter
 @EnableCommandAdapter
+@EnablePresentationsAdapter
 public @interface EnableIntegration {
     
 }
