@@ -112,9 +112,6 @@ dependencies {
     }
     // implementation "com.playtika.testcontainers:embedded-redis:2.2.7" // 备用。当embedded-redis不适用时使用
 
-    implementation "com.github.fridujo:rabbitmq-mock:${property('rabbitmq-mock.version')}"
-    // implementation "com.playtika.testcontainers:embedded-rabbitmq:2.2.6" // 备用。当rabbitmq-mock不适用时使用
-
     // temp dependency
     // groovy support
     implementation "org.apache.camel.springboot:camel-groovy-starter:${property('camel.version')}"

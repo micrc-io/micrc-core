@@ -1,7 +1,6 @@
 package io.micrc.core.message.springboot;
 
 import org.apache.camel.RoutesBuilder;
-import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.springrabbit.SpringRabbitMQComponent;
 import org.apache.camel.component.springrabbit.springboot.SpringRabbitMQComponentAutoConfiguration;
 import org.springframework.amqp.core.AmqpAdmin;
@@ -15,6 +14,7 @@ import org.springframework.context.annotation.Profile;
 
 import com.github.fridujo.rabbitmq.mock.MockConnectionFactory;
 
+import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.core.message.MessageRouteConfiguration;
 
 /**
@@ -72,10 +72,9 @@ public class MessageAutoConfiguration {
 
     @Bean
     public RoutesBuilder rabbitmqTest() {
-        return new RouteBuilder() {
-
+        return new MicrcRouteBuilder() {
             @Override
-            public void configure() throws Exception {
+            public void configureRoute() throws Exception {
                 from("direct:rabbitmqTest").setBody(simple("test"))
                     .log("sending")
                     .to("publish:ex1?routingKey=tt");
