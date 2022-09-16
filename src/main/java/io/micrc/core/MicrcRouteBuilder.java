@@ -1,7 +1,5 @@
 package io.micrc.core;
 
-import org.apache.camel.Exchange;
-import org.apache.camel.Processor;
 import org.apache.camel.builder.RouteBuilder;
 
 /**
@@ -16,16 +14,12 @@ public abstract class MicrcRouteBuilder extends RouteBuilder {
 
     @Override
     public void configure() throws Exception {
-        interceptSendToEndpoint("businesses*")
-            .process(new Processor() {
-                @Override
-                public void process(Exchange exchange) throws Exception {
-                    System.out.println(exchange.getIn().getHeaders());
-                }
-            })
+        interceptSendToEndpoint("businesses*").skipSendToOriginalEndpoint()
+            .when(simple("${header.CacheWrapper} == null"))
+            .bean("cachedRouterWrapper", "exec(${header.CamelInterceptedEndpoint}, ${body})")
             .log("intercept businesses");
         configureRoute();
     }
-    
+
     public abstract void configureRoute() throws Exception;
 }

@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Configuration;
 
 import io.micrc.core.EnableMicrcSupport;
@@ -30,8 +29,7 @@ public class PersistenceTest {
     @EnableMicrcSupport
     public static class Application {}
 
-    @SpringBootApplication(scanBasePackages = {"io.micrc.core"})
-    @EnableCaching
+    @SpringBootApplication
     @EnableMicrcSupport
     public static class Application1 {
         public static void main(String[] args) {

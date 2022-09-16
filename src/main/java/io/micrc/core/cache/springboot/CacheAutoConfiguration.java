@@ -10,7 +10,6 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 
 import io.micrc.core.MicrcRouteBuilder;
-import io.micrc.core.cache.CachedRouterWrapper;
 import redis.embedded.RedisServer;
 
 /**
@@ -22,7 +21,7 @@ import redis.embedded.RedisServer;
  */
 @Configuration
 @EnableCaching
-@ComponentScan({ "io.micrc.core" })
+@ComponentScan({ "io.micrc.core.cache" })
 public class CacheAutoConfiguration {
 
     // @Autowired
@@ -45,11 +44,15 @@ public class CacheAutoConfiguration {
         return new MicrcRouteBuilder() {
             @Override
             public void configureRoute() throws Exception {
-                from("businesses:test").bean(new CachedRouterWrapper(), "exec(test, test)").log("bus test");
-                // 模拟调用businesses
-                from("timer:restDemo?delay=10000&repeatCount=2")
-                    .log("starting restDemo...")
-                    .to("businesses:test");
+                from("businesses:test")
+                    .log("bus test")
+                    .setBody().constant("result json");
+                // 模拟调用businesses - http://localhost:8080/api/cacheDemo (get)
+                from("rest:get:cacheDemo")
+                    .setBody().constant("param json")
+                    .log("request cacheDemo...")
+                    .to("businesses:test")
+                    .log("result: ${body}");
             }
         };
     }
