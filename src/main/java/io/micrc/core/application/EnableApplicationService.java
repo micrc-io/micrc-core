@@ -1,10 +1,9 @@
 package io.micrc.core.application;
 
 import io.micrc.core.application.businesses.EnableBusinessesService;
+import io.micrc.core.application.presentations.EnablePresentationsService;
 
 import java.lang.annotation.*;
-
-import io.micrc.core.application.businesses.EnableBusinessesService;
 
 /**
  * 整体应用服务支持启动注解，用于客户端程序便捷启动业务、展示、衍生服务支持
@@ -17,6 +16,7 @@ import io.micrc.core.application.businesses.EnableBusinessesService;
 @Target(ElementType.TYPE)
 @Documented
 @EnableBusinessesService
+@EnablePresentationsService
 public @interface EnableApplicationService {
     String[] servicePackages() default {};
 }
