@@ -1,7 +1,16 @@
 package io.micrc.core;
 
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+import org.springframework.context.annotation.Import;
+
 import io.micrc.core._camel.CamelComponentTempConfiguration;
 import io.micrc.core.application.EnableApplicationService;
+import io.micrc.core.cache.springboot.CacheAutoConfiguration;
 import io.micrc.core.integration.EnableIntegration;
 import io.micrc.core.message.springboot.ClassPathMessageSubscriberScannerRegistrar;
 import io.micrc.core.message.springboot.MessageAutoConfiguration;
@@ -27,6 +36,7 @@ import java.lang.annotation.*;
 @EnableApplicationService
 @EnableIntegration
 @Import({
+        CamelComponentTempConfiguration.class,
         PersistenceAutoConfiguration.class,
         RpcAutoConfiguration.class,
         ClassPathRestEndpointScannerRegistrar.class,
@@ -34,7 +44,9 @@ import java.lang.annotation.*;
         MessageAutoConfiguration.class,
         ClassPathMessageSubscriberScannerRegistrar.class,
         MessageMockSenderApiScannerRegistrar.class,
+        CacheAutoConfiguration.class,
         CamelComponentTempConfiguration.class
+
 })
 public @interface EnableMicrcSupport {
     String[] basePackages() default {};
