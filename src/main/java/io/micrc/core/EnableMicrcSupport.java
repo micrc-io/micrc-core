@@ -1,13 +1,5 @@
 package io.micrc.core;
 
-import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-
-import org.springframework.context.annotation.Import;
-
 import io.micrc.core._camel.CamelComponentTempConfiguration;
 import io.micrc.core.application.EnableApplicationService;
 import io.micrc.core.cache.springboot.CacheAutoConfiguration;
@@ -22,7 +14,6 @@ import io.micrc.core.rpc.springboot.RpcMockServerScanner;
 import org.springframework.context.annotation.Import;
 
 import java.lang.annotation.*;
-
 /**
  * micrc core support on-off switch
  *

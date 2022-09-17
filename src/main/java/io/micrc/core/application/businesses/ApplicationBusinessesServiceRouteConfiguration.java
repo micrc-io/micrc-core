@@ -13,7 +13,6 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.ExchangeProperties;
 import org.apache.camel.builder.RouteBuilder;
 
@@ -321,7 +320,6 @@ class StoredEvent {
 /**
  * 逻辑执行参数处理
  */
-@Slf4j
 class LogicInParamsResolve {
 
     public static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss.SSS";
@@ -493,7 +491,6 @@ class IntegrationCommandParams {
                     .getResourceAsStream(filePath);
             BufferedReader in = new BufferedReader(new InputStreamReader(stream, "UTF-8"));
             String str = null;
-            int length = 0;
             while ((str = in.readLine()) != null) {
                 fileContent.append(str);
             }

@@ -2,7 +2,6 @@ package io.micrc.core.application.businesses;
 
 import io.micrc.core.rpc.ErrorInfo;
 import lombok.Data;
-import lombok.extern.slf4j.Slf4j;
 
 /**
  * 基础Command
@@ -12,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
  * @date 2021/10/12 1:32 下午
  */
 @Data
-@Slf4j
 public abstract class Command {
 
     /**

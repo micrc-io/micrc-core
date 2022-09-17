@@ -121,7 +121,6 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
         for (BeanDefinitionHolder holder : holders) {
             GenericBeanDefinition beanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
             beanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
-            BusinessesService businessesService = beanDefinition.getBeanClass().getAnnotation(BusinessesService.class);
             Method[] methods = beanDefinition.getBeanClass().getMethods();
             List<Method> executeMethods = Arrays.stream(methods).filter(method -> method.getName().equals("execute") && !method.isBridge()).collect(Collectors.toList());
             if (executeMethods.size() != 1) {
@@ -138,7 +137,6 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
             }
             // 获取ApplicationService注解参数
             String serviceName = beanDefinition.getBeanClass().getSimpleName();
-            String commandPath = parameters[0].getType().getName();
             String logicName = parameters[0].getType().getSimpleName().substring(0, parameters[0].getType().getSimpleName().length() - 7);
             String aggregationName = targetFields.get(0).getType().getSimpleName();
             String repositoryName = lowerStringFirst(aggregationName) + "Repository";
@@ -157,13 +155,9 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
                 throw new RuntimeException("the " + parameters[0].getType().getSimpleName() + "not have TargetMapping, please check this command");
             }
             Map<String, String> outMappingMap = new HashMap<>();
-            Arrays.asList(logicMappings).stream().forEach(logicMapping -> {
-                outMappingMap.put(logicMapping.name(), logicMapping.mapping());
-            });
+            Arrays.asList(logicMappings).forEach(logicMapping -> outMappingMap.put(logicMapping.name(), logicMapping.mapping()));
             Map<String, String> enterMappingMap = new HashMap<>();
-            Arrays.asList(targetMappings).stream().forEach(targetMapping -> {
-                enterMappingMap.put(targetMapping.name(), targetMapping.mapping());
-            });
+            Arrays.stream(targetMappings).forEach(targetMapping -> enterMappingMap.put(targetMapping.name(), targetMapping.mapping()));
             LogicIntegration logicIntegration = LogicIntegration.builder().enterMappings(enterMappingMap).outMappings(outMappingMap).build();
             // 获取Command身上的参数的服务集成注解
             List<CommandParamIntegration> commandParamIntegrations = new ArrayList<>();
