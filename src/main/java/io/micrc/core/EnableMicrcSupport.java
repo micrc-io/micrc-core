@@ -14,6 +14,7 @@ import io.micrc.core.rpc.springboot.RpcMockServerScanner;
 import org.springframework.context.annotation.Import;
 
 import java.lang.annotation.*;
+
 /**
  * micrc core support on-off switch
  *

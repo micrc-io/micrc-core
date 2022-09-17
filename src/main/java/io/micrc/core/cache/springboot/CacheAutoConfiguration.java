@@ -1,11 +1,15 @@
 package io.micrc.core.cache.springboot;
 
+import org.apache.camel.RoutesBuilder;
+import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 
+import io.micrc.core.MicrcRouteBuilder;
 import redis.embedded.RedisServer;
 
 /**
@@ -16,13 +20,15 @@ import redis.embedded.RedisServer;
  * @date 2022-09-15 04:31
  */
 @Configuration
+@EnableCaching
+@ComponentScan({ "io.micrc.core.cache" })
 public class CacheAutoConfiguration {
 
     // @Autowired
     // private RedisProperties redisProperties; // 应该不用注入自建，自动配置创建集群环境下的RedisConnectionFactory
 
     @Profile({ "default", "local" })
-    @Bean(destroyMethod = "stop")
+    @Bean(initMethod = "start", destroyMethod = "stop")
     public RedisServer redisMockServer() {
         return RedisServer.builder().port(6370).build();
     }
@@ -31,5 +37,23 @@ public class CacheAutoConfiguration {
     @Bean(destroyMethod = "destroy")
     public RedisConnectionFactory redisConnectionFactory() {
         return new LettuceConnectionFactory("localhost", 6370);
+    }
+
+    @Bean
+    public RoutesBuilder cacheTest() {
+        return new MicrcRouteBuilder() {
+            @Override
+            public void configureRoute() throws Exception {
+                from("businesses:test")
+                    .log("bus test")
+                    .setBody().constant("result json");
+                // 模拟调用businesses - http://localhost:8080/api/cacheDemo (get)
+                from("rest:get:cacheDemo")
+                    .setBody().constant("param json")
+                    .log("request cacheDemo...")
+                    .to("businesses:test")
+                    .log("result: ${body}");
+            }
+        };
     }
 }

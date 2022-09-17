@@ -14,6 +14,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Profile;
 
+import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.core.rpc.RpcRestRouteConfiguration;
 
 /**
@@ -79,9 +80,9 @@ public class RpcAutoConfiguration {
 
     @Bean
     public RoutesBuilder restDemo() {
-        return new RouteBuilder() {
+        return new MicrcRouteBuilder() {
             @Override
-            public void configure() throws Exception {
+            public void configureRoute() throws Exception {
                 from("direct:test").log("rest test done.").setBody().constant("{}");
                 from("timer:restDemo?delay=10000&repeatCount=1")
                     .log("starting restDemo...")
