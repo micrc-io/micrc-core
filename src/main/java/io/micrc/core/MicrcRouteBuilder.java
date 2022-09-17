@@ -14,7 +14,7 @@ public abstract class MicrcRouteBuilder extends RouteBuilder {
 
     @Override
     public void configure() throws Exception {
-        interceptSendToEndpoint("businesses*").skipSendToOriginalEndpoint()
+        interceptSendToEndpoint("businesses:test").skipSendToOriginalEndpoint()
             .when(simple("${header.CacheWrapper} == null"))
             .bean("cachedRouterWrapper", "exec(${header.CamelInterceptedEndpoint}, ${body})")
             .log("intercept businesses");
