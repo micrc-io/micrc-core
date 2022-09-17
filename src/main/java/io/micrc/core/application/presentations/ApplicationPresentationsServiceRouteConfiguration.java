@@ -1,15 +1,14 @@
 package io.micrc.core.application.presentations;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import com.github.fge.jsonpatch.JsonPatch;
 import com.github.fge.jsonpatch.JsonPatchException;
-import com.jayway.jsonpath.Configuration;
-import com.jayway.jsonpath.JsonPath;
-import com.jayway.jsonpath.Option;
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.framework.json.JsonUtil;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangeProperties;
@@ -124,12 +123,6 @@ public class ApplicationPresentationsServiceRouteConfiguration extends RouteBuil
  */
 class IntegrationParams {
 
-    private static final String mappingJsonPath = "$.paths..requestBody.content..x-integrate-mapping";
-
-    private static final String serviceJsonPath = "$.servers";
-
-    private static final String operationIdJsonPath = "$.paths..operationId";
-
     /**
      * 动态集成所有需要的外部参数
      *
@@ -172,9 +165,11 @@ class IntegrationParams {
         if (ParamIntegration.Type.QUERY.equals(currentIntegrateType) && body instanceof Optional) {
             body = ((Optional<?>) body).orElse(null);
         } else if (ParamIntegration.Type.INTEGRATE.equals(currentIntegrateType)) {
-            body = JsonPath.read((String)body, "$.data");
-            if (body instanceof String) {
-                body = JsonUtil.writeValueAsObject((String) body, Object.class);
+            body = JsonUtil.readTree((String) body).at("/data");
+            if (body instanceof TextNode) {
+                body = JsonUtil.writeValueAsObject(((TextNode) body).textValue(), Object.class);
+            } else if (body instanceof ObjectNode) {
+                body = JsonUtil.writeValueAsObject(body.toString(), Object.class);
             }
         }
         List<ParamIntegration> paramIntegrations = (List<ParamIntegration>) exchange.getProperties().get("paramIntegrations");
@@ -211,7 +206,7 @@ class IntegrationParams {
             if (ParamIntegration.Type.QUERY.equals(paramIntegration.getType())) {
                 // 获取当前查询的每个参数
                 paramIntegration.getQueryParams().forEach((name, path) -> {
-                    paramMap.put(name, JsonPath.read(param, path));
+                    paramMap.put(name, JsonUtil.readTree(param).at(path));
                 });
                 // 检查当前查询是否可执行
                 boolean canExecute = paramMap.keySet().stream().allMatch(Objects::nonNull);
@@ -225,17 +220,15 @@ class IntegrationParams {
             } else if (ParamIntegration.Type.INTEGRATE.equals(paramIntegration.getType())) {
                 // 集成
                 String protocolContent = fileReader(unIntegrateParams.get(checkNumber).getProtocol());
-                Configuration conf = Configuration.builder().options(Option.AS_PATH_LIST).build();
-                List<String> integrationMappingsPaths = JsonPath.parse(protocolContent, conf).read(mappingJsonPath);
-                if (integrationMappingsPaths.size() != 1) {
-                    throw new IllegalStateException(unIntegrateParams.get(checkNumber).getProtocol() + " - the integration openapi mappings have error, please check... ");
-                }
-                Map<String, Object> integrateMappings = JsonPath.parse(protocolContent).read(integrationMappingsPaths.get(0));
+                JsonNode protocolNode = JsonUtil.readTree(protocolContent);
+                JsonNode mappingNode = protocolNode
+                        .at("/paths").elements().next().elements().next()
+                        .at("/requestBody/content").elements().next()
+                        .at("/x-integrate-mapping");
+                HashMap<String, Object> integrateMappings = JsonUtil.writeValueAsObject(mappingNode.toString(), HashMap.class);
                 // 要求当前集成的所有映射均能够获取到其参数
-                boolean canExecute = integrateMappings.keySet().stream().allMatch(key -> {
-                    Object integrateParamValue = JsonPath.read(param, (String) integrateMappings.get(key));
-                    return null != integrateParamValue;
-                });
+                boolean canExecute = integrateMappings.keySet().stream()
+                        .allMatch(key -> null != JsonUtil.readTree(param).at((String) integrateMappings.get(key)));
                 // 如果当前循环的这个集成不能执行,则跳过该集成检查下一个
                 if (!canExecute) {
                     continue;
@@ -243,21 +236,17 @@ class IntegrationParams {
                 // 如果能够集成,收集信息,然后会自动跳出循环
                 executableIntegrationInfo.put("protocol", paramIntegration.getProtocol());
                 // 收集host
-                List<Map<String, Object>> servicesPaths = JsonPath.parse(protocolContent).read(serviceJsonPath);
-                if (servicesPaths.size() != 1) {
-                    throw new IllegalStateException(paramIntegration.getProtocol() + " - the openapi servers have error, we need only one services, but not found or found > 1.....");
-                }
-                Map<String, Object> serviceMaps = servicesPaths.get(0);
-                executableIntegrationInfo.put("host", serviceMaps.get("url"));
+                JsonNode urlNode = protocolNode
+                        .at("/servers").get(0)
+                        .at("/url");
+                executableIntegrationInfo.put("host", urlNode.textValue());
                 // 收集operationId
-                List<String> operationIdJsonPaths = JsonPath.parse(protocolContent, conf).read(operationIdJsonPath);
-                if (operationIdJsonPaths.size() != 1) {
-                    throw new IllegalStateException(paramIntegration.getProtocol() + " - we can not support muti-func openapi, please check... ");
-                }
-                executableIntegrationInfo.put("operationId", JsonPath.parse(protocolContent).read(operationIdJsonPaths.get(0)));
+                JsonNode operationNode = protocolNode
+                        .at("/paths").elements().next().elements().next()
+                        .at("/operationId");
+                executableIntegrationInfo.put("operationId", operationNode.textValue());
                 integrateMappings.keySet().forEach(key -> {
-                    Object integrateParamValue = JsonPath.read(param, (String) integrateMappings.get(key));
-                    paramMap.put(key, integrateParamValue);
+                    paramMap.put(key, JsonUtil.readTree(param).at((String) integrateMappings.get(key)));
                 });
                 executableIntegrationInfo.put("params", JsonUtil.writeValueAsString(paramMap));
             }

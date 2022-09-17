@@ -1,6 +1,5 @@
 package io.micrc.core.integration.command.businesses;
 
-import com.jayway.jsonpath.JsonPath;
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.framework.json.JsonUtil;
 import lombok.Data;
@@ -122,8 +121,7 @@ class AdapterParamsHandler {
         unResolveParams.sort(Comparator.comparing(ConceptionParam::getOrder));
         ConceptionParam conceptionParam = unResolveParams.get(0);
         properties.put("currentResolveParam", conceptionParam.getName());
-        Object targetConception = JsonPath.parse(paramsJson).read("$." + conceptionParam.getName());
-        body = JsonUtil.writeValueAsString(targetConception);
+        body = JsonUtil.readTree(paramsJson).at("/" + conceptionParam.getName()).toString();
         return "bean://io.micrc.core.integration.command.businesses.BodyHandler?method=getBody(" + body + "), jslt://" + conceptionParam.getTargetConceptionMappingPath();
     }
 

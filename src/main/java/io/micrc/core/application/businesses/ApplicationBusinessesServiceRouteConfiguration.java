@@ -3,8 +3,6 @@ package io.micrc.core.application.businesses;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.github.fge.jsonpatch.JsonPatch;
 import com.github.fge.jsonpatch.JsonPatchException;
-import com.jayway.jsonpath.JsonPath;
-import com.jayway.jsonpath.Option;
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.CommandParamIntegration;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.LogicIntegration;
@@ -110,15 +108,16 @@ public class ApplicationBusinessesServiceRouteConfiguration extends RouteBuilder
                 .convertBodyTo(String.class)
                 .process(exchange -> {
                     String body = (String) exchange.getIn().getBody();
-                    String resultCode = JsonPath.parse(body).read("$.code");
+                    JsonNode jsonNode = JsonUtil.readTree(body);
+                    String resultCode = jsonNode.at("/code").textValue();
                     if (null != resultCode && "200".equals(resultCode)) {
                         Map<String, String> currentIntegrateParam = (Map<String, String>) exchange.getProperties().get("currentIntegrateParam");
                         Map<String, CommandParamIntegration> unIntegrateParams = (Map<String, CommandParamIntegration>) exchange.getProperties().get("unIntegrateParams");
-                        Object retval = JsonPath.read(body, "$.data");
-                        if (null == retval) {
+                        JsonNode dataNode = jsonNode.at("/data");
+                        if (null == dataNode) {
                             throw new RuntimeException("the param " + unIntegrateParams.get(currentIntegrateParam.get("paramName")) + " integrate return value is null, but the integrate result can`t be null, so you should check the protocol " + unIntegrateParams.get(currentIntegrateParam).getProtocol());
                         }
-                        String data = JsonUtil.writeValueAsStringRetainNull(JsonPath.read(body, "$.data"));
+                        String data = dataNode.toString();
                         String commandJson = patch((String) exchange.getProperties().get("commandJson"), unIntegrateParams.get(currentIntegrateParam.get("paramName")).getObjectTreePath(), data);
                         exchange.getProperties().put("commandJson", commandJson);
                         // 标识该参数已成功
@@ -250,7 +249,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends RouteBuilder
     public static class LogicIntegration {
 
         /**
-         * 出集成映射(调用时转换映射) jsonPath
+         * 出集成映射(调用时转换映射)
          */
         private Map<String, String> outMappings;
 
@@ -329,7 +328,8 @@ class LogicInParamsResolve {
     public String toLogicParams(LogicIntegration logicIntegration, String commandJson) {
         Map<String, Object> logicParams = new HashMap<>();
         logicIntegration.getOutMappings().keySet().stream().forEach(key -> {
-            Object value = JsonPath.read(commandJson, logicIntegration.getOutMappings().get(key));
+            String outMapping = JsonUtil.readTree(commandJson).at(logicIntegration.getOutMappings().get(key)).toString();
+            Object value = JsonUtil.writeValueAsObject(outMapping, Object.class);
             if (null == value) {
                 throw new RuntimeException(logicIntegration.getOutMappings().get(key) + " - the params can`t get value, please check the annotation.like integration annotation error or toLogicMappings annotation have error ");
             }
@@ -397,9 +397,6 @@ class LogicInParamsResolve {
 }
 
 class IntegrationCommandParams {
-    private static final String mappingJsonPath = "$.paths..requestBody.content..x-integrate-mapping";
-    private static final String serviceJsonPath = "$.servers";
-    private static final String operationIdJsonPath = "$.paths..operationId";
 
     public static String integrate(@ExchangeProperties Map<String, Object> properties) {
         //1.判断是否有需要集成的参数
@@ -438,16 +435,15 @@ class IntegrationCommandParams {
                 throw new RuntimeException("the integration file have error, command need integrate, but the param can not use... ");
             }
             String protocolContent = fileReader(unIntegrateParams.get(key).getProtocol());
-            com.jayway.jsonpath.Configuration conf = com.jayway.jsonpath.Configuration.builder().options(Option.AS_PATH_LIST).build();
-            List<String> integrationMappingsPaths = JsonPath.parse(protocolContent, conf).read(mappingJsonPath);
-            if (integrationMappingsPaths.size() != 1) {
-                throw new RuntimeException(unIntegrateParams.get(key).getProtocol() + " - the integration openapi mappings have error, please check... ");
-            }
-            Map<String, Object> integrateMappings = JsonPath.parse(protocolContent).read(integrationMappingsPaths.get(0));
+            JsonNode protocolNode = JsonUtil.readTree(protocolContent);
+            JsonNode mappingNode = protocolNode
+                    .at("/paths").elements().next().elements().next()
+                    .at("/requestBody/content").elements().next()
+                    .at("/x-integrate-mapping");
+            HashMap<String, Object> integrateMappings = JsonUtil.writeValueAsObject(mappingNode.toString(), HashMap.class);
             // 要求当前集成的所有映射均能够获取到其参数
             Boolean canExecute = integrateMappings.keySet().stream().allMatch(mappingKey -> {
-                Object integrateParamValue = JsonPath.read(commandJson, (String) integrateMappings.get(mappingKey));
-                return null != integrateParamValue;
+                return null != JsonUtil.readTree(commandJson).at((String) integrateMappings.get(mappingKey));
             });
             // 如果当前循环的这个集成不能执行,则跳过该集成检查下一个
             if (!canExecute) {
@@ -457,22 +453,18 @@ class IntegrationCommandParams {
             executableIntegrationInfo.put("paramName", unIntegrateParams.get(key).getParamName());
             executableIntegrationInfo.put("protocol", unIntegrateParams.get(key).getProtocol());
             // 收集host
-            List<Map<String, Object>> servicesPaths = JsonPath.parse(protocolContent).read(serviceJsonPath);
-            if (servicesPaths.size() != 1) {
-                throw new RuntimeException(unIntegrateParams.get(key).getProtocol() + " - the openapi servers have error, we need only one services, but not found or found > 1.....");
-            }
-            Map<String, Object> serviceMaps = servicesPaths.get(0);
-            executableIntegrationInfo.put("host", serviceMaps.get("url"));
+            JsonNode urlNode = protocolNode
+                    .at("/servers").get(0)
+                    .at("/url");
+            executableIntegrationInfo.put("host", urlNode.textValue());
             // 收集operationId
-            List<String> operationIdJsonPaths = JsonPath.parse(protocolContent, conf).read(operationIdJsonPath);
-            if (operationIdJsonPaths.size() != 1) {
-                throw new RuntimeException(unIntegrateParams.get(key).getProtocol() + " - we can not support muti-func openapi, please check... ");
-            }
-            executableIntegrationInfo.put("operationId", JsonPath.parse(protocolContent).read(operationIdJsonPaths.get(0)));
+            JsonNode operationNode = protocolNode
+                    .at("/paths").elements().next().elements().next()
+                    .at("/operationId");
+            executableIntegrationInfo.put("operationId", operationNode.textValue());
             HashMap<String, String> integrateParams = new HashMap<>();
             integrateMappings.keySet().forEach(mappingKey -> {
-                String integrateParamValue = JsonUtil.writeValueAsStringRetainNull(JsonPath.read(commandJson, (String) integrateMappings.get(mappingKey)));
-                integrateParams.put(mappingKey, integrateParamValue);
+                integrateParams.put(mappingKey, JsonUtil.readTree(commandJson).at((String) integrateMappings.get(mappingKey)).toString());
             });
             executableIntegrationInfo.put("integrateParams", integrateParams);
             break;
