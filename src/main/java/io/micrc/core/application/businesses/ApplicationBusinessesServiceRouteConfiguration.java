@@ -6,6 +6,7 @@ import com.github.fge.jsonpatch.JsonPatchException;
 import com.jayway.jsonpath.JsonPath;
 import com.jayway.jsonpath.Option;
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
+import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.CommandParamIntegration;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.LogicIntegration;
 import io.micrc.core.framework.json.JsonUtil;
@@ -14,7 +15,6 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import org.apache.camel.ExchangeProperties;
-import org.apache.camel.builder.RouteBuilder;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -36,13 +36,13 @@ import java.util.stream.Collectors;
  * @date 2022-08-27 21:02
  * @since 0.0.1
  */
-public class ApplicationBusinessesServiceRouteConfiguration extends RouteBuilder {
+public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBuilder {
     // 路由模版ID
     public static final String ROUTE_TMPL_BUSINESSES_SERVICE =
             ApplicationBusinessesServiceRouteConfiguration.class.getName() + ".businessesService";
 
     @Override
-    public void configure() throws Exception {
+    public void configureRoute() throws Exception {
         routeTemplate(ROUTE_TMPL_BUSINESSES_SERVICE)
                 .templateParameter("serviceName", null, "the business service name")
                 .templateParameter("logicName", null, "the logicName")
@@ -54,9 +54,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends RouteBuilder
                 .templateParameter("logicName", null, "the logicName")
                 .templateParameter("logicIntegrationJson", null, "the logic integration params")
                 .from("businesses:{{serviceName}}")
-                .errorHandler(deadLetterChannel("direct://error"))
                 .transacted()
-                .marshal().json().convertBodyTo(String.class)
                 // 0.1 集成准备, 准备Source
                 .setProperty("commandJson", body())
                 // FIXME 这里有个BUG要修
@@ -86,14 +84,9 @@ public class ApplicationBusinessesServiceRouteConfiguration extends RouteBuilder
                 // TODO 仓库集成抽进repository路由内部 END
                 // 3 消息存储
                 .setBody(exchangeProperty("commandJson"))
-                .to("message://save")
+                .to("event-store://store")
                 .setBody(exchangeProperty("commandJson"))
                 .convertBodyTo(String.class)
-                .end();
-        from("direct://error")
-                // TODO 构造通用返回对象,错误异常码为999999999,标识该异常为不期望异常
-                .log(" TODO 构造通用返回对象,错误异常码为999999999,标识该异常为不期望异常")
-                .rollback()
                 .end();
 
         from("direct://integration-params")
@@ -145,15 +138,6 @@ public class ApplicationBusinessesServiceRouteConfiguration extends RouteBuilder
                 .unmarshal().json(HashMap.class)
                 .bean(ResultCheck.class, "check(${body})")
                 // TODO 逻辑检查异常是否存在及回滚事务
-                .end();
-
-        from("message://save")
-                .setHeader("pointer", constant("/event"))
-                .to("json-patch://select")
-                .bean(StoredEvent.class, "store(${exchange.properties.get(commandJson)}, ${in.body})")
-                .setHeader("event", body())
-                .setBody(simple("insert into message_message_store (message_id, create_time, content, region) values ('${in.header.event.messageId}', ${in.header.event.createTime}, '${in.header.event.content}', '${in.header.event.region}')"))
-                .to("jdbc:datasource?useHeadersAsParameters=true")
                 .end();
     }
 
@@ -293,27 +277,6 @@ public class ApplicationBusinessesServiceRouteConfiguration extends RouteBuilder
                 // throw new RuntimeException((String) checkResult.get("errorCode"), (String) checkResult.get("errorMessage"));
             }
         }
-    }
-}
-
-@Data
-class StoredEvent {
-
-    private String messageId = System.currentTimeMillis() + java.util.UUID.randomUUID().toString().replaceAll("-", "");
-
-    private Long createTime = System.currentTimeMillis();
-
-    private String content;
-
-    private Long sequence;
-
-    private String region;
-
-    public StoredEvent store(String command, String event) {
-        StoredEvent storedEvent = new StoredEvent();
-        storedEvent.setContent(command);
-        storedEvent.setRegion(event);
-        return storedEvent;
     }
 }
 

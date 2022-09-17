@@ -1,19 +1,14 @@
 package io.micrc.core._camel;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonPointer;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.fge.jsonpatch.JsonPatch;
-import com.github.fge.jsonpatch.JsonPatchException;
 import io.micrc.core.framework.json.JsonUtil;
 import org.apache.camel.RoutesBuilder;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.direct.DirectComponent;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import java.io.IOException;
 
 /**
  * 使用路由和direct组件，临时实现各种没有的camel组件
@@ -34,69 +29,44 @@ public class CamelComponentTempConfiguration {
         return new DirectComponent();
     }
 
-    @Bean("objectMapper")
-    public ObjectMapper objectMapper() {
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
-        return objectMapper;
-    }
-
     @Bean
     public RoutesBuilder jsonPatchComp() {
         return new RouteBuilder() {
             @Override
             public void configure() throws Exception {
                 from("json-patch://command")
-                        .bean("jsonPatchComp", "command(${in.body}, ${in.header.command})")
+                        .process(exchange -> {
+                            JsonPatch patch = JsonPatch.fromJson(JsonUtil.readTree(exchange.getIn().getHeader("command")));
+                            exchange.getIn().setBody(JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(exchange.getIn().getBody()))));
+                        })
                         .end();
                 from("json-patch://select")
-                        .bean("jsonPatchComp", "select(${in.body}, ${in.header.pointer})")
+                        .process(exchange -> {
+                            String content = String.valueOf(exchange.getIn().getBody());
+                            JsonNode originalJsonNode = JsonUtil.readTree(content);
+                            JsonPointer jsonPointer = JsonPointer.compile(String.valueOf(exchange.getIn().getHeader("pointer")));
+                            exchange.getIn().setBody(JsonUtil.writeValueAsStringRetainNull(originalJsonNode.at(jsonPointer)));
+                        })
                         .end();
                 from("json-patch://patch")
-                        .bean("jsonPatchComp", "patch(${in.body}, ${in.header.path}, ${in.header.value})")
+                        .process(exchange -> {
+                            String patchStr = "[{ \"op\": \"replace\", \"path\": \"{{path}}\", \"value\": {{value}} }]";
+                            String pathReplaced = patchStr.replace("{{path}}", String.valueOf(exchange.getIn().getHeader("path")));
+                            String valueReplaced = pathReplaced.replace("{{value}}", String.valueOf(exchange.getIn().getHeader("header")));
+                            JsonPatch patch = JsonPatch.fromJson(JsonUtil.readTree(valueReplaced));
+                            exchange.getIn().setBody(JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(exchange.getIn().getBody()))));
+                        })
                         .end();
                 from("json-patch://add")
-                        .bean("jsonPatchComp", "add(${in.body}, ${in.header.path}, ${in.header.value})")
+                        .process(exchange -> {
+                            String addStr = "[{ \"op\": \"add\", \"path\": \"{{path}}\", \"value\": {{value}} }]";
+                            String pathReplaced = addStr.replace("{{path}}", String.valueOf(exchange.getIn().getHeader("path")));
+                            String valueReplaced = pathReplaced.replace("{{value}}", String.valueOf(exchange.getIn().getHeader("header")));
+                            JsonPatch patch = JsonPatch.fromJson(JsonUtil.readTree(valueReplaced));
+                            exchange.getIn().setBody(JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(exchange.getIn().getBody()))));
+                        })
                         .end();
             }
-
-            public String command(String original, String command) {
-                try {
-                    JsonPatch patch = JsonPatch.fromJson(JsonUtil.readTree(command));
-                    return JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(original)));
-                } catch (IOException | JsonPatchException e) {
-                    throw new RuntimeException("patch fail... please check object...");
-                }
-            }
-
-            public String select(String original, String pointer) {
-                JsonNode originalJsonNode = JsonUtil.readTree(original);
-                JsonPointer jsonPointer = JsonPointer.compile(pointer);
-                return JsonUtil.writeValueAsStringRetainNull(originalJsonNode.at(jsonPointer));
-            }
-
-            public String patch(String original, String path, String value) {
-                try {
-                    String pathReplaced = patch.replace("{{path}}", path);
-                    String valueReplaced = pathReplaced.replace("{{value}}", value);
-                    JsonPatch patch = JsonPatch.fromJson(JsonUtil.readTree(valueReplaced));
-                    return JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(original)));
-                } catch (IOException | JsonPatchException e) {
-                    throw new RuntimeException("patch fail... please check object...");
-                }
-            }
-
-            public String add(String original, String path, String value) {
-                try {
-                    String pathReplaced = add.replace("{{path}}", path);
-                    String valueReplaced = pathReplaced.replace("{{value}}", value);
-                    JsonPatch patch = JsonPatch.fromJson(JsonUtil.readTree(valueReplaced));
-                    return JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(original)));
-                } catch (IOException | JsonPatchException e) {
-                    throw new RuntimeException("patch fail... please check object...");
-                }
-            }
-
         };
 
     }

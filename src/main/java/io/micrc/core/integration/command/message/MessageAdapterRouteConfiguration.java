@@ -1,10 +1,10 @@
 package io.micrc.core.integration.command.message;
 
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
+import io.micrc.core.MicrcRouteBuilder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
-import org.apache.camel.builder.RouteBuilder;
 
 /**
  * 消息接收适配器路由定义和参数bean定义
@@ -13,21 +13,18 @@ import org.apache.camel.builder.RouteBuilder;
  * @date 2022-09-05 14:00
  * @since 0.0.1
  */
-public class MessageAdapterRouteConfiguration extends RouteBuilder {
+public class MessageAdapterRouteConfiguration extends MicrcRouteBuilder {
 
     public static final String ROUTE_TMPL_MESSAGE =
             MessageAdapterRouteConfiguration.class.getName() + ".messageAdapter";
 
     @Override
-    public void configure() throws Exception {
+    public void configureRoute() throws Exception {
 
         routeTemplate(ROUTE_TMPL_MESSAGE)
                 .templateParameter("name", null, "the business adapter name")
                 .templateParameter("serviceName", null, "the business service name")
-                .templateParameter("commandPath", null, "the command full path")
                 .from("message-adapter://{{name}}")
-                .setHeader("CamelJacksonUnmarshalType").simple("{{commandPath}}")
-                .to("dataformat:jackson:unmarshal?allow-unmarshall-type=true")
                 .to("businesses://{{serviceName}}")
                 .end();
     }
@@ -48,11 +45,6 @@ public class MessageAdapterRouteConfiguration extends RouteBuilder {
          * 适配器名称
          */
         String name;
-
-        /**
-         * 应用服务全路径
-         */
-        String commandPath;
 
         /**
          * 应用服务名称 - 类简写名(SimpleName)

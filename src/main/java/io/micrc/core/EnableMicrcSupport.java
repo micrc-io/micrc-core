@@ -4,9 +4,7 @@ import io.micrc.core._camel.CamelComponentTempConfiguration;
 import io.micrc.core.application.EnableApplicationService;
 import io.micrc.core.cache.springboot.CacheAutoConfiguration;
 import io.micrc.core.integration.EnableIntegration;
-import io.micrc.core.message.springboot.ClassPathMessageSubscriberScannerRegistrar;
-import io.micrc.core.message.springboot.MessageAutoConfiguration;
-import io.micrc.core.message.springboot.MessageMockSenderApiScannerRegistrar;
+import io.micrc.core.message.EnableMessage;
 import io.micrc.core.persistence.springboot.PersistenceAutoConfiguration;
 import io.micrc.core.rpc.springboot.ClassPathRestEndpointScannerRegistrar;
 import io.micrc.core.rpc.springboot.RpcAutoConfiguration;
@@ -27,15 +25,13 @@ import java.lang.annotation.*;
 @Documented
 @EnableApplicationService
 @EnableIntegration
+@EnableMessage
 @Import({
         CamelComponentTempConfiguration.class,
         PersistenceAutoConfiguration.class,
         RpcAutoConfiguration.class,
         ClassPathRestEndpointScannerRegistrar.class,
         RpcMockServerScanner.class,
-        MessageAutoConfiguration.class,
-        ClassPathMessageSubscriberScannerRegistrar.class,
-        MessageMockSenderApiScannerRegistrar.class,
         CacheAutoConfiguration.class,
         CamelComponentTempConfiguration.class
 

@@ -2,12 +2,12 @@ package io.micrc.core.integration.command.businesses;
 
 import com.jayway.jsonpath.JsonPath;
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
+import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.core.framework.json.JsonUtil;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
 import org.apache.camel.ExchangeProperties;
-import org.apache.camel.builder.RouteBuilder;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -21,13 +21,13 @@ import java.util.stream.Collectors;
  * @date 2022-09-05 14:00
  * @since 0.0.1
  */
-public class ApplicationCommandAdapterRouteConfiguration extends RouteBuilder {
+public class ApplicationCommandAdapterRouteConfiguration extends MicrcRouteBuilder {
 
     public static final String ROUTE_TMPL_BUSINESSES_ADAPTER =
             ApplicationCommandAdapterRouteConfiguration.class.getName() + ".businessesAdapter";
 
     @Override
-    public void configure() throws Exception {
+    public void configureRoute() throws Exception {
 
         routeTemplate(ROUTE_TMPL_BUSINESSES_ADAPTER)
                 .templateParameter("name", null, "the adapter name")
@@ -40,6 +40,7 @@ public class ApplicationCommandAdapterRouteConfiguration extends RouteBuilder {
                 .setProperty("paramsJson", body())
                 .dynamicRouter(method(AdapterParamsHandler.class, "convert"))
                 .setBody(exchangeProperty("command"))
+                .marshal().json().convertBodyTo(String.class)
                 .to("businesses://{{serviceName}}")
 //                .setProperty("commandJson", body())
 //                .setHeader("pointer", simple("/error"))

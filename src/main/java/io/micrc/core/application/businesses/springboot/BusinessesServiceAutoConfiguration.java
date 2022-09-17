@@ -16,8 +16,8 @@ import org.springframework.context.annotation.Import;
  * 业务服务支持springboot自动配置
  *
  * @author weiguan
- * @since 0.0.1
  * @date 2022-08-23 21:02
+ * @since 0.0.1
  */
 @Configuration
 @Import({ApplicationBusinessesServiceRouteConfiguration.class})
@@ -71,11 +71,5 @@ public class BusinessesServiceAutoConfiguration {
     public DirectComponent logic() {
         DirectComponent logic = new DirectComponent();
         return logic;
-    }
-
-    @Bean("message")
-    public DirectComponent messageStore() {
-        DirectComponent message = new DirectComponent();
-        return message;
     }
 }

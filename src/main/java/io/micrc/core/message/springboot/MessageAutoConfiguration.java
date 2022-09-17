@@ -1,6 +1,10 @@
 package io.micrc.core.message.springboot;
 
+import com.github.fridujo.rabbitmq.mock.MockConnectionFactory;
+import io.micrc.core.MicrcRouteBuilder;
+import io.micrc.core.message.MessageRouteConfiguration;
 import org.apache.camel.RoutesBuilder;
+import org.apache.camel.component.direct.DirectComponent;
 import org.apache.camel.component.springrabbit.SpringRabbitMQComponent;
 import org.apache.camel.component.springrabbit.springboot.SpringRabbitMQComponentAutoConfiguration;
 import org.springframework.amqp.core.AmqpAdmin;
@@ -11,11 +15,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Profile;
-
-import com.github.fridujo.rabbitmq.mock.MockConnectionFactory;
-
-import io.micrc.core.MicrcRouteBuilder;
-import io.micrc.core.message.MessageRouteConfiguration;
 
 /**
  * message auto configuration. 注册publish/subscribe组件，创建消息队列mock connection
@@ -43,6 +42,12 @@ public class MessageAutoConfiguration {
         publisher.setAutoDeclare(true);
         // publisher.setAllowNullBody(false); // 是否允许空消息
         return publisher;
+    }
+
+    @Bean("event-store")
+    public DirectComponent eventStore() {
+        DirectComponent eventStore = new DirectComponent();
+        return eventStore;
     }
 
     @Bean("subscribe")
