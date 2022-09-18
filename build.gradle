@@ -21,6 +21,7 @@ ext {
     set('json-patch.version', '1.13')
     set('embedded-redis.version', '0.7.3')
     set('testcontainers.version', '2.2.7')
+    set('shedlock.version', '4.42.0')
 }
 
 configurations {
@@ -112,11 +113,15 @@ dependencies {
     // redis for cache and schedule
     implementation "org.springframework.boot:spring-boot-starter-cache"
     implementation "org.springframework.boot:spring-boot-starter-data-redis"
+    // shedlock for schedule distributed lock
+    implementation "net.javacrumbs.shedlock:shedlock-spring:${property('shedlock.version')}"
+    implementation "net.javacrumbs.shedlock:shedlock-provider-redis-spring:${property('shedlock.version')}"
     // // mock server
     implementation("it.ozimov:embedded-redis:${property('embedded-redis.version')}") {
         exclude group: "org.slf4j", module: "slf4j-simple"
     }
     // implementation "com.playtika.testcontainers:embedded-redis:${property('testcontainers.version')}" // 备用。当embedded-redis不适用时使用
+
 }
 
 processTestResources {

@@ -39,6 +39,7 @@ public class MicrcEnvironmentProcessor implements EnvironmentPostProcessor {
         log.info("Processing Environment For Micrc...");
         Collection<String> profiles = getProfiles(environment);
         Properties properties = this.loadMicrcProperties();
+        properties.setProperty("micrc.key", "io.micrc");
         properties.setProperty("application.profiles",
             StringUtils.arrayToCommaDelimitedString(profiles.toArray(new String[]{})));
         log.info("Micrc Application Profiles: " + profiles);

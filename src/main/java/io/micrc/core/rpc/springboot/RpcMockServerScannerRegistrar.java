@@ -31,7 +31,7 @@ import java.util.Set;
  * @date 2022-09-08 21:45
  * @since 0.0.1
  */
-public class RpcMockServerScanner implements ImportBeanDefinitionRegistrar, EnvironmentAware {
+public class RpcMockServerScannerRegistrar implements ImportBeanDefinitionRegistrar, EnvironmentAware {
 
     private Environment env;
 
