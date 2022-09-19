@@ -26,7 +26,7 @@ public class PresentationsAdapterRouteConfiguration extends RouteBuilder {
                 .templateParameter("name", null, "the presentations adapter name")
                 .templateParameter("serviceName", null, "the presentations service name")
                 .from("presentations-adapter:{{name}}")
-                .to("presentations-service:{{serviceName}}")
+                .to("presentations:{{serviceName}}")
                 .setHeader("CamelJacksonUnmarshalType").simple("java.lang.Object")
                 .to("dataformat:jackson:unmarshal?allow-unmarshall-type=true")
                 .bean(Result.class, "result(${in.body})")

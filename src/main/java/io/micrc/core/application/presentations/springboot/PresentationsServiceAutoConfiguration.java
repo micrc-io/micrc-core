@@ -43,7 +43,7 @@ public class PresentationsServiceAutoConfiguration {
         };
     }
 
-    @Bean("presentations-service")
+    @Bean("presentations")
     public DirectComponent presentationsService() {
         DirectComponent presentationsService = new DirectComponent();
         return presentationsService;

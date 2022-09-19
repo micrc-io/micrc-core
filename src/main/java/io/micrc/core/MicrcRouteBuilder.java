@@ -29,8 +29,8 @@ public abstract class MicrcRouteBuilder extends RouteBuilder {
 //                .groovy("header.CamelInterceptedEndpoint.replace('businesses:', '')")
 //                .toD("bean:${header.WrappedRouterBean}?method=exec(${body})")
                 .log("intercept businesses");
-        interceptSendToEndpoint("presentations-service:*")
-                .log("拦截所有presentations服务, 使用bean调用使@Cacheable生效 - **韩晓星把协议名字改了**");
+        interceptSendToEndpoint("presentations:*")
+                .log("拦截所有presentations服务, 使用bean调用使@Cacheable生效");
         interceptSendToEndpoint("derivatives:*")
             .log("拦截所有derivatives服务, 使用bean调用使@Cacheable生效 - **韩晓星注意命名**");
         interceptSendToEndpoint("command:*")

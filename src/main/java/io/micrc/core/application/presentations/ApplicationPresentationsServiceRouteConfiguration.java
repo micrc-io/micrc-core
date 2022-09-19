@@ -1,8 +1,6 @@
 package io.micrc.core.application.presentations;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.node.TextNode;
 import com.github.fge.jsonpatch.JsonPatch;
 import com.github.fge.jsonpatch.JsonPatchException;
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
@@ -57,7 +55,7 @@ public class ApplicationPresentationsServiceRouteConfiguration extends RouteBuil
                 .templateParameter("paramIntegrationsJson", null, "the command integration params")
                 .templateParameter("assembler", null, "assembler")
                 // 指定service名称为入口端点
-                .from("presentations-service:{{serviceName}}")
+                .from("presentations:{{serviceName}}")
                 .setProperty("paramIntegrationsJson", simple("{{paramIntegrationsJson}}"))
                 .setProperty("param", simple("${in.body}")) // 存储入参到交换区，动态处理及结果汇编需要
                 // 动态路由解析
@@ -114,7 +112,6 @@ public class ApplicationPresentationsServiceRouteConfiguration extends RouteBuil
          * 需集成参数属性定义
          */
         protected String paramIntegrationsJson;
-        protected List<String> paramIntegrationsJsonList;
     }
 }
 
@@ -163,14 +160,9 @@ class IntegrationParams {
         String name = (String) current.get("name");
         ParamIntegration.Type currentIntegrateType = (ParamIntegration.Type) current.get("type");
         if (ParamIntegration.Type.QUERY.equals(currentIntegrateType) && body instanceof Optional) {
-            body = ((Optional<?>) body).orElse(null);
+            body = ((Optional<?>) body).orElseThrow();
         } else if (ParamIntegration.Type.INTEGRATE.equals(currentIntegrateType)) {
-            body = JsonUtil.readTree((String) body).at("/data");
-            if (body instanceof TextNode) {
-                body = JsonUtil.writeValueAsObject(((TextNode) body).textValue(), Object.class);
-            } else if (body instanceof ObjectNode) {
-                body = JsonUtil.writeValueAsObject(body.toString(), Object.class);
-            }
+            body = JsonUtil.readPath((String) body, "/data");
         }
         List<ParamIntegration> paramIntegrations = (List<ParamIntegration>) exchange.getProperties().get("paramIntegrations");
         // 将上次执行的结果放回至原有属性集成参数之中
@@ -206,11 +198,10 @@ class IntegrationParams {
             if (ParamIntegration.Type.QUERY.equals(paramIntegration.getType())) {
                 // 获取当前查询的每个参数
                 paramIntegration.getQueryParams().forEach((name, path) -> {
-                    paramMap.put(name, JsonUtil.readTree(param).at(path));
+                    paramMap.put(name, JsonUtil.readPath(param, path));
                 });
                 // 检查当前查询是否可执行
-                boolean canExecute = paramMap.keySet().stream().allMatch(Objects::nonNull);
-                if (!canExecute) {
+                if (paramMap.values().stream().anyMatch(Objects::isNull)) {
                     continue;
                 }
                 // 如果能够集成,收集信息,然后会自动跳出循环
@@ -226,11 +217,11 @@ class IntegrationParams {
                         .at("/requestBody/content").elements().next()
                         .at("/x-integrate-mapping");
                 HashMap<String, Object> integrateMappings = JsonUtil.writeValueAsObject(mappingNode.toString(), HashMap.class);
-                // 要求当前集成的所有映射均能够获取到其参数
-                boolean canExecute = integrateMappings.keySet().stream()
-                        .allMatch(key -> null != JsonUtil.readTree(param).at((String) integrateMappings.get(key)));
-                // 如果当前循环的这个集成不能执行,则跳过该集成检查下一个
-                if (!canExecute) {
+                integrateMappings.keySet().forEach(key -> {
+                    paramMap.put(key, JsonUtil.readPath(param, (String) integrateMappings.get(key)));
+                });
+                // 检查当前查询是否可执行
+                if (paramMap.values().stream().anyMatch(Objects::isNull)) {
                     continue;
                 }
                 // 如果能够集成,收集信息,然后会自动跳出循环
@@ -245,9 +236,7 @@ class IntegrationParams {
                         .at("/paths").elements().next().elements().next()
                         .at("/operationId");
                 executableIntegrationInfo.put("operationId", operationNode.textValue());
-                integrateMappings.keySet().forEach(key -> {
-                    paramMap.put(key, JsonUtil.readTree(param).at((String) integrateMappings.get(key)));
-                });
+
                 executableIntegrationInfo.put("params", JsonUtil.writeValueAsString(paramMap));
             }
             executableIntegrationInfo.put("name", paramIntegration.getConcept());

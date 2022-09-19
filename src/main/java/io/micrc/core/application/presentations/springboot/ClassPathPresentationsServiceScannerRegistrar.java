@@ -32,6 +32,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -138,6 +139,10 @@ class ApplicationPresentationsServiceScanner extends ClassPathBeanDefinitionScan
                 throw new IllegalStateException("the " + beanDefinition.getBeanClass().getName() + " execute method don`t have only one command param, please check this application service....");
             }
             PresentationsService presentationsService = beanDefinition.getBeanClass().getAnnotation(PresentationsService.class);
+            // 需要自定义的服务不生成路由
+            if (presentationsService.custom()) {
+                continue;
+            }
             // 解析参数所有集成
             List<ParamIntegration> paramIntegrations = getParamIntegrations(presentationsService.queryLogics(), presentationsService.integrations());
             // 检查展示服务注解至少需要包含一次集成/查询
@@ -152,7 +157,6 @@ class ApplicationPresentationsServiceScanner extends ClassPathBeanDefinitionScan
                             .templateId(ApplicationPresentationsServiceRouteConfiguration.ROUTE_TMPL_PRESENTATIONS_SERVICE)
                             .serviceName(serviceName)
                             .paramIntegrationsJson(JsonUtil.writeValueAsString(paramIntegrations))
-                            .paramIntegrationsJsonList(paramIntegrations.stream().map(JsonUtil::writeValueAsString).collect(Collectors.toList()))
                             .assembler(presentationsService.assembler())
                             .build());
         }
@@ -188,12 +192,14 @@ class ApplicationPresentationsServiceScanner extends ClassPathBeanDefinitionScan
             if (sortParam.length() > 0) {
                 methodName = methodName + "OrderBy" + sortParam.substring(3);
             }
-            paramIntegrations.add(new ParamIntegration(logic.name(), lowerStringFirst(logic.aggregation()), methodName, map));
+            paramIntegrations.add(new ParamIntegration(logic.name(), lowerStringFirst(logic.aggregation()), methodName, map, logic.order()));
         });
         // 集成解析
         Arrays.stream(integrations).forEach(logic -> {
-            paramIntegrations.add(new ParamIntegration(logic.name(), logic.protocol()));
+            paramIntegrations.add(new ParamIntegration(logic.name(), logic.protocol(), logic.order()));
         });
+        // 按照优先级排序
+        paramIntegrations.sort(Comparator.comparing(ParamIntegration::getOrder));
         return paramIntegrations;
     }
 
