@@ -20,10 +20,6 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class CamelComponentTempConfiguration {
 
-    public static final String add = "[{ \"op\": \"add\", \"path\": \"{{path}}\", \"value\": {{value}} }]";
-
-    public static final String patch = "[{ \"op\": \"replace\", \"path\": \"{{path}}\", \"value\": {{value}} }]";
-
     @Bean("json-patch")
     public DirectComponent jsonPatch() {
         return new DirectComponent();

@@ -145,7 +145,6 @@ class ApplicationCommandAdapterScanner extends ClassPathBeanDefinitionScanner {
             if (haveExecuteMethod.size() != 1) {
                 throw new MethodAdapterDesignException(" the application service interface " + commandAdapter.serviceName() + " need extends ApplicationBusinessesService. please check");
             }
-            Method execute = null;
             Class<?>[] serviceMethodParameterTypes = serviceMethods[0].getParameterTypes();
             if (serviceMethodParameterTypes.length != 1) {
                 throw new MethodAdapterDesignException(" the application businesses adapter endpoint service interface " + commandAdapter.serviceName() + " method execute param only can use command and only one param. please check");
