@@ -1,11 +1,11 @@
-package io.micrc.core.integration.command.message.springboot;
+package io.micrc.core.integration.message.springboot;
 
 import io.micrc.core.annotations.integration.MessageAdapter;
-import io.micrc.core.integration.command.message.EnableMessageAdapter;
-import io.micrc.core.integration.command.message.MessageAdapterRouteConfiguration;
-import io.micrc.core.integration.command.message.MessageAdapterRouteConfiguration.ApplicationMessageRouteTemplateParamDefinition;
-import io.micrc.core.integration.command.message.MessageAdapterRouteTemplateParameterSource;
-import io.micrc.core.integration.command.message.MethodAdapterDesignException;
+import io.micrc.core.integration.message.EnableMessageAdapter;
+import io.micrc.core.integration.message.MessageAdapterRouteConfiguration;
+import io.micrc.core.integration.message.MessageAdapterRouteConfiguration.ApplicationMessageRouteTemplateParamDefinition;
+import io.micrc.core.integration.message.MessageAdapterRouteTemplateParameterSource;
+import io.micrc.core.integration.message.MethodAdapterDesignException;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;

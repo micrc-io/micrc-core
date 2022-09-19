@@ -1,4 +1,4 @@
-package io.micrc.core.integration.command.message;
+package io.micrc.core.integration.message;
 
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
@@ -24,7 +24,7 @@ public class MessageAdapterRouteConfiguration extends MicrcRouteBuilder {
         routeTemplate(ROUTE_TMPL_MESSAGE)
                 .templateParameter("name", null, "the business adapter name")
                 .templateParameter("serviceName", null, "the business service name")
-                .from("message-adapter://{{name}}")
+                .from("message://{{name}}")
                 .to("businesses://{{serviceName}}")
                 .end();
     }

@@ -1,4 +1,4 @@
-package io.micrc.core.integration.command.message;
+package io.micrc.core.integration.message;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;

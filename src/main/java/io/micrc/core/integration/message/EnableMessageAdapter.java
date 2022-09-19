@@ -1,7 +1,7 @@
-package io.micrc.core.integration.command.message;
+package io.micrc.core.integration.message;
 
-import io.micrc.core.integration.command.message.springboot.ClassPathMessageAdapterScannerRegistrar;
-import io.micrc.core.integration.command.message.springboot.MessageAdapterAutoConfiguration;
+import io.micrc.core.integration.message.springboot.ClassPathMessageAdapterScannerRegistrar;
+import io.micrc.core.integration.message.springboot.MessageAdapterAutoConfiguration;
 import org.springframework.context.annotation.Import;
 
 import java.lang.annotation.*;

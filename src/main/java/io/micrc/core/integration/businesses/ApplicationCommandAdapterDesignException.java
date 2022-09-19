@@ -1,4 +1,4 @@
-package io.micrc.core.integration.command.businesses;
+package io.micrc.core.integration.businesses;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;

@@ -1,13 +1,13 @@
-package io.micrc.core.integration.command.businesses.springboot;
+package io.micrc.core.integration.businesses.springboot;
 
 import io.micrc.core.annotations.integration.CommandAdapter;
 import io.micrc.core.annotations.integration.Conception;
 import io.micrc.core.framework.json.JsonUtil;
-import io.micrc.core.integration.command.businesses.ApplicationCommandAdapterRouteConfiguration;
-import io.micrc.core.integration.command.businesses.ApplicationCommandAdapterRouteTemplateParameterSource;
-import io.micrc.core.integration.command.businesses.ConceptionParam;
-import io.micrc.core.integration.command.businesses.EnableCommandAdapter;
-import io.micrc.core.integration.command.message.MethodAdapterDesignException;
+import io.micrc.core.integration.businesses.ApplicationCommandAdapterRouteConfiguration;
+import io.micrc.core.integration.businesses.ApplicationCommandAdapterRouteTemplateParameterSource;
+import io.micrc.core.integration.businesses.ConceptionParam;
+import io.micrc.core.integration.businesses.EnableCommandAdapter;
+import io.micrc.core.integration.message.MethodAdapterDesignException;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -132,9 +132,9 @@ class ApplicationCommandAdapterScanner extends ClassPathBeanDefinitionScanner {
                 }
                 return false;
             });
-            if (!haveAdaptMethod || adapterMethods.length != 2) {
-                throw new MethodAdapterDesignException(" the application businesses adapter interface " + name + " need extends ApplicationCommandAdapter. please check");
-            }
+//            if (!haveAdaptMethod || adapterMethods.length != 2) {
+//                throw new MethodAdapterDesignException(" the application businesses adapter interface " + name + " need extends ApplicationCommandAdapter. please check");
+//            }
             CommandAdapter commandAdapter = beanDefinition.getBeanClass().getAnnotation(CommandAdapter.class);
             String serviceName = commandAdapter.serviceName();
             String servicePath = basePackages[0] + ".application.businesses." + commandAdapter.rootEntityName().toLowerCase() + "." + serviceName;
@@ -145,9 +145,9 @@ class ApplicationCommandAdapterScanner extends ClassPathBeanDefinitionScanner {
 
             Method[] serviceMethods = service.getDeclaredMethods();
             List<Method> haveExecuteMethod = Arrays.stream(serviceMethods).filter(method -> "execute".equals(method.getName()) && !method.isBridge()).collect(Collectors.toList());
-            if (haveExecuteMethod.size() != 1) {
-                throw new MethodAdapterDesignException(" the application service interface " + commandAdapter.serviceName() + " need extends ApplicationBusinessesService. please check");
-            }
+//            if (haveExecuteMethod.size() != 1) {
+//                throw new MethodAdapterDesignException(" the application service interface " + commandAdapter.serviceName() + " need extends ApplicationBusinessesService. please check");
+//            }
             Class<?>[] serviceMethodParameterTypes = serviceMethods[0].getParameterTypes();
             if (serviceMethodParameterTypes.length != 1) {
                 throw new MethodAdapterDesignException(" the application businesses adapter endpoint service interface " + commandAdapter.serviceName() + " method execute param only can use command and only one param. please check");

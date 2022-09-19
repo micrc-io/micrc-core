@@ -1,7 +1,7 @@
-package io.micrc.core.integration.command.businesses;
+package io.micrc.core.integration.businesses;
 
-import io.micrc.core.integration.command.businesses.springboot.ClassPathCommandAdapterScannerRegistrar;
-import io.micrc.core.integration.command.businesses.springboot.CommandAdapterAutoConfiguration;
+import io.micrc.core.integration.businesses.springboot.ClassPathCommandAdapterScannerRegistrar;
+import io.micrc.core.integration.businesses.springboot.CommandAdapterAutoConfiguration;
 import org.springframework.context.annotation.Import;
 
 import java.lang.annotation.*;

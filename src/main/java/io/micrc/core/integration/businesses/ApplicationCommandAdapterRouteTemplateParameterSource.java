@@ -1,7 +1,6 @@
-package io.micrc.core.integration.command.businesses;
+package io.micrc.core.integration.businesses;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.micrc.core.integration.command.businesses.ApplicationCommandAdapterRouteConfiguration.ApplicationCommandRouteTemplateParamDefinition;
 import org.apache.camel.spi.RouteTemplateParameterSource;
 
 import java.util.LinkedHashMap;
@@ -16,7 +15,7 @@ import java.util.Set;
  * @since 0.0.1
  */
 public class ApplicationCommandAdapterRouteTemplateParameterSource implements RouteTemplateParameterSource {
-    private final Map<String, ApplicationCommandRouteTemplateParamDefinition> parameters = new LinkedHashMap<>();
+    private final Map<String, ApplicationCommandAdapterRouteConfiguration.ApplicationCommandRouteTemplateParamDefinition> parameters = new LinkedHashMap<>();
 
     @SuppressWarnings("unchecked")
     @Override
@@ -29,11 +28,11 @@ public class ApplicationCommandAdapterRouteTemplateParameterSource implements Ro
         return parameters.keySet();
     }
 
-    public void addParameter(String routeId, ApplicationCommandRouteTemplateParamDefinition definition) {
+    public void addParameter(String routeId, ApplicationCommandAdapterRouteConfiguration.ApplicationCommandRouteTemplateParamDefinition definition) {
         parameters.put(routeId, definition);
     }
 
-    public ApplicationCommandRouteTemplateParamDefinition parameter(String routeId) {
+    public ApplicationCommandAdapterRouteConfiguration.ApplicationCommandRouteTemplateParamDefinition parameter(String routeId) {
         return parameters.get(routeId);
     }
 }

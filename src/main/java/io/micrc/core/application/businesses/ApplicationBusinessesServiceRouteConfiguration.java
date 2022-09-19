@@ -55,6 +55,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .templateParameter("logicIntegrationJson", null, "the logic integration params")
                 .from("businesses:{{serviceName}}")
                 .transacted()
+                .marshal().json().convertBodyTo(String.class)
                 // 0.1 集成准备, 准备Source
                 .setProperty("commandJson", body())
                 // FIXME 这里有个BUG要修

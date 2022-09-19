@@ -1,4 +1,4 @@
-package io.micrc.core.integration.command.businesses;
+package io.micrc.core.integration.businesses;
 
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
@@ -33,13 +33,12 @@ public class ApplicationCommandAdapterRouteConfiguration extends MicrcRouteBuild
                 .templateParameter("serviceName", null, "the business service name")
                 .templateParameter("commandPath", null, "the command full path")
                 .templateParameter("conceptionsJson", null, "the conceptions json")
-                .from("command-adapter:{{name}}?exchangePattern=InOut")
+                .from("command:{{name}}?exchangePattern=InOut")
                 .setProperty("commandPath", constant("{{commandPath}}"))
                 .setProperty("conceptionsJson", constant("{{conceptionsJson}}"))
                 .setProperty("paramsJson", body())
                 .dynamicRouter(method(AdapterParamsHandler.class, "convert"))
                 .setBody(exchangeProperty("command"))
-                .marshal().json().convertBodyTo(String.class)
                 .to("businesses://{{serviceName}}")
 //                .setProperty("commandJson", body())
 //                .setHeader("pointer", simple("/error"))

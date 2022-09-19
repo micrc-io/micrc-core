@@ -1,7 +1,7 @@
-package io.micrc.core.integration.command.businesses.springboot;
+package io.micrc.core.integration.businesses.springboot;
 
-import io.micrc.core.integration.command.businesses.ApplicationCommandAdapterRouteConfiguration;
-import io.micrc.core.integration.command.businesses.ApplicationCommandAdapterRouteTemplateParameterSource;
+import io.micrc.core.integration.businesses.ApplicationCommandAdapterRouteConfiguration;
+import io.micrc.core.integration.businesses.ApplicationCommandAdapterRouteTemplateParameterSource;
 import org.apache.camel.CamelContext;
 import org.apache.camel.component.direct.DirectComponent;
 import org.apache.camel.spi.RouteTemplateParameterSource;
@@ -46,7 +46,7 @@ public class CommandAdapterAutoConfiguration {
         };
     }
 
-    @Bean("command-adapter")
+    @Bean("command")
     public DirectComponent businessesAdapter() {
         DirectComponent commandAdapter = new DirectComponent();
         return commandAdapter;
