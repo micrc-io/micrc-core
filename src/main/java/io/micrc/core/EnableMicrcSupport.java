@@ -8,7 +8,9 @@ import io.micrc.core.message.EnableMessage;
 import io.micrc.core.persistence.springboot.PersistenceAutoConfiguration;
 import io.micrc.core.rpc.springboot.ClassPathRestEndpointScannerRegistrar;
 import io.micrc.core.rpc.springboot.RpcAutoConfiguration;
-import io.micrc.core.rpc.springboot.RpcMockServerScanner;
+import io.micrc.core.rpc.springboot.RpcMockServerScannerRegistrar;
+import io.micrc.core.schedule.springboot.ScheduleAutoConfiguration;
+
 import org.springframework.context.annotation.Import;
 
 import java.lang.annotation.*;
@@ -27,14 +29,13 @@ import java.lang.annotation.*;
 @EnableIntegration
 @EnableMessage
 @Import({
-        CamelComponentTempConfiguration.class,
-        PersistenceAutoConfiguration.class,
-        RpcAutoConfiguration.class,
-        ClassPathRestEndpointScannerRegistrar.class,
-        RpcMockServerScanner.class,
-        CacheAutoConfiguration.class,
-        CamelComponentTempConfiguration.class
-
+    CamelComponentTempConfiguration.class,
+    PersistenceAutoConfiguration.class,
+    RpcAutoConfiguration.class,
+    ClassPathRestEndpointScannerRegistrar.class,
+    RpcMockServerScannerRegistrar.class,
+    CacheAutoConfiguration.class,
+    ScheduleAutoConfiguration.class,
 })
 public @interface EnableMicrcSupport {
     String[] basePackages() default {};
