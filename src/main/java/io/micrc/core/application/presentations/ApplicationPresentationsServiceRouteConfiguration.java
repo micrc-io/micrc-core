@@ -4,13 +4,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.github.fge.jsonpatch.JsonPatch;
 import com.github.fge.jsonpatch.JsonPatchException;
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
+import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.core.framework.json.JsonUtil;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangeProperties;
-import org.apache.camel.builder.RouteBuilder;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
  * @date 2022-09-05 11:23
  * @since 0.0.1
  */
-public class ApplicationPresentationsServiceRouteConfiguration extends RouteBuilder {
+public class ApplicationPresentationsServiceRouteConfiguration extends MicrcRouteBuilder {
     // 路由模版ID
     public static final String ROUTE_TMPL_PRESENTATIONS_SERVICE =
             ApplicationPresentationsServiceRouteConfiguration.class.getName() + ".presentationsService";
@@ -48,7 +48,7 @@ public class ApplicationPresentationsServiceRouteConfiguration extends RouteBuil
      * @throws Exception
      */
     @Override
-    public void configure() throws Exception {
+    public void configureRoute() throws Exception {
         routeTemplate(ROUTE_TMPL_PRESENTATIONS_SERVICE)
                 // 设置模板参数
                 .templateParameter("serviceName", null, "the presentations service name")
