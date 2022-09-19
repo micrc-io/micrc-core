@@ -1,6 +1,6 @@
 package io.micrc.core.integration.command.message.springboot;
 
-import io.micrc.core.annotations.application.businesses.MessageAdapter;
+import io.micrc.core.annotations.integration.MessageAdapter;
 import io.micrc.core.integration.command.message.EnableMessageAdapter;
 import io.micrc.core.integration.command.message.MessageAdapterRouteConfiguration;
 import io.micrc.core.integration.command.message.MessageAdapterRouteConfiguration.ApplicationMessageRouteTemplateParamDefinition;
@@ -116,6 +116,9 @@ class ApplicationMessageAdapterScanner extends ClassPathBeanDefinitionScanner {
         for (BeanDefinitionHolder holder : holders) {
             GenericBeanDefinition beanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
             beanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
+            if (beanDefinition.getBeanClass().getAnnotation(MessageAdapter.class).custom()) {
+                continue;
+            }
             String name = beanDefinition.getBeanClass().getSimpleName();
             Method[] adapterMethods = beanDefinition.getBeanClass().getDeclaredMethods();
             Boolean haveAdaptMethod = Arrays.stream(adapterMethods).anyMatch(method -> {

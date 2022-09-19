@@ -1,7 +1,7 @@
 package io.micrc.core.integration.command.businesses.springboot;
 
-import io.micrc.core.annotations.application.businesses.CommandAdapter;
-import io.micrc.core.annotations.application.businesses.Conception;
+import io.micrc.core.annotations.integration.CommandAdapter;
+import io.micrc.core.annotations.integration.Conception;
 import io.micrc.core.framework.json.JsonUtil;
 import io.micrc.core.integration.command.businesses.ApplicationCommandAdapterRouteConfiguration;
 import io.micrc.core.integration.command.businesses.ApplicationCommandAdapterRouteTemplateParameterSource;
@@ -121,6 +121,9 @@ class ApplicationCommandAdapterScanner extends ClassPathBeanDefinitionScanner {
         for (BeanDefinitionHolder holder : holders) {
             GenericBeanDefinition beanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
             beanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
+            if (beanDefinition.getBeanClass().getAnnotation(CommandAdapter.class).custom()) {
+                continue;
+            }
             String name = beanDefinition.getBeanClass().getSimpleName();
             Method[] adapterMethods = beanDefinition.getBeanClass().getDeclaredMethods();
             Boolean haveAdaptMethod = Arrays.stream(adapterMethods).anyMatch(method -> {

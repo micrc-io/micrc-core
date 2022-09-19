@@ -2,7 +2,7 @@ package io.micrc.core.message.springboot;
 
 import io.micrc.core.AbstractRouteTemplateParamSource;
 import io.micrc.core.annotations.application.businesses.BusinessesService;
-import io.micrc.core.annotations.application.businesses.MessageAdapter;
+import io.micrc.core.annotations.integration.MessageAdapter;
 import io.micrc.core.message.EnableMessage;
 import io.micrc.core.message.MessageRouteConfiguration;
 import lombok.SneakyThrows;
