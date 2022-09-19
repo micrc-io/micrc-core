@@ -1,11 +1,5 @@
 package io.micrc.core.persistence.springboot;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-import java.util.Properties;
-
 import org.apache.commons.logging.Log;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.env.EnvironmentPostProcessor;
@@ -13,6 +7,8 @@ import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.PropertiesPropertySource;
 import org.springframework.util.StringUtils;
+
+import java.util.*;
 
 /**
  * persistence env processor. h2, jpa and liquibase config
@@ -81,7 +77,7 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
             log.info("Active Profile: 'dbinit' Or 'default'. Enable liquibase For Database Init.");
             properties.setProperty("spring.liquibase.enabled", "true");
         }
-        properties.setProperty("spring.liquibase.changeLog", "db/master.yaml");
+        properties.setProperty("spring.liquibase.changeLog", "schema/master.yaml");
         properties.setProperty("spring.liquibase.parameters.version", appVersion);
         properties.setProperty("spring.liquibase.parameters.mem", mem);
         log.debug("Persistence Properties: \n" + properties);
