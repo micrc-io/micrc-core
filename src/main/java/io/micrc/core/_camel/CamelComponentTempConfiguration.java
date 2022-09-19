@@ -2,6 +2,7 @@ package io.micrc.core._camel;
 
 import com.fasterxml.jackson.core.JsonPointer;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.MissingNode;
 import com.github.fge.jsonpatch.JsonPatch;
 import io.micrc.core.framework.json.JsonUtil;
 import org.apache.camel.RoutesBuilder;
@@ -41,7 +42,11 @@ public class CamelComponentTempConfiguration {
                             String content = String.valueOf(exchange.getIn().getBody());
                             JsonNode originalJsonNode = JsonUtil.readTree(content);
                             JsonPointer jsonPointer = JsonPointer.compile(String.valueOf(exchange.getIn().getHeader("pointer")));
-                            exchange.getIn().setBody(JsonUtil.writeValueAsStringRetainNull(originalJsonNode.at(jsonPointer)));
+                            JsonNode node = originalJsonNode.at(jsonPointer);
+                            if (node instanceof MissingNode) {
+                                exchange.getIn().setBody(null);
+                            }
+                            exchange.getIn().setBody(JsonUtil.writeValueAsStringRetainNull(node));
                         })
                         .end();
                 from("json-patch://patch")

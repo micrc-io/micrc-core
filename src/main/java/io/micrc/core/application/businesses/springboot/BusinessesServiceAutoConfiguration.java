@@ -3,7 +3,6 @@ package io.micrc.core.application.businesses.springboot;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteTemplateParameterSource;
 import io.micrc.core.application.businesses.BusinessesServiceRouterExecution;
-
 import org.apache.camel.CamelContext;
 import org.apache.camel.component.bean.BeanComponent;
 import org.apache.camel.component.direct.DirectComponent;
@@ -56,7 +55,7 @@ public class BusinessesServiceAutoConfiguration {
         return repository;
     }
 
-    @Bean("logic-execute")
+    @Bean("logicexecute")
     public RestComponent logicExecute() {
         RestComponent logicExecute = new RestComponent();
         return logicExecute;

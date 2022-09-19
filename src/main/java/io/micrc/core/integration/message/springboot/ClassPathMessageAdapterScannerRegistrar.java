@@ -27,8 +27,10 @@ import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 /**
  * 消息接收适配器路由参数源bean注册器
@@ -131,14 +133,33 @@ class ApplicationMessageAdapterScanner extends ClassPathBeanDefinitionScanner {
                 throw new MethodAdapterDesignException(" the message adapter interface " + name + " need extends MessageIntegrationAdapter. please check");
             }
             MessageAdapter messageAdapter = beanDefinition.getBeanClass().getAnnotation(MessageAdapter.class);
-            String serviceName = messageAdapter.serviceName();
+            String serviceName = messageAdapter.logicName() + "Service";
+            String servicePath = basePackages[0] + ".application.businesses." + messageAdapter.rootEntityName().toLowerCase() + "." + serviceName;
+            Class<?> service = Class.forName(servicePath);
+            if (null == service) {
+                throw new ClassNotFoundException(" the application service interface " + servicePath + " not exist. please check");
+            }
+
+            Method[] serviceMethods = service.getDeclaredMethods();
+            List<Method> haveExecuteMethod = Arrays.stream(serviceMethods).filter(method -> "execute".equals(method.getName()) && !method.isBridge()).collect(Collectors.toList());
+            if (haveExecuteMethod.size() != 1) {
+                throw new MethodAdapterDesignException(" the application service interface " + serviceName + " need extends ApplicationBusinessesService. please check");
+            }
+            Method execute = null;
+            Class<?>[] serviceMethodParameterTypes = serviceMethods[0].getParameterTypes();
+            if (serviceMethodParameterTypes.length != 1) {
+                throw new MethodAdapterDesignException(" the message endpoint service interface " + serviceName + " method execute param only can use command and only one param. please check");
+            }
+            String commandPath = serviceMethodParameterTypes[0].getName();
+
             sourceDefinition.addParameter(
                     routeId(serviceName),
                     ApplicationMessageRouteTemplateParamDefinition.builder()
                             .templateId(MessageAdapterRouteConfiguration.ROUTE_TMPL_MESSAGE)
                             .name(name)
+                            .commandPath(commandPath)
                             .serviceName(serviceName)
-                            .event(messageAdapter.event())
+                            .event(messageAdapter.eventName())
                             .ordered(messageAdapter.ordered())
                             .receiveEntityName(messageAdapter.rootEntityName())
                             .build());

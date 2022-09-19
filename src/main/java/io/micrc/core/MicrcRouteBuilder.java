@@ -24,10 +24,10 @@ public abstract class MicrcRouteBuilder extends RouteBuilder {
             .log("intercept businesses");
 
         interceptSendToEndpoint("businesses:*")
-                .when(simple("${header.WrappedRouter} == null || ${header.WrappedRouter} == false"))
-                .setHeader("WrappedRouterBean")
-                .groovy("header.CamelInterceptedEndpoint.replace('businesses:', '')")
-                .toD("bean:${header.WrappedRouterBean}?method=exec(${body})")
+//                .when(simple("${header.WrappedRouter} == null || ${header.WrappedRouter} == false"))
+//                .setHeader("WrappedRouterBean")
+//                .groovy("header.CamelInterceptedEndpoint.replace('businesses:', '')")
+//                .toD("bean:${header.WrappedRouterBean}?method=exec(${body})")
                 .log("intercept businesses");
         interceptSendToEndpoint("presentations-service:*")
                 .log("拦截所有presentations服务, 使用bean调用使@Cacheable生效 - **韩晓星把协议名字改了**");

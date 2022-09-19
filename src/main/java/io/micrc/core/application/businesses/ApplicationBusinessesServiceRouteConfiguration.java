@@ -87,7 +87,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 // TODO 仓库集成抽进repository路由内部 END
                 // 3 消息存储
                 .setBody(exchangeProperty("commandJson"))
-                .to("event-store://store")
+                .to("eventstore://store")
                 .setBody(exchangeProperty("commandJson"))
                 .convertBodyTo(String.class)
                 .end();
@@ -132,7 +132,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
 
         from("logic://logic-execute")
                 // 2.1 执行前置校验
-                .toD("logic-execute://post:/${exchange.properties.get(logicName)}/before?host=localhost:8888")
+                .toD("logicexecute://post:/${exchange.properties.get(logicName)}/before?host=localhost:8888")
                 .unmarshal().json(HashMap.class)
                 .bean(ResultCheck.class, "check(${body})")
                 // TODO 逻辑检查异常是否存在及回滚事务
@@ -140,13 +140,13 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .setBody(exchangeProperty("logicIntegrationJson"))
                 .unmarshal().json(LogicIntegration.class)
                 .bean(LogicInParamsResolve.class, "toLogicParams(${body}, ${exchange.properties.get(commandJson)})")
-                .toD("logic-execute://post:/${exchange.properties.get(logicName)}/logic?host=localhost:8888")
+                .toD("logicexecute://post:/${exchange.properties.get(logicName)}/logic?host=localhost:8888")
                 .unmarshal().json(HashMap.class)
                 .bean(LogicInParamsResolve.class,
                         "toTargetParams(${body}, ${exchange.properties.get(commandJson)}, ${exchange.properties.get(logicIntegrationJson)})")
                 .setProperty("commandJson", body())
                 // 2.3 执行后置校验
-                .toD("logic-execute://post:/${exchange.properties.get(logicName)}/before?host=localhost:8888")
+                .toD("logicexecute://post:/${exchange.properties.get(logicName)}/before?host=localhost:8888")
                 .unmarshal().json(HashMap.class)
                 .bean(ResultCheck.class, "check(${body})")
                 // TODO 逻辑检查异常是否存在及回滚事务

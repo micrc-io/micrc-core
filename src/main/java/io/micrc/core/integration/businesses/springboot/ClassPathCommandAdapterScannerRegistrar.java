@@ -33,7 +33,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 /**
  * 应用业务服务路由参数源bean注册器
@@ -144,10 +143,6 @@ class ApplicationCommandAdapterScanner extends ClassPathBeanDefinitionScanner {
             }
 
             Method[] serviceMethods = service.getDeclaredMethods();
-            List<Method> haveExecuteMethod = Arrays.stream(serviceMethods).filter(method -> "execute".equals(method.getName()) && !method.isBridge()).collect(Collectors.toList());
-//            if (haveExecuteMethod.size() != 1) {
-//                throw new MethodAdapterDesignException(" the application service interface " + commandAdapter.serviceName() + " need extends ApplicationBusinessesService. please check");
-//            }
             Class<?>[] serviceMethodParameterTypes = serviceMethods[0].getParameterTypes();
             if (serviceMethodParameterTypes.length != 1) {
                 throw new MethodAdapterDesignException(" the application businesses adapter endpoint service interface " + commandAdapter.serviceName() + " method execute param only can use command and only one param. please check");
