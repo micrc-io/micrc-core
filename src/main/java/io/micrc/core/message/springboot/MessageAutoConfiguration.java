@@ -16,8 +16,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Profile;
 
-import java.util.HashMap;
-
 /**
  * message auto configuration. 注册publish/subscribe组件，创建消息队列mock connection
  *
@@ -95,7 +93,7 @@ public class MessageAutoConfiguration {
                 from("subscribe:Commission?queues=CommissionAuthEvent-OrderResolveTrackerCreate&acknowledgeMode=AUTO")
                         //.setHeader("CamelRabbitmqRequeue", constant(true))
                         .log("the message is --> ${in.body}")
-                        .unmarshal().json(HashMap.class)
+                        //.unmarshal().json(HashMap.class)
                         .log("msg test done.");
                 from("timer:rabbitmqTest?delay=10000&repeatCount=1")
                         .log("starting rabbitmqTest...").to("direct:rabbitmqTest");
