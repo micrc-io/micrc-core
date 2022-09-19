@@ -6,8 +6,10 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.*;
 import com.fasterxml.jackson.databind.type.CollectionType;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -112,6 +114,55 @@ public class JsonUtil {
             return OBJECT_NULL_MAPPER.readTree(JsonUtil.writeValueAsString(obj));
         } catch (Exception e) {
             e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static Object readPath(String json, String path) {
+        try {
+            JsonNode jsonNode = readTree(json).at(path);
+            if (jsonNode instanceof ObjectNode) {
+                return writeValueAsObject(jsonNode.toString(), Object.class);
+            }
+            if (jsonNode instanceof ArrayNode) {
+                return writeValueAsObject(jsonNode.toString(), List.class);
+            }
+            if (jsonNode instanceof TextNode) {
+                return jsonNode.textValue();
+            }
+            if (jsonNode instanceof BinaryNode) {
+                return jsonNode.binaryValue();
+            }
+            if (jsonNode instanceof ShortNode) {
+                return jsonNode.shortValue();
+            }
+            if (jsonNode instanceof IntNode) {
+                return jsonNode.intValue();
+            }
+            if (jsonNode instanceof LongNode) {
+                return jsonNode.longValue();
+            }
+            if (jsonNode instanceof BigIntegerNode) {
+                return jsonNode.bigIntegerValue();
+            }
+            if (jsonNode instanceof DecimalNode) {
+                return jsonNode.decimalValue();
+            }
+            if (jsonNode instanceof FloatNode) {
+                return jsonNode.floatValue();
+            }
+            if (jsonNode instanceof DoubleNode) {
+                return jsonNode.doubleValue();
+            }
+            if (jsonNode instanceof BooleanNode) {
+                return jsonNode.booleanValue();
+            }
+            // 路径不存在，返回null
+            if (jsonNode instanceof MissingNode) {
+                return null;
+            }
+            throw new UnsupportedOperationException(jsonNode.getClass().getName());
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }

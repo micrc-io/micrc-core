@@ -123,6 +123,10 @@ class ApplicationPresentationsAdapterScanner extends ClassPathBeanDefinitionScan
                 throw new IllegalStateException(" the message adapter interface " + name + " need extends MessageIntegrationAdapter. please check");
             }
             PresentationsAdapter presentationsAdapter = beanDefinition.getBeanClass().getAnnotation(PresentationsAdapter.class);
+            // 需要自定义的服务不生成路由
+            if (presentationsAdapter.custom()) {
+                continue;
+            }
             String serviceName = presentationsAdapter.serviceName();
             String servicePath = basePackages[0] + ".application.presentations.store." + serviceName;
             Class<?> service = Class.forName(servicePath);

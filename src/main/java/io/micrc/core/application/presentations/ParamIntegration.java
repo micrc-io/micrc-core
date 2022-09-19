@@ -55,21 +55,28 @@ public class ParamIntegration {
     private Boolean integrationComplete = false;
 
     /**
+     * 执行顺序
+     */
+    private int order;
+
+    /**
      * 集成类型
      */
     private Type type;
 
-    public ParamIntegration(String concept, String protocol) {
+    public ParamIntegration(String concept, String protocol, int order) {
         this.concept = concept;
         this.protocol = protocol;
+        this.order = order;
         this.type = Type.INTEGRATE;
     }
 
-    public ParamIntegration(String concept, String aggregation, String queryMethod, HashMap<String, String> queryParams) {
+    public ParamIntegration(String concept, String aggregation, String queryMethod, HashMap<String, String> queryParams, int order) {
         this.concept = concept;
         this.aggregation = aggregation;
         this.queryMethod = queryMethod;
         this.queryParams = queryParams;
+        this.order = order;
         this.type = Type.QUERY;
     }
 
