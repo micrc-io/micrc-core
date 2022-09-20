@@ -36,7 +36,7 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
         Properties properties = new Properties();
         envForH2Embedded(profiles, properties);
         envForLiquibase(profiles, properties, environment);
-        envForJPA(properties);
+        envForJPA(profiles, properties);
 
         PropertiesPropertySource source = new PropertiesPropertySource("micrc-persistence", properties);
         environment.getPropertySources().addLast(source);
@@ -87,8 +87,14 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
         log.debug("Persistence Properties: \n" + properties);
     }
 
-    private void envForJPA(Properties properties) {
+    private void envForJPA(Collection<String> profiles, Properties properties) {
         properties.setProperty("spring.jpa.database-platform", "org.hibernate.dialect.MySQLDialect");
         properties.setProperty("spring.jpa.open-in-view", "false");
+        if (profiles.contains("default")) {
+            properties.setProperty("logging.level.org.springframework.orm.jpa", "DEBUG");
+            properties.setProperty("logging.level.org.springframework.transaction", "DEBUG");
+            properties.setProperty("spring.jpa.properties.hibernate.show_sql", "true");
+            properties.setProperty("spring.jpa.properties.hibernate.format_sql", "true");
+        }
     }
 }

@@ -47,6 +47,7 @@ public class MicrcEnvironmentProcessor implements EnvironmentPostProcessor {
             log.info("Local Default Environment, Disable Kubernetes Configmap Support. ");
             properties.setProperty("spring.cloud.kubernetes.enabled", "false");
         }
+
         // TODO 处理banner: springboot版本，micrc版本，应用版本；micrc logo，应用logo；当前profile及描述
         PropertiesPropertySource source = new PropertiesPropertySource("micrc", properties);
         environment.getPropertySources().addLast(source);

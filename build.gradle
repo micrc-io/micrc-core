@@ -54,6 +54,7 @@ dependencies {
 
     // springboot basic
     implementation "org.springframework.boot:spring-boot-starter"
+    implementation "org.springframework.boot:spring-boot-starter-aop"
     implementation "org.springframework.boot:spring-boot-starter-web"
     // metrics
     implementation "org.springframework.boot:spring-boot-starter-actuator"
@@ -90,6 +91,8 @@ dependencies {
     implementation "org.apache.camel.springboot:camel-jslt-starter:${property('camel.version')}"
     // json patch support for custom router with json-pointer and json-patch
     implementation "com.github.java-json-tools:json-patch:${property('json-patch.version')}"
+
+    implementation "org.apache.camel.springboot:camel-spring-jdbc-starter:${property('camel.version')}"
 
     // http/websocket endpoints producing, used by rest openapi component
     implementation "org.apache.camel.springboot:camel-undertow-starter:${property('camel.version')}"
