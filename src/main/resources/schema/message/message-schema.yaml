@@ -1,0 +1,48 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-table-message-store-0.0.1
+      author: tengwang
+      preConditions:
+        - onFail: MARK_RAN
+          not:
+            - tableExists:
+                tableName: message_message_store
+      changes:
+        - createTable:
+            tableName: message_message_store
+            remarks: message store
+            columns:
+              - column:
+                  name: message_id
+                  type: VARCHAR(255)
+                  remarks: id of message
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: message-pk
+              - column:
+                  name: create_time
+                  type: BIGINT
+                  remarks: message create time
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content
+                  type: text
+                  remarks: message content
+                  constraints:
+                    nullable: false
+              - column:
+                  name: region
+                  type: VARCHAR(300)
+                  remarks: message type
+                  constraints:
+                    nullable: false
+              - column:
+                  name: sequence
+                  type: BIGINT
+                  remarks: the message sequence
+                  constraints:
+                    nullable: true
+                    unique: true
+                    autoIncrement: true

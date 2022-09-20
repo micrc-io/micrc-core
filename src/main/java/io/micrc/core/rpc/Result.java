@@ -1,6 +1,7 @@
 package io.micrc.core.rpc;
 
 import lombok.Data;
+import org.springframework.util.StringUtils;
 
 /**
  * 通用返回结果
@@ -42,7 +43,7 @@ public class Result<T> {
 
     public Result<T> result(ErrorInfo error, T data) {
         Result<T> result = new Result<>();
-        if (null != error) {
+        if (null != error && StringUtils.hasText(error.getErrorCode())) {
             result.setCode(error.getErrorCode());
         }
         result.setData(data);

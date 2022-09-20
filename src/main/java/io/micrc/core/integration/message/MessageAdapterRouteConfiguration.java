@@ -24,7 +24,10 @@ public class MessageAdapterRouteConfiguration extends MicrcRouteBuilder {
         routeTemplate(ROUTE_TMPL_MESSAGE)
                 .templateParameter("name", null, "the business adapter name")
                 .templateParameter("serviceName", null, "the business service name")
+                .templateParameter("commandPath", null, "the command full path")
                 .from("message://{{name}}")
+                .setHeader("CamelJacksonUnmarshalType").simple("{{commandPath}}")
+                .to("dataformat:jackson:unmarshal?allow-unmarshall-type=true")
                 .to("businesses://{{serviceName}}")
                 .end();
     }
@@ -45,6 +48,11 @@ public class MessageAdapterRouteConfiguration extends MicrcRouteBuilder {
          * 适配器名称
          */
         String name;
+
+        /**
+         * 应用服务全路径
+         */
+        String commandPath;
 
         /**
          * 应用服务名称 - 类简写名(SimpleName)
