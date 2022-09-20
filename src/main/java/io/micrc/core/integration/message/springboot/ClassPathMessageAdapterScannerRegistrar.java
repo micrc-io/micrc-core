@@ -1,6 +1,6 @@
 package io.micrc.core.integration.message.springboot;
 
-import io.micrc.core.annotations.integration.MessageAdapter;
+import io.micrc.core.annotations.integration.message.MessageAdapter;
 import io.micrc.core.integration.message.EnableMessageAdapter;
 import io.micrc.core.integration.message.MessageAdapterRouteConfiguration;
 import io.micrc.core.integration.message.MessageAdapterRouteConfiguration.ApplicationMessageRouteTemplateParamDefinition;

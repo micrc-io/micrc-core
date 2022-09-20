@@ -1,7 +1,7 @@
 package io.micrc.core.integration.businesses.springboot;
 
-import io.micrc.core.annotations.integration.CommandAdapter;
-import io.micrc.core.annotations.integration.Conception;
+import io.micrc.core.annotations.integration.command.CommandAdapter;
+import io.micrc.core.annotations.integration.command.Conception;
 import io.micrc.core.framework.json.JsonUtil;
 import io.micrc.core.integration.businesses.ApplicationCommandAdapterRouteConfiguration;
 import io.micrc.core.integration.businesses.ApplicationCommandAdapterRouteTemplateParameterSource;

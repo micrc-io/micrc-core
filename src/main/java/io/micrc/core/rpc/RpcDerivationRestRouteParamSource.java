@@ -1,6 +1,7 @@
-package io.micrc.core;
+package io.micrc.core.rpc;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import org.apache.camel.spi.RouteTemplateParameterSource;
 
 import java.util.LinkedHashMap;
@@ -8,13 +9,13 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 消息订阅路由模版参数源
+ * 路由模版参数源
  *
  * @author weiguan
  * @date 2022-09-13 05:56
  * @since 0.0.1
  */
-public class AbstractRouteTemplateParamSource implements RouteTemplateParameterSource {
+public class RpcDerivationRestRouteParamSource implements RouteTemplateParameterSource {
 
     private final Map<String, AbstractRouteTemplateParamDefinition> parameters = new LinkedHashMap<>();
 

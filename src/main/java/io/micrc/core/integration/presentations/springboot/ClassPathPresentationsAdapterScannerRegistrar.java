@@ -1,6 +1,7 @@
 package io.micrc.core.integration.presentations.springboot;
 
-import io.micrc.core.annotations.application.presentations.PresentationsAdapter;
+
+import io.micrc.core.annotations.integration.presentations.PresentationsAdapter;
 import io.micrc.core.integration.presentations.EnablePresentationsAdapter;
 import io.micrc.core.integration.presentations.PresentationsAdapterRouteConfiguration;
 import io.micrc.core.integration.presentations.PresentationsAdapterRouteTemplateParameterSource;

@@ -1,8 +1,7 @@
 package io.micrc.core.message.springboot;
 
-import io.micrc.core.AbstractRouteTemplateParamSource;
 import io.micrc.core.annotations.application.businesses.DomainEvents;
-import io.micrc.core.annotations.integration.MessageAdapter;
+import io.micrc.core.annotations.integration.message.MessageAdapter;
 import io.micrc.core.message.EnableMessage;
 import io.micrc.core.message.MessageRouteConfiguration;
 import io.micrc.core.message.MessageRouteConfiguration.EventsInfo;
@@ -50,23 +49,22 @@ public class ClassPathMessageScannerRegistrar implements ImportBeanDefinitionReg
             return;
         }
 
-        AbstractRouteTemplateParamSource source = new AbstractRouteTemplateParamSource();
-
         /**
          * 发送器注解扫描
          */
-        MessagePublisherScanner messagePublisherScanner = new MessagePublisherScanner(registry, source);
+        MessagePublisherScanner messagePublisherScanner = new MessagePublisherScanner(registry);
         messagePublisherScanner.setResourceLoader(resourceLoader);
         messagePublisherScanner.doScan(basePackages);
 
         /**
          * 接收器注解扫描
          */
+        MessageSubscriberRouteParamSource source = new MessageSubscriberRouteParamSource();
         MessageSubscriberScanner messageSubscriberScanner = new MessageSubscriberScanner(registry, source);
         messageSubscriberScanner.setResourceLoader(resourceLoader);
         messageSubscriberScanner.doScan(basePackages);
         // registering
-        BeanDefinition beanDefinition = BeanDefinitionBuilder.genericBeanDefinition((Class<AbstractRouteTemplateParamSource>) source.getClass(), () -> source).getRawBeanDefinition();
+        BeanDefinition beanDefinition = BeanDefinitionBuilder.genericBeanDefinition((Class<MessageSubscriberRouteParamSource>) source.getClass(), () -> source).getRawBeanDefinition();
         registry.registerBeanDefinition(importBeanNameGenerator.generateBeanName(beanDefinition, registry), beanDefinition);
     }
 
@@ -78,11 +76,8 @@ public class ClassPathMessageScannerRegistrar implements ImportBeanDefinitionReg
 
 class MessagePublisherScanner extends ClassPathBeanDefinitionScanner {
 
-    private final AbstractRouteTemplateParamSource sourceDefinition;
-
-    public MessagePublisherScanner(BeanDefinitionRegistry registry, AbstractRouteTemplateParamSource source) {
+    public MessagePublisherScanner(BeanDefinitionRegistry registry) {
         super(registry, false);
-        this.sourceDefinition = source;
     }
 
     @Override
@@ -112,8 +107,8 @@ class MessagePublisherScanner extends ClassPathBeanDefinitionScanner {
                         .build();
                 eventsInfo.put(eventInfo.channel(), event);
             });
-            this.registBean(eventsInfo);
         }
+        this.registBean(eventsInfo);
         holders.clear();
         return holders;
     }
@@ -139,9 +134,9 @@ class MessagePublisherScanner extends ClassPathBeanDefinitionScanner {
 
 class MessageSubscriberScanner extends ClassPathBeanDefinitionScanner {
     private static final AtomicInteger INDEX = new AtomicInteger();
-    private final AbstractRouteTemplateParamSource sourceDefinition;
+    private final MessageSubscriberRouteParamSource sourceDefinition;
 
-    public MessageSubscriberScanner(BeanDefinitionRegistry registry, AbstractRouteTemplateParamSource source) {
+    public MessageSubscriberScanner(BeanDefinitionRegistry registry, MessageSubscriberRouteParamSource source) {
         super(registry, false);
         this.sourceDefinition = source;
     }
