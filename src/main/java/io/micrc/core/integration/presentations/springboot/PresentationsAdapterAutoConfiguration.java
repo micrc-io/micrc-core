@@ -46,7 +46,7 @@ public class PresentationsAdapterAutoConfiguration {
         };
     }
 
-    @Bean("presentations-adapter")
+    @Bean("query")
     public DirectComponent presentationsAdapter() {
         DirectComponent presentationsAdapter = new DirectComponent();
         return presentationsAdapter;

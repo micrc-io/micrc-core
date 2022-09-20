@@ -1,11 +1,11 @@
 package io.micrc.core.integration.presentations;
 
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
+import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.core.rpc.Result;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
-import org.apache.camel.builder.RouteBuilder;
 
 /**
  * 展示适配器路由定义和参数bean定义
@@ -14,18 +14,18 @@ import org.apache.camel.builder.RouteBuilder;
  * @date 2022-9-5 14:00
  * @since 0.0.1
  */
-public class PresentationsAdapterRouteConfiguration extends RouteBuilder {
+public class PresentationsAdapterRouteConfiguration extends MicrcRouteBuilder {
 
     public static final String ROUTE_TMPL_PRESENTATIONS_ADAPTER =
             PresentationsAdapterRouteConfiguration.class.getName() + ".presentationsAdapter";
 
     @Override
-    public void configure() throws Exception {
+    public void configureRoute() throws Exception {
 
         routeTemplate(ROUTE_TMPL_PRESENTATIONS_ADAPTER)
                 .templateParameter("name", null, "the presentations adapter name")
                 .templateParameter("serviceName", null, "the presentations service name")
-                .from("presentations-adapter:{{name}}")
+                .from("query:{{name}}")
                 .to("presentations:{{serviceName}}")
                 .setHeader("CamelJacksonUnmarshalType").simple("java.lang.Object")
                 .to("dataformat:jackson:unmarshal?allow-unmarshall-type=true")
