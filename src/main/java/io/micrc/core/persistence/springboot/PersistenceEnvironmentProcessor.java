@@ -77,7 +77,7 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
             log.info("Active Profile: 'dbinit' Or 'default'. Enable liquibase For Database Init.");
             properties.setProperty("spring.liquibase.enabled", "true");
         }
-        properties.setProperty("spring.liquibase.changeLog", "schema/master.yaml");
+        properties.setProperty("spring.liquibase.changeLog", "db/master.yaml");
         properties.setProperty("spring.liquibase.parameters.version", appVersion);
         properties.setProperty("spring.liquibase.parameters.mem", mem);
         log.debug("Persistence Properties: \n" + properties);
