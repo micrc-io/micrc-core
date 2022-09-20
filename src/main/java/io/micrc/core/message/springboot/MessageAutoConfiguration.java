@@ -90,7 +90,7 @@ public class MessageAutoConfiguration {
                         .log("sending")
                         .setBody(simple("test message"))
                         .to("publish:Commission?queues=CommissionAuthEvent-OrderResolveTrackerCreate");
-                from("subscribe:Commission?queues=CommissionAuthEvent-OrderResolveTrackerCreate&acknowledgeMode=AUTO")
+                from("subscribe:Commission?queues=CommissionAuthEvent-OrderResolveTrackerCreate&acknowledgeMode=MANUAL")
                         //.setHeader("CamelRabbitmqRequeue", constant(true))
                         .log("the message is --> ${in.body}")
                         //.unmarshal().json(HashMap.class)
