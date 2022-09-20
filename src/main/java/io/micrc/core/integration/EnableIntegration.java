@@ -1,7 +1,7 @@
 package io.micrc.core.integration;
 
-import io.micrc.core.integration.command.businesses.EnableCommandAdapter;
-import io.micrc.core.integration.command.message.EnableMessageAdapter;
+import io.micrc.core.integration.businesses.EnableCommandAdapter;
+import io.micrc.core.integration.message.EnableMessageAdapter;
 import io.micrc.core.integration.presentations.EnablePresentationsAdapter;
 
 import java.lang.annotation.*;

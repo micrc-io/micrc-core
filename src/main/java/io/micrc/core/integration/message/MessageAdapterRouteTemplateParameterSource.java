@@ -1,4 +1,4 @@
-package io.micrc.core.integration.command.message;
+package io.micrc.core.integration.message;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.camel.spi.RouteTemplateParameterSource;

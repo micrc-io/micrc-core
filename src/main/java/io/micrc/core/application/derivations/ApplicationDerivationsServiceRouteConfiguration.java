@@ -1,6 +1,5 @@
-package io.micrc.core.application.presentations;
+package io.micrc.core.application.derivations;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.github.fge.jsonpatch.JsonPatch;
 import com.github.fge.jsonpatch.JsonPatchException;
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
@@ -25,20 +24,20 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
- * 应用展示服务路由定义和参数bean定义
- * 展示服务具体执行逻辑由模版定义，外部注解通过属性声明逻辑变量，由这些参数和路由模版构造执行路由
+ * 应用衍生服务路由定义和参数bean定义
+ * 衍生服务具体执行逻辑由模版定义，外部注解通过属性声明逻辑变量，由这些参数和路由模版构造执行路由
  *
  * @author hyosunghan
- * @date 2022-09-05 11:23
+ * @date 2022-09-19 11:23
  * @since 0.0.1
  */
-public class ApplicationPresentationsServiceRouteConfiguration extends MicrcRouteBuilder {
+public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteBuilder {
     // 路由模版ID
-    public static final String ROUTE_TMPL_PRESENTATIONS_SERVICE =
-            ApplicationPresentationsServiceRouteConfiguration.class.getName() + ".presentationsService";
+    public static final String ROUTE_TMPL_DERIVATIONS_SERVICE =
+            ApplicationDerivationsServiceRouteConfiguration.class.getName() + ".derivationsService";
 
     /**
-     * 配置展示服务路由模板
+     * 配置衍生服务路由模板
      * 1，设置模板参数
      * 2，指定模板入口
      * 3，动态路由处理
@@ -49,13 +48,13 @@ public class ApplicationPresentationsServiceRouteConfiguration extends MicrcRout
      */
     @Override
     public void configureRoute() throws Exception {
-        routeTemplate(ROUTE_TMPL_PRESENTATIONS_SERVICE)
+        routeTemplate(ROUTE_TMPL_DERIVATIONS_SERVICE)
                 // 设置模板参数
-                .templateParameter("serviceName", null, "the presentations service name")
+                .templateParameter("serviceName", null, "the derivations service name")
                 .templateParameter("paramIntegrationsJson", null, "the command integration params")
                 .templateParameter("assembler", null, "assembler")
                 // 指定service名称为入口端点
-                .from("presentations:{{serviceName}}")
+                .from("derivations:{{serviceName}}")
                 .setProperty("paramIntegrationsJson", simple("{{paramIntegrationsJson}}"))
                 .setProperty("param", simple("${in.body}")) // 存储入参到交换区，动态处理及结果汇编需要
                 // 动态路由解析
@@ -66,7 +65,7 @@ public class ApplicationPresentationsServiceRouteConfiguration extends MicrcRout
                 // 出口
                 .end();
 
-        from("direct://presentations-integration")
+        from("direct://derivations-integration")
                 // 得到需要集成的集成参数，todo,封装进动态路由
                 .bean(IntegrationParams.class, "findExecutable(${exchange.properties.get(unIntegrateParams)}, ${exchange.properties.get(param)})")
                 .setProperty("current", body())
@@ -78,25 +77,23 @@ public class ApplicationPresentationsServiceRouteConfiguration extends MicrcRout
                         "(${exchange.properties.get(current).get(params)})")
                 .otherwise()
                 .setBody(simple("${exchange.properties.get(current).get(params)}"))
-                .toD("rest-openapi://${exchange.properties.get(current).get(protocol)}" +
-                        "#${exchange.properties.get(current).get(operationId)}" +
-                        "?host=${exchange.properties.get(current).get(host)}")
+                .toD("operations://post:/${exchange.properties.get(current).get(logic)}?host=localhost:8080")// todo,8888
                 .end()
                   // 处理返回
                 .bean(IntegrationParams.class, "processResult");
     }
 
     /**
-     * 应用展示服务路由参数Bean
+     * 应用衍生服务路由参数Bean
      *
      * @author hyosunghan
-     * @date 2022-09-05 11:30
+     * @date 2022-09-19 11:30
      * @since 0.0.1
      */
     @EqualsAndHashCode(callSuper = true)
     @Data
     @SuperBuilder
-    public static class ApplicationPresentationsServiceDefinition extends AbstractRouteTemplateParamDefinition {
+    public static class ApplicationDerivationsServiceDefinition extends AbstractRouteTemplateParamDefinition {
 
         /**
          * 业务服务名称
@@ -141,7 +138,7 @@ class IntegrationParams {
         if (unIntegrateParams.size() == 0) {
             return null;
         }
-        return "direct://presentations-integration";
+        return "direct://derivations-integration";
     }
 
     /**
@@ -161,7 +158,7 @@ class IntegrationParams {
         ParamIntegration.Type currentIntegrateType = (ParamIntegration.Type) current.get("type");
         if (ParamIntegration.Type.QUERY.equals(currentIntegrateType) && body instanceof Optional) {
             body = ((Optional<?>) body).orElseThrow();
-        } else if (ParamIntegration.Type.INTEGRATE.equals(currentIntegrateType)) {
+        } else if (ParamIntegration.Type.OPERATE.equals(currentIntegrateType)) {
             body = JsonUtil.readPath((String) body, "/data");
         }
         List<ParamIntegration> paramIntegrations = (List<ParamIntegration>) exchange.getProperties().get("paramIntegrations");
@@ -195,48 +192,20 @@ class IntegrationParams {
             }
             ParamIntegration paramIntegration = JsonUtil.writeObjectAsObject(unIntegrateParams.get(checkNumber), ParamIntegration.class);
             LinkedHashMap<String, Object> paramMap = new LinkedHashMap<>();
+            // 获取当前查询的每个参数
+            paramIntegration.getParams().forEach((name, path) -> {
+                paramMap.put(name, JsonUtil.readPath(param, path));
+            });
+            // 检查当前查询是否可执行
+            if (paramMap.values().stream().anyMatch(Objects::isNull)) {
+                continue;
+            }
             if (ParamIntegration.Type.QUERY.equals(paramIntegration.getType())) {
-                // 获取当前查询的每个参数
-                paramIntegration.getQueryParams().forEach((name, path) -> {
-                    paramMap.put(name, JsonUtil.readPath(param, path));
-                });
-                // 检查当前查询是否可执行
-                if (paramMap.values().stream().anyMatch(Objects::isNull)) {
-                    continue;
-                }
-                // 如果能够集成,收集信息,然后会自动跳出循环
                 executableIntegrationInfo.put("aggregation", paramIntegration.getAggregation());
                 executableIntegrationInfo.put("method", paramIntegration.getQueryMethod());
                 executableIntegrationInfo.put("params", paramMap.values().stream().map(JsonUtil::writeValueAsString).collect(Collectors.joining(",")));
-            } else if (ParamIntegration.Type.INTEGRATE.equals(paramIntegration.getType())) {
-                // 集成
-                String protocolContent = fileReader(unIntegrateParams.get(checkNumber).getProtocol());
-                JsonNode protocolNode = JsonUtil.readTree(protocolContent);
-                JsonNode mappingNode = protocolNode
-                        .at("/paths").elements().next().elements().next()
-                        .at("/requestBody/content").elements().next()
-                        .at("/x-integrate-mapping");
-                HashMap<String, Object> integrateMappings = JsonUtil.writeValueAsObject(mappingNode.toString(), HashMap.class);
-                integrateMappings.keySet().forEach(key -> {
-                    paramMap.put(key, JsonUtil.readPath(param, (String) integrateMappings.get(key)));
-                });
-                // 检查当前查询是否可执行
-                if (paramMap.values().stream().anyMatch(Objects::isNull)) {
-                    continue;
-                }
-                // 如果能够集成,收集信息,然后会自动跳出循环
-                executableIntegrationInfo.put("protocol", paramIntegration.getProtocol());
-                // 收集host
-                JsonNode urlNode = protocolNode
-                        .at("/servers").get(0)
-                        .at("/url");
-                executableIntegrationInfo.put("host", urlNode.textValue());
-                // 收集operationId
-                JsonNode operationNode = protocolNode
-                        .at("/paths").elements().next().elements().next()
-                        .at("/operationId");
-                executableIntegrationInfo.put("operationId", operationNode.textValue());
-
+            } else if (ParamIntegration.Type.OPERATE.equals(paramIntegration.getType())) {
+                executableIntegrationInfo.put("logic", paramIntegration.getLogicName());
                 executableIntegrationInfo.put("params", JsonUtil.writeValueAsString(paramMap));
             }
             executableIntegrationInfo.put("name", paramIntegration.getConcept());

@@ -121,6 +121,9 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
         for (BeanDefinitionHolder holder : holders) {
             GenericBeanDefinition beanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
             beanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
+            if (beanDefinition.getBeanClass().getAnnotation(BusinessesService.class).custom()) {
+                continue;
+            }
             Method[] methods = beanDefinition.getBeanClass().getMethods();
             List<Method> executeMethods = Arrays.stream(methods).filter(method -> method.getName().equals("execute") && !method.isBridge()).collect(Collectors.toList());
             if (executeMethods.size() != 1) {

@@ -1,7 +1,7 @@
-package io.micrc.core.integration.command.message.springboot;
+package io.micrc.core.integration.message.springboot;
 
-import io.micrc.core.integration.command.message.MessageAdapterRouteConfiguration;
-import io.micrc.core.integration.command.message.MessageAdapterRouteTemplateParameterSource;
+import io.micrc.core.integration.message.MessageAdapterRouteConfiguration;
+import io.micrc.core.integration.message.MessageAdapterRouteTemplateParameterSource;
 import org.apache.camel.CamelContext;
 import org.apache.camel.component.direct.DirectComponent;
 import org.apache.camel.spi.RouteTemplateParameterSource;
@@ -46,7 +46,7 @@ public class MessageAdapterAutoConfiguration {
         };
     }
 
-    @Bean("message-adapter")
+    @Bean("message")
     public DirectComponent messageAdapter() {
         DirectComponent messageAdapter = new DirectComponent();
         return messageAdapter;

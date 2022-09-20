@@ -1,8 +1,10 @@
-package io.micrc.core.integration.command.businesses;
+package io.micrc.core.integration.businesses;
 
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.core.framework.json.JsonUtil;
+import io.micrc.core.rpc.ErrorInfo;
+import io.micrc.core.rpc.Result;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
@@ -33,20 +35,19 @@ public class ApplicationCommandAdapterRouteConfiguration extends MicrcRouteBuild
                 .templateParameter("serviceName", null, "the business service name")
                 .templateParameter("commandPath", null, "the command full path")
                 .templateParameter("conceptionsJson", null, "the conceptions json")
-                .from("command-adapter:{{name}}?exchangePattern=InOut")
+                .from("command:{{name}}?exchangePattern=InOut")
                 .setProperty("commandPath", constant("{{commandPath}}"))
                 .setProperty("conceptionsJson", constant("{{conceptionsJson}}"))
                 .setProperty("paramsJson", body())
                 .dynamicRouter(method(AdapterParamsHandler.class, "convert"))
                 .setBody(exchangeProperty("command"))
-                .marshal().json().convertBodyTo(String.class)
                 .to("businesses://{{serviceName}}")
-//                .setProperty("commandJson", body())
-//                .setHeader("pointer", simple("/error"))
-//                .to("json-patch://select")
-//                .setProperty("error", body())
-//                // TODO 设置command对Data的映射,使用protocol读取其x-result-mapping.暂时使用command替代
-//                .bean(Result.class, "result(${error}, ${commandJson})")
+                .setProperty("commandJson", body())
+                .setHeader("pointer", simple("/error"))
+                .to("json-patch://select")
+                .unmarshal().json(ErrorInfo.class)
+                // TODO 设置command对Data的映射,使用protocol读取其x-result-mapping.暂时使用command替代
+                .bean(Result.class, "result(${body}, ${exchange.properties.get(commandJson)})")
         ;
     }
 
@@ -123,7 +124,7 @@ class AdapterParamsHandler {
         ConceptionParam conceptionParam = unResolveParams.get(0);
         properties.put("currentResolveParam", conceptionParam.getName());
         body = JsonUtil.readTree(paramsJson).at("/" + conceptionParam.getName()).toString();
-        return "bean://io.micrc.core.integration.command.businesses.BodyHandler?method=getBody(" + body + "), jslt://" + conceptionParam.getTargetConceptionMappingPath();
+        return "bean://io.micrc.core.integration.businesses.BodyHandler?method=getBody(" + body + "), jslt://" + conceptionParam.getTargetConceptionMappingPath();
     }
 
 

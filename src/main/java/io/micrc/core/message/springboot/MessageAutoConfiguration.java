@@ -18,18 +18,18 @@ import org.springframework.context.annotation.Profile;
 
 /**
  * message auto configuration. 注册publish/subscribe组件，创建消息队列mock connection
- * 
+ *
  * @author weiguan
- * @since 0.0.1
  * @date 2022-09-06 19:29
+ * @since 0.0.1
  */
 @Configuration
 @EnableAutoConfiguration(exclude = SpringRabbitMQComponentAutoConfiguration.class)
-@Import({ MessageRouteConfiguration.class })
+@Import({MessageRouteConfiguration.class})
 public class MessageAutoConfiguration {
 
     @Bean
-    @Profile({ "default", "local" })
+    @Profile({"default", "local"})
     public ConnectionFactory connectionFactory() {
         return new CachingConnectionFactory(new MockConnectionFactory());
     }
@@ -40,11 +40,14 @@ public class MessageAutoConfiguration {
         publisher.setConnectionFactory(connectionFactory);
         publisher.setAmqpAdmin(amqpAdmin);
         publisher.setAutoDeclare(true);
-        // publisher.setAllowNullBody(false); // 是否允许空消息
+        // 设置启动时不检查监听方是否存在,防止多服务间交叉检查导致均不能够正常启动问题
+        publisher.setTestConnectionOnStartup(false);
+        // 不允许空消息,就算Command为空 我们的Message本体也不会为空,如空一定是错误
+        publisher.setAllowNullBody(false); // 是否允许空消息
         return publisher;
     }
 
-    @Bean("event-store")
+    @Bean("eventstore")
     public DirectComponent eventStore() {
         DirectComponent eventStore = new DirectComponent();
         return eventStore;
@@ -72,6 +75,9 @@ public class MessageAutoConfiguration {
         // subscriber.setPrefetchCount(250); // 预获取消息数量
         // subscriber.setRetry(); // 自定义重试逻辑 RetryOperationsInterceptor
         // subscriber.setShutdownTimeout(5000); // 等待container停止的超时时间
+        subscriber.setDeadLetterExchange("DEAD-MESSAGE-EXCHANGE");
+        subscriber.setDeadLetterExchangeType("direct");
+        subscriber.setDeadLetterQueue("DEAD-MESSAGE-QUEUE");
         return subscriber;
     }
 
@@ -81,14 +87,18 @@ public class MessageAutoConfiguration {
             @Override
             public void configureRoute() throws Exception {
                 from("direct:rabbitmqTest").setBody(simple("test"))
-                    .log("sending")
-                    .to("publish:ex1?routingKey=tt");
-                from("subscribe:ex1?routingKey=tt")
-                    .log("msg test done.");
+                        .log("sending")
+                        .setBody(simple("test message"))
+                        .to("publish:Commission?queues=CommissionAuthEvent-OrderResolveTrackerCreate");
+                from("subscribe:Commission?queues=CommissionAuthEvent-OrderResolveTrackerCreate&acknowledgeMode=MANUAL")
+                        //.setHeader("CamelRabbitmqRequeue", constant(true))
+                        .log("the message is --> ${in.body}")
+                        //.unmarshal().json(HashMap.class)
+                        .log("msg test done.");
                 from("timer:rabbitmqTest?delay=10000&repeatCount=1")
-                    .log("starting rabbitmqTest...").to("direct:rabbitmqTest");
+                        .log("starting rabbitmqTest...").to("direct:rabbitmqTest");
             }
-            
+
         };
     }
 }

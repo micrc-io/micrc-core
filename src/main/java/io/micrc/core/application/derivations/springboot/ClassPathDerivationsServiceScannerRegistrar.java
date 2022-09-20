@@ -1,13 +1,13 @@
-package io.micrc.core.application.presentations.springboot;
+package io.micrc.core.application.derivations.springboot;
 
-import io.micrc.core.annotations.application.presentations.Integration;
-import io.micrc.core.annotations.application.presentations.PresentationsService;
-import io.micrc.core.annotations.application.presentations.QueryLogic;
-import io.micrc.core.application.presentations.ApplicationPresentationsServiceRouteConfiguration;
-import io.micrc.core.application.presentations.ApplicationPresentationsServiceRouteConfiguration.ApplicationPresentationsServiceDefinition;
-import io.micrc.core.application.presentations.ApplicationPresentationsServiceRouteTemplateParameterSource;
-import io.micrc.core.application.presentations.EnablePresentationsService;
-import io.micrc.core.application.presentations.ParamIntegration;
+import io.micrc.core.annotations.application.derivations.DerivationsService;
+import io.micrc.core.annotations.application.derivations.Operation;
+import io.micrc.core.annotations.application.derivations.QueryLogic;
+import io.micrc.core.application.derivations.ApplicationDerivationsServiceRouteConfiguration;
+import io.micrc.core.application.derivations.ApplicationDerivationsServiceRouteConfiguration.ApplicationDerivationsServiceDefinition;
+import io.micrc.core.application.derivations.ApplicationDerivationsServiceRouteTemplateParameterSource;
+import io.micrc.core.application.derivations.EnableDerivationsService;
+import io.micrc.core.application.derivations.ParamIntegration;
 import io.micrc.core.framework.json.JsonUtil;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
@@ -41,14 +41,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
- * 展示服务路由参数源bean注册器
+ * 衍生服务路由参数源bean注册器
  *
  * @author hyosunghan
- * @date 2022-9-2 13:04
+ * @date 2022-9-17 13:04
  * @since 0.0.1
  */
 @Component
-public class ClassPathPresentationsServiceScannerRegistrar implements ImportBeanDefinitionRegistrar, ResourceLoaderAware {
+public class ClassPathDerivationsServiceScannerRegistrar implements ImportBeanDefinitionRegistrar, ResourceLoaderAware {
 
     private ResourceLoader resourceLoader;
 
@@ -58,7 +58,7 @@ public class ClassPathPresentationsServiceScannerRegistrar implements ImportBean
                                         BeanDefinitionRegistry registry,
                                         BeanNameGenerator importBeanNameGenerator) {
         AnnotationAttributes attributes = AnnotationAttributes
-                .fromMap(importingClassMetadata.getAnnotationAttributes(EnablePresentationsService.class.getName()));
+                .fromMap(importingClassMetadata.getAnnotationAttributes(EnableDerivationsService.class.getName()));
         assert attributes != null;
         String[] basePackages = attributes.getStringArray("servicePackages");
         if (basePackages.length == 0 && importingClassMetadata instanceof StandardAnnotationMetadata) {
@@ -69,19 +69,19 @@ public class ClassPathPresentationsServiceScannerRegistrar implements ImportBean
             return;
         }
 
-        ApplicationPresentationsServiceRouteTemplateParameterSource source =
-                new ApplicationPresentationsServiceRouteTemplateParameterSource();
+        ApplicationDerivationsServiceRouteTemplateParameterSource source =
+                new ApplicationDerivationsServiceRouteTemplateParameterSource();
 
-        // application business service scanner
-        ApplicationPresentationsServiceScanner applicationPresentationsServiceScanner =
-                new ApplicationPresentationsServiceScanner(registry, source);
-        applicationPresentationsServiceScanner.setResourceLoader(resourceLoader);
-        applicationPresentationsServiceScanner.doScan(basePackages);
+        // application derivations service scanner
+        ApplicationDerivationsServiceScanner applicationDerivationsServiceScanner =
+                new ApplicationDerivationsServiceScanner(registry, source);
+        applicationDerivationsServiceScanner.setResourceLoader(resourceLoader);
+        applicationDerivationsServiceScanner.doScan(basePackages);
 
         // registering
         BeanDefinition beanDefinition = BeanDefinitionBuilder
                 .genericBeanDefinition(
-                        (Class<ApplicationPresentationsServiceRouteTemplateParameterSource>) source.getClass(),
+                        (Class<ApplicationDerivationsServiceRouteTemplateParameterSource>) source.getClass(),
                         () -> source)
                 .getRawBeanDefinition();
         registry.registerBeanDefinition(importBeanNameGenerator.generateBeanName(beanDefinition, registry),
@@ -96,19 +96,19 @@ public class ClassPathPresentationsServiceScannerRegistrar implements ImportBean
 }
 
 /**
- * 应用展示服务注解扫描器，用于扫描@PresentationsService及其exec方法的参数类型和属性的注解
+ * 应用衍生服务注解扫描器，用于扫描@DevirationsService及其execute方法的参数类型和属性的注解
  * 获取注解中的声明逻辑的属性，构造路由模版源，最终注入camel context用于构造执行路由
  *
  * @author hyosunghan
- * @date 2022-9-2 13:14
+ * @date 2022-9-17 13:14
  * @since 0.0.1
  */
-class ApplicationPresentationsServiceScanner extends ClassPathBeanDefinitionScanner {
+class ApplicationDerivationsServiceScanner extends ClassPathBeanDefinitionScanner {
     private static final AtomicInteger INDEX = new AtomicInteger();
-    private final ApplicationPresentationsServiceRouteTemplateParameterSource sourceDefinition;
+    private final ApplicationDerivationsServiceRouteTemplateParameterSource sourceDefinition;
 
-    public ApplicationPresentationsServiceScanner(BeanDefinitionRegistry registry,
-                                                  ApplicationPresentationsServiceRouteTemplateParameterSource source) {
+    public ApplicationDerivationsServiceScanner(BeanDefinitionRegistry registry,
+                                                  ApplicationDerivationsServiceRouteTemplateParameterSource source) {
         super(registry, false);
         this.sourceDefinition = source;
     }
@@ -122,7 +122,7 @@ class ApplicationPresentationsServiceScanner extends ClassPathBeanDefinitionScan
     @SneakyThrows
     @Override
     protected Set<BeanDefinitionHolder> doScan(String... basePackages) {
-        this.addIncludeFilter(new AnnotationTypeFilter(PresentationsService.class));
+        this.addIncludeFilter(new AnnotationTypeFilter(DerivationsService.class));
         Set<BeanDefinitionHolder> holders = super.doScan(basePackages);
         for (BeanDefinitionHolder holder : holders) {
             GenericBeanDefinition beanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
@@ -138,14 +138,14 @@ class ApplicationPresentationsServiceScanner extends ClassPathBeanDefinitionScan
             if (parameters.length != 1) {
                 throw new IllegalStateException("the " + beanDefinition.getBeanClass().getName() + " execute method don`t have only one command param, please check this application service....");
             }
-            PresentationsService presentationsService = beanDefinition.getBeanClass().getAnnotation(PresentationsService.class);
+            DerivationsService derivationsService = beanDefinition.getBeanClass().getAnnotation(DerivationsService.class);
             // 需要自定义的服务不生成路由
-            if (presentationsService.custom()) {
+            if (derivationsService.custom()) {
                 continue;
             }
             // 解析参数所有集成
-            List<ParamIntegration> paramIntegrations = getParamIntegrations(presentationsService.queryLogics(), presentationsService.integrations());
-            // 检查展示服务注解至少需要包含一次集成/查询
+            List<ParamIntegration> paramIntegrations = getParamIntegrations(derivationsService.queryLogics(), derivationsService.operations());
+            // 检查衍生服务注解至少需要包含一次集成/查询
             if (paramIntegrations.isEmpty()) {
                 throw new IllegalStateException("the " + beanDefinition.getBeanClass().getName() + " annotation should be at least one integration or query");
             }
@@ -153,11 +153,11 @@ class ApplicationPresentationsServiceScanner extends ClassPathBeanDefinitionScan
             String serviceName = beanDefinition.getBeanClass().getSimpleName();
             sourceDefinition.addParameter(
                     routeId(serviceName),
-                    ApplicationPresentationsServiceDefinition.builder()
-                            .templateId(ApplicationPresentationsServiceRouteConfiguration.ROUTE_TMPL_PRESENTATIONS_SERVICE)
+                    ApplicationDerivationsServiceDefinition.builder()
+                            .templateId(ApplicationDerivationsServiceRouteConfiguration.ROUTE_TMPL_DERIVATIONS_SERVICE)
                             .serviceName(serviceName)
                             .paramIntegrationsJson(JsonUtil.writeValueAsString(paramIntegrations))
-                            .assembler(presentationsService.assembler())
+                            .assembler(derivationsService.assembler())
                             .build());
         }
         holders.clear();
@@ -165,13 +165,13 @@ class ApplicationPresentationsServiceScanner extends ClassPathBeanDefinitionScan
     }
 
     /**
-     * 获取参数集成，包括查询逻辑和集成
+     * 获取参数集成，包括查询逻辑和运算
      *
      * @param queryLogics
-     * @param integrations
+     * @param operations
      * @return
      */
-    private List<ParamIntegration> getParamIntegrations(QueryLogic[] queryLogics, Integration[] integrations) {
+    private List<ParamIntegration> getParamIntegrations(QueryLogic[] queryLogics, Operation[] operations) {
         List<ParamIntegration> paramIntegrations = new ArrayList<>();
         // 查询逻辑解析
         Arrays.stream(queryLogics).forEach(logic -> {
@@ -194,9 +194,13 @@ class ApplicationPresentationsServiceScanner extends ClassPathBeanDefinitionScan
             }
             paramIntegrations.add(new ParamIntegration(logic.name(), lowerStringFirst(logic.aggregation()), methodName, map, logic.order()));
         });
-        // 集成解析
-        Arrays.stream(integrations).forEach(logic -> {
-            paramIntegrations.add(new ParamIntegration(logic.name(), logic.protocol(), logic.order()));
+        // 运算解析
+        Arrays.stream(operations).forEach(operation -> {
+            HashMap<String, String> map = new HashMap<>();
+            Arrays.stream(operation.operateParams()).forEach(param -> {
+                map.put(param.name(), param.path());
+            });
+            paramIntegrations.add(new ParamIntegration(operation.name(), map, operation.logicName(), operation.order()));
         });
         // 按照优先级排序
         paramIntegrations.sort(Comparator.comparing(ParamIntegration::getOrder));
@@ -213,7 +217,7 @@ class ApplicationPresentationsServiceScanner extends ClassPathBeanDefinitionScan
         if (!StringUtils.hasText(routeId)) {
             routeId = String.valueOf(INDEX.getAndIncrement());
         }
-        return ApplicationPresentationsServiceRouteConfiguration.ROUTE_TMPL_PRESENTATIONS_SERVICE + "-" + routeId;
+        return ApplicationDerivationsServiceRouteConfiguration.ROUTE_TMPL_DERIVATIONS_SERVICE + "-" + routeId;
     }
 
     /**

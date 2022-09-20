@@ -1,13 +1,11 @@
-package io.micrc.core.integration.command.businesses.springboot;
+package io.micrc.core.integration.message.springboot;
 
-import io.micrc.core.annotations.application.businesses.CommandAdapter;
-import io.micrc.core.annotations.application.businesses.Conception;
-import io.micrc.core.framework.json.JsonUtil;
-import io.micrc.core.integration.command.businesses.ApplicationCommandAdapterRouteConfiguration;
-import io.micrc.core.integration.command.businesses.ApplicationCommandAdapterRouteTemplateParameterSource;
-import io.micrc.core.integration.command.businesses.ConceptionParam;
-import io.micrc.core.integration.command.businesses.EnableCommandAdapter;
-import io.micrc.core.integration.command.message.MethodAdapterDesignException;
+import io.micrc.core.annotations.integration.message.MessageAdapter;
+import io.micrc.core.integration.message.EnableMessageAdapter;
+import io.micrc.core.integration.message.MessageAdapterRouteConfiguration;
+import io.micrc.core.integration.message.MessageAdapterRouteConfiguration.ApplicationMessageRouteTemplateParamDefinition;
+import io.micrc.core.integration.message.MessageAdapterRouteTemplateParameterSource;
+import io.micrc.core.integration.message.MethodAdapterDesignException;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -28,7 +26,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -36,14 +33,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
- * 应用业务服务路由参数源bean注册器
+ * 消息接收适配器路由参数源bean注册器
  *
  * @author weiguan
  * @date 2022-08-23 21:02
  * @since 0.0.1
  */
 @Component
-public class ClassPathCommandAdapterScannerRegistrar implements ImportBeanDefinitionRegistrar, ResourceLoaderAware {
+public class ClassPathMessageAdapterScannerRegistrar implements ImportBeanDefinitionRegistrar, ResourceLoaderAware {
 
     private ResourceLoader resourceLoader;
 
@@ -53,7 +50,7 @@ public class ClassPathCommandAdapterScannerRegistrar implements ImportBeanDefini
                                         BeanDefinitionRegistry registry,
                                         BeanNameGenerator importBeanNameGenerator) {
         AnnotationAttributes attributes = AnnotationAttributes
-                .fromMap(importingClassMetadata.getAnnotationAttributes(EnableCommandAdapter.class.getName()));
+                .fromMap(importingClassMetadata.getAnnotationAttributes(EnableMessageAdapter.class.getName()));
         assert attributes != null;
         String[] basePackages = attributes.getStringArray("servicePackages");
         if (basePackages.length == 0 && importingClassMetadata instanceof StandardAnnotationMetadata) {
@@ -64,19 +61,19 @@ public class ClassPathCommandAdapterScannerRegistrar implements ImportBeanDefini
             return;
         }
 
-        ApplicationCommandAdapterRouteTemplateParameterSource source =
-                new ApplicationCommandAdapterRouteTemplateParameterSource();
+        MessageAdapterRouteTemplateParameterSource source =
+                new MessageAdapterRouteTemplateParameterSource();
 
         // application business service scanner
-        ApplicationCommandAdapterScanner applicationCommandAdapterScanner =
-                new ApplicationCommandAdapterScanner(registry, source);
-        applicationCommandAdapterScanner.setResourceLoader(resourceLoader);
-        applicationCommandAdapterScanner.doScan(basePackages);
+        ApplicationMessageAdapterScanner applicationMessageAdapterScanner =
+                new ApplicationMessageAdapterScanner(registry, source);
+        applicationMessageAdapterScanner.setResourceLoader(resourceLoader);
+        applicationMessageAdapterScanner.doScan(basePackages);
 
         // registering
         BeanDefinition beanDefinition = BeanDefinitionBuilder
                 .genericBeanDefinition(
-                        (Class<ApplicationCommandAdapterRouteTemplateParameterSource>) source.getClass(),
+                        (Class<MessageAdapterRouteTemplateParameterSource>) source.getClass(),
                         () -> source)
                 .getRawBeanDefinition();
         registry.registerBeanDefinition(importBeanNameGenerator.generateBeanName(beanDefinition, registry),
@@ -91,18 +88,18 @@ public class ClassPathCommandAdapterScannerRegistrar implements ImportBeanDefini
 }
 
 /**
- * 应用业务服务适配器注解扫描器，用于扫描@MessageAdapter及其exec方法的command参数类型和属性的注解
+ * 消息接收适配注解扫描器
  *
  * @author weiguan
  * @date 2022-08-23 21:02
  * @since 0.0.1
  */
-class ApplicationCommandAdapterScanner extends ClassPathBeanDefinitionScanner {
+class ApplicationMessageAdapterScanner extends ClassPathBeanDefinitionScanner {
     private static final AtomicInteger INDEX = new AtomicInteger();
-    private final ApplicationCommandAdapterRouteTemplateParameterSource sourceDefinition;
+    private final MessageAdapterRouteTemplateParameterSource sourceDefinition;
 
-    public ApplicationCommandAdapterScanner(BeanDefinitionRegistry registry,
-                                            ApplicationCommandAdapterRouteTemplateParameterSource source) {
+    public ApplicationMessageAdapterScanner(BeanDefinitionRegistry registry,
+                                            MessageAdapterRouteTemplateParameterSource source) {
         super(registry, false);
         this.sourceDefinition = source;
     }
@@ -116,11 +113,14 @@ class ApplicationCommandAdapterScanner extends ClassPathBeanDefinitionScanner {
     @SneakyThrows
     @Override
     protected Set<BeanDefinitionHolder> doScan(String... basePackages) {
-        this.addIncludeFilter(new AnnotationTypeFilter(CommandAdapter.class));
+        this.addIncludeFilter(new AnnotationTypeFilter(MessageAdapter.class));
         Set<BeanDefinitionHolder> holders = super.doScan(basePackages);
         for (BeanDefinitionHolder holder : holders) {
             GenericBeanDefinition beanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
             beanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
+            if (beanDefinition.getBeanClass().getAnnotation(MessageAdapter.class).custom()) {
+                continue;
+            }
             String name = beanDefinition.getBeanClass().getSimpleName();
             Method[] adapterMethods = beanDefinition.getBeanClass().getDeclaredMethods();
             Boolean haveAdaptMethod = Arrays.stream(adapterMethods).anyMatch(method -> {
@@ -129,12 +129,12 @@ class ApplicationCommandAdapterScanner extends ClassPathBeanDefinitionScanner {
                 }
                 return false;
             });
-            if (!haveAdaptMethod || adapterMethods.length != 2) {
-                throw new MethodAdapterDesignException(" the application businesses adapter interface " + name + " need extends ApplicationCommandAdapter. please check");
+            if (!haveAdaptMethod || adapterMethods.length != 1) {
+                throw new MethodAdapterDesignException(" the message adapter interface " + name + " need extends MessageIntegrationAdapter. please check");
             }
-            CommandAdapter commandAdapter = beanDefinition.getBeanClass().getAnnotation(CommandAdapter.class);
-            String serviceName = commandAdapter.serviceName();
-            String servicePath = basePackages[0] + ".application.businesses." + commandAdapter.rootEntityName().toLowerCase() + "." + serviceName;
+            MessageAdapter messageAdapter = beanDefinition.getBeanClass().getAnnotation(MessageAdapter.class);
+            String serviceName = messageAdapter.logicName() + "Service";
+            String servicePath = basePackages[0] + ".application.businesses." + messageAdapter.rootEntityName().toLowerCase() + "." + serviceName;
             Class<?> service = Class.forName(servicePath);
             if (null == service) {
                 throw new ClassNotFoundException(" the application service interface " + servicePath + " not exist. please check");
@@ -143,39 +143,25 @@ class ApplicationCommandAdapterScanner extends ClassPathBeanDefinitionScanner {
             Method[] serviceMethods = service.getDeclaredMethods();
             List<Method> haveExecuteMethod = Arrays.stream(serviceMethods).filter(method -> "execute".equals(method.getName()) && !method.isBridge()).collect(Collectors.toList());
             if (haveExecuteMethod.size() != 1) {
-                throw new MethodAdapterDesignException(" the application service interface " + commandAdapter.serviceName() + " need extends ApplicationBusinessesService. please check");
+                throw new MethodAdapterDesignException(" the application service interface " + serviceName + " need extends ApplicationBusinessesService. please check");
             }
             Method execute = null;
             Class<?>[] serviceMethodParameterTypes = serviceMethods[0].getParameterTypes();
             if (serviceMethodParameterTypes.length != 1) {
-                throw new MethodAdapterDesignException(" the application businesses adapter endpoint service interface " + commandAdapter.serviceName() + " method execute param only can use command and only one param. please check");
+                throw new MethodAdapterDesignException(" the message endpoint service interface " + serviceName + " method execute param only can use command and only one param. please check");
             }
             String commandPath = serviceMethodParameterTypes[0].getName();
-            Conception[] conceptionAnnotations = commandAdapter.conceptions();
-            List<ConceptionParam> conceptions = new ArrayList<>();
-            Arrays.stream(conceptionAnnotations).forEach(conceptionAnnotation -> {
-                String commandInnerName = "";
-                if (commandInnerName.equals(conceptionAnnotation.commandInnerName())) {
-                    commandInnerName = conceptionAnnotation.name();
-                } else {
-                    commandInnerName = conceptionAnnotation.commandInnerName();
-                }
-                ConceptionParam conceptionParam = new ConceptionParam();
-                conceptionParam.setName(conceptionAnnotation.name());
-                conceptionParam.setCommandInnerName(commandInnerName);
-                conceptionParam.setOrder(conceptionAnnotation.order());
-                conceptionParam.setTargetConceptionMappingPath(conceptionAnnotation.targetConceptionMappingPath());
-                conceptionParam.setResolved(false);
-                conceptions.add(conceptionParam);
-            });
+
             sourceDefinition.addParameter(
-                    routeId(beanDefinition.getBeanClass().getSimpleName()),
-                    ApplicationCommandAdapterRouteConfiguration.ApplicationCommandRouteTemplateParamDefinition.builder()
-                            .templateId(ApplicationCommandAdapterRouteConfiguration.ROUTE_TMPL_BUSINESSES_ADAPTER)
+                    routeId(serviceName),
+                    ApplicationMessageRouteTemplateParamDefinition.builder()
+                            .templateId(MessageAdapterRouteConfiguration.ROUTE_TMPL_MESSAGE)
                             .name(name)
-                            .serviceName(serviceName)
                             .commandPath(commandPath)
-                            .conceptionsJson(JsonUtil.writeValueAsString(conceptions))
+                            .serviceName(serviceName)
+                            .event(messageAdapter.eventName())
+                            .ordered(messageAdapter.ordered())
+                            .receiveEntityName(messageAdapter.rootEntityName())
                             .build());
         }
         holders.clear();
@@ -192,7 +178,7 @@ class ApplicationCommandAdapterScanner extends ClassPathBeanDefinitionScanner {
         if (!StringUtils.hasText(routeId)) {
             routeId = String.valueOf(INDEX.getAndIncrement());
         }
-        return ApplicationCommandAdapterRouteConfiguration.ROUTE_TMPL_BUSINESSES_ADAPTER + "-" + routeId;
+        return MessageAdapterRouteConfiguration.ROUTE_TMPL_MESSAGE + "-" + routeId;
     }
-}
 
+}
