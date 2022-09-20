@@ -1,6 +1,7 @@
 package io.micrc.core.application;
 
 import io.micrc.core.application.businesses.EnableBusinessesService;
+import io.micrc.core.application.derivations.EnableDerivationsService;
 import io.micrc.core.application.presentations.EnablePresentationsService;
 
 import java.lang.annotation.*;
@@ -17,6 +18,7 @@ import java.lang.annotation.*;
 @Documented
 @EnableBusinessesService
 @EnablePresentationsService
+@EnableDerivationsService
 public @interface EnableApplicationService {
     String[] servicePackages() default {};
 }
