@@ -1,4 +1,4 @@
-package io.micrc.core.integration.presentations;
+package io.micrc.core.integration.derivations;
 
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
@@ -8,25 +8,25 @@ import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
 
 /**
- * 展示适配器路由定义和参数bean定义
+ * 衍生适配器路由定义和参数bean定义
  *
  * @author hyosunghan
- * @date 2022-9-5 14:00
+ * @date 2022-09-21 14:00
  * @since 0.0.1
  */
-public class PresentationsAdapterRouteConfiguration extends MicrcRouteBuilder {
+public class DerivationsAdapterRouteConfiguration extends MicrcRouteBuilder {
 
-    public static final String ROUTE_TMPL_PRESENTATIONS_ADAPTER =
-            PresentationsAdapterRouteConfiguration.class.getName() + ".presentationsAdapter";
+    public static final String ROUTE_TMPL_DERIVATIONS_ADAPTER =
+            DerivationsAdapterRouteConfiguration.class.getName() + ".derivationsAdapter";
 
     @Override
     public void configureRoute() throws Exception {
 
-        routeTemplate(ROUTE_TMPL_PRESENTATIONS_ADAPTER)
-                .templateParameter("name", null, "the presentations adapter name")
-                .templateParameter("serviceName", null, "the presentations service name")
-                .from("query:{{name}}")
-                .to("presentations:{{serviceName}}")
+        routeTemplate(ROUTE_TMPL_DERIVATIONS_ADAPTER)
+                .templateParameter("name", null, "the derivations adapter name")
+                .templateParameter("serviceName", null, "the derivations service name")
+                .from("operate:{{name}}")
+                .to("derivations:{{serviceName}}")
                 .unmarshal().json(Object.class)
                 .bean(Result.class, "result(${in.body})")
                 .marshal().json().convertBodyTo(String.class)
@@ -34,16 +34,16 @@ public class PresentationsAdapterRouteConfiguration extends MicrcRouteBuilder {
     }
 
     /**
-     * 应用展示服务适配器路由参数Bean
+     * 应用衍生服务适配器路由参数Bean
      *
      * @author hyosunghan
-     * @date 2022-9-5 14:00
+     * @date 2022-09-21 14:00
      * @since 0.0.1
      */
     @EqualsAndHashCode(callSuper = true)
     @Data
     @SuperBuilder
-    public static class ApplicationPresentationsAdapterDefinition extends AbstractRouteTemplateParamDefinition {
+    public static class ApplicationDerivationsAdapterDefinition extends AbstractRouteTemplateParamDefinition {
 
         /**
          * 适配器名称
