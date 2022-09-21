@@ -21,7 +21,7 @@ import org.springframework.context.annotation.Import;
  * @since 0.0.1
  */
 @Configuration
-@Import({ ApplicationBusinessesServiceRouteConfiguration.class, BusinessesServiceRouterExecution.class })
+@Import({ApplicationBusinessesServiceRouteConfiguration.class, BusinessesServiceRouterExecution.class})
 public class BusinessesServiceAutoConfiguration {
 
     /**

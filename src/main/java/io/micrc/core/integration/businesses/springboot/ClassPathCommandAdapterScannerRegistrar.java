@@ -124,13 +124,13 @@ class ApplicationCommandAdapterScanner extends ClassPathBeanDefinitionScanner {
                 continue;
             }
             String name = beanDefinition.getBeanClass().getSimpleName();
-            Method[] adapterMethods = beanDefinition.getBeanClass().getDeclaredMethods();
-            Boolean haveAdaptMethod = Arrays.stream(adapterMethods).anyMatch(method -> {
-                if ("adapt".equals(method.getName())) {
-                    return true;
-                }
-                return false;
-            });
+            // Method[] adapterMethods = beanDefinition.getBeanClass().getDeclaredMethods();
+            // Boolean haveAdaptMethod = Arrays.stream(adapterMethods).anyMatch(method -> {
+            //     if ("adapt".equals(method.getName())) {
+            //         return true;
+            //     }
+            //     return false;
+            // });
 //            if (!haveAdaptMethod || adapterMethods.length != 2) {
 //                throw new MethodAdapterDesignException(" the application businesses adapter interface " + name + " need extends ApplicationCommandAdapter. please check");
 //            }

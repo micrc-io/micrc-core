@@ -6,7 +6,7 @@ databaseChangeLog:
         - onFail: MARK_RAN
           not:
             - tableExists:
-                tableName: message_message_store
+                tableName: message_message_tracker
       changes:
         - createTable:
             tableName: message_message_store
@@ -46,3 +46,69 @@ databaseChangeLog:
                     nullable: true
                     unique: true
                     autoIncrement: true
+        - createTable:
+            tableName: message_message_tracker
+            remarks: message tracker
+            columns:
+              - column:
+                  name: channel
+                  type: VARCHAR(500)
+                  remarks: the channel of event
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: tracker-pk
+              - column:
+                  name: tracker_type
+                  type: VARCHAR(255)
+                  remarks: the tracker type - ERROR is error tracker, GLOBAL is global tracker
+                  constraints:
+                    nullable: false
+              - column:
+                  name: region
+                  type: VARCHAR(500)
+                  remarks: the event type
+                  constraints:
+                    nullable: true
+              - column:
+                  name: sequence
+                  type: BIGINT
+                  remarks: the event type
+                  constraints:
+                    nullable: true
+        - createTable:
+            tableName: message_error_event
+            remarks: store send error or dead message
+            columns:
+              - column:
+                  name: channel
+                  type: VARCHAR(500)
+                  remarks: the channel of event
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: error_event-pk
+              - column:
+                  name: region
+                  type: VARCHAR(500)
+                  remarks: the event type
+                  constraints:
+                    nullable: true
+              - column:
+                  name: sequence
+                  type: BIGINT
+                  remarks: the event sequence
+                  constraints:
+                    nullable: true
+              - column:
+                  name: reason
+                  type: VARCHAR(500)
+                  remarks: send error reason - the SEND is in send step error, the DEAD_MESSAGE is on consumer can not produce error
+                  constraints:
+                    nullable: true
+              - column:
+                  name: state
+                  type: BIGINT
+                  remarks: the error event state - the type SEND will retry to send on last sender job, the CAN_NOT_SEND will be message not allow to send for sender
+                  constraints:
+                    nullable: true

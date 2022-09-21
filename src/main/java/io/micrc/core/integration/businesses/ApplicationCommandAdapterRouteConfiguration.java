@@ -5,6 +5,7 @@ import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.core.framework.json.JsonUtil;
 import io.micrc.core.rpc.ErrorInfo;
 import io.micrc.core.rpc.Result;
+import io.micrc.lib.ClassCastUtils;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
@@ -24,8 +25,8 @@ import java.util.stream.Collectors;
  */
 public class ApplicationCommandAdapterRouteConfiguration extends MicrcRouteBuilder {
 
-    public static final String ROUTE_TMPL_BUSINESSES_ADAPTER =
-            ApplicationCommandAdapterRouteConfiguration.class.getName() + ".businessesAdapter";
+    public static final String ROUTE_TMPL_BUSINESSES_ADAPTER = ApplicationCommandAdapterRouteConfiguration.class
+            .getName() + ".businessesAdapter";
 
     @Override
     public void configureRoute() throws Exception {
@@ -47,8 +48,7 @@ public class ApplicationCommandAdapterRouteConfiguration extends MicrcRouteBuild
                 .to("json-patch://select")
                 .unmarshal().json(ErrorInfo.class)
                 // TODO 设置command对Data的映射,使用protocol读取其x-result-mapping.暂时使用command替代
-                .bean(Result.class, "result(${body}, ${exchange.properties.get(commandJson)})")
-        ;
+                .bean(Result.class, "result(${body}, ${exchange.properties.get(commandJson)})");
     }
 
     /**
@@ -73,14 +73,15 @@ public class ApplicationCommandAdapterRouteConfiguration extends MicrcRouteBuild
     }
 }
 
-
 class AdapterParamsHandler {
     public static String convert(
             String body,
-            @ExchangeProperties Map<String, Object> properties
-    ) throws ClassNotFoundException, NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
+            @ExchangeProperties Map<String, Object> properties) throws ClassNotFoundException, NoSuchMethodException,
+            InvocationTargetException, InstantiationException, IllegalAccessException {
         String paramsJson = (String) properties.get("paramsJson");
-        List<ConceptionParam> conceptions = (List<ConceptionParam>) properties.get("conceptions");
+        List<ConceptionParam> conceptions = ClassCastUtils.castArrayList(properties.get("conceptions"),
+                ConceptionParam.class);
+        properties.put("conceptions", conceptions);
         Object command = properties.get("command");
         // 处理第一次进来时的情况
         if (null == conceptions && null == command) {
@@ -99,14 +100,18 @@ class AdapterParamsHandler {
             for (ConceptionParam conception : conceptions) {
                 if (currentResolveParam.equals(conception.getName())) {
                     Method[] methods = command.getClass().getMethods();
-                    Optional<Method> targetMethodOptional = Arrays.stream(methods).filter(method -> method.getName().equals("set" + upperStringFirst(conception.getCommandInnerName()))).findFirst();
+                    Optional<Method> targetMethodOptional = Arrays.stream(methods).filter(method -> method.getName()
+                            .equals("set" + upperStringFirst(conception.getCommandInnerName()))).findFirst();
                     if (targetMethodOptional.isEmpty()) {
-                        throw new ApplicationCommandAdapterDesignException("command not found method to set value " + conception.getName() + ", the target conception name is " + conception.getCommandInnerName());
+                        throw new ApplicationCommandAdapterDesignException(
+                                "command not found method to set value " + conception.getName()
+                                        + ", the target conception name is " + conception.getCommandInnerName());
                     }
                     Method targetMethod = targetMethodOptional.get();
                     Class<?>[] parameterTypes = targetMethod.getParameterTypes();
                     if (parameterTypes.length != 1) {
-                        throw new ApplicationCommandAdapterDesignException("command target conception can not to set, please check target method params ");
+                        throw new ApplicationCommandAdapterDesignException(
+                                "command target conception can not to set, please check target method params ");
                     }
                     Object value = JsonUtil.writeValueAsObject(body, parameterTypes[0]);
                     targetMethod.invoke(command, value);
@@ -115,7 +120,8 @@ class AdapterParamsHandler {
             }
         }
         assert conceptions != null;
-        List<ConceptionParam> unResolveParams = conceptions.stream().filter(conceptionParam -> !conceptionParam.getResolved()).collect(Collectors.toList());
+        List<ConceptionParam> unResolveParams = conceptions.stream()
+                .filter(conceptionParam -> !conceptionParam.getResolved()).collect(Collectors.toList());
         // 所有都处理完了
         if (0 == unResolveParams.size()) {
             return null;
@@ -124,9 +130,9 @@ class AdapterParamsHandler {
         ConceptionParam conceptionParam = unResolveParams.get(0);
         properties.put("currentResolveParam", conceptionParam.getName());
         body = JsonUtil.readTree(paramsJson).at("/" + conceptionParam.getName()).toString();
-        return "bean://io.micrc.core.integration.businesses.BodyHandler?method=getBody(" + body + "), jslt://" + conceptionParam.getTargetConceptionMappingPath();
+        return "bean://io.micrc.core.integration.businesses.BodyHandler?method=getBody(" + body + "), jslt://"
+                + conceptionParam.getTargetConceptionMappingPath();
     }
-
 
     private static String upperStringFirst(String str) {
         char[] strChars = str.toCharArray();

@@ -6,6 +6,7 @@ import io.micrc.core.message.EnableMessage;
 import io.micrc.core.message.MessageRouteConfiguration;
 import io.micrc.core.message.MessageRouteConfiguration.EventsInfo;
 import io.micrc.core.message.MessageRouteConfiguration.EventsInfo.Event;
+import io.micrc.core.message.MessageSubscriberRouteParamSource;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;

@@ -1,9 +1,7 @@
 package io.micrc.core.message.springboot;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-
+import io.micrc.core.EnableMicrcSupport;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.BeanNameGenerator;
 import org.springframework.context.EnvironmentAware;
@@ -13,16 +11,17 @@ import org.springframework.core.env.Environment;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.core.type.StandardAnnotationMetadata;
 
-import io.micrc.core.EnableMicrcSupport;
-import lombok.extern.slf4j.Slf4j;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * message监听在default，local环境下的mock api，构建rest api发送消息，以触发监听
  * 扫描所有消息监听注解，生成rest api以模拟发送监听的消息
- * 
+ *
  * @author weiguan
- * @since 0.0.1
  * @date 2022-09-08 21:45
+ * @since 0.0.1
  */
 @Slf4j
 public class MessageMockSenderApiScannerRegistrar implements ImportBeanDefinitionRegistrar, EnvironmentAware {
@@ -56,5 +55,5 @@ public class MessageMockSenderApiScannerRegistrar implements ImportBeanDefinitio
     public void setEnvironment(Environment environment) {
         this.env = environment;
     }
-    
+
 }

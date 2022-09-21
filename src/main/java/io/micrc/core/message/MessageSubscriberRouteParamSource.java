@@ -1,4 +1,4 @@
-package io.micrc.core.rpc;
+package io.micrc.core.message;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
@@ -15,7 +15,7 @@ import java.util.Set;
  * @date 2022-09-13 05:56
  * @since 0.0.1
  */
-public class RpcDerivationRestRouteParamSource implements RouteTemplateParameterSource {
+public class MessageSubscriberRouteParamSource implements RouteTemplateParameterSource {
 
     private final Map<String, AbstractRouteTemplateParamDefinition> parameters = new LinkedHashMap<>();
 

@@ -15,7 +15,7 @@ import java.util.Set;
  * @date 2022-09-13 05:56
  * @since 0.0.1
  */
-public class RpcPresentationRestRouteParamSource implements RouteTemplateParameterSource {
+public class RpcRestRouteParamSource implements RouteTemplateParameterSource {
 
     private final Map<String, AbstractRouteTemplateParamDefinition> parameters = new LinkedHashMap<>();
 

@@ -1,14 +1,5 @@
 package io.micrc.core.rpc.springboot;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Properties;
-
 import org.apache.commons.logging.Log;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.env.EnvironmentPostProcessor;
@@ -20,12 +11,16 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.util.ResourceUtils;
 import org.springframework.util.StreamUtils;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+
 /**
  * rpc env config. swagger-ui api doc path
  *
  * @author weiguan
- * @since 0.0.1
  * @date 2022-09-12 03:48
+ * @since 0.0.1
  */
 public class RpcEnvironmentProcessor implements EnvironmentPostProcessor {
 
@@ -61,25 +56,25 @@ public class RpcEnvironmentProcessor implements EnvironmentPostProcessor {
         PropertiesPropertySource source = new PropertiesPropertySource(RPC_ENV_NAME, properties);
         environment.getPropertySources().addLast(source);
     }
-    
+
     private void envForApidoc(Properties properties) {
         Resource base = new ClassPathResource(APIDOC_BASE_PATH);
         if (!base.exists()) {
             throw new IllegalStateException(
-                "'" + APIDOC_BASE_PATH + "'" + " for swagger-ui in classpath must be exists.");
+                    "'" + APIDOC_BASE_PATH + "'" + " for swagger-ui in classpath must be exists.");
         }
         try {
             Resource[] resources = new PathMatchingResourcePatternResolver()
-                .getResources(ResourceUtils.CLASSPATH_URL_PREFIX + APIDOC_BASE_PATH + "/**/*.json");
+                    .getResources(ResourceUtils.CLASSPATH_URL_PREFIX + APIDOC_BASE_PATH + "/**/*.json");
             for (int i = 0; i < resources.length; i++) {
                 Resource resource = resources[i];
                 String apidocUrl = base.getURI().relativize(resource.getURI()).getPath()
-                    .replace(".json", "");
+                        .replace(".json", "");
                 APIDOCS.put(APIDOC_BASE_URI + apidocUrl,
-                    StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8));
+                        StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8));
                 properties.setProperty("springdoc.swagger-ui.urls[" + i + "].url",
-                    REST_CONTEXT_PATH + APIDOC_BASE_URI + apidocUrl);
-                properties.setProperty("springdoc.swagger-ui.urls["+ i + "].name", apidocUrl);
+                        REST_CONTEXT_PATH + APIDOC_BASE_URI + apidocUrl);
+                properties.setProperty("springdoc.swagger-ui.urls[" + i + "].name", apidocUrl);
             }
         } catch (IOException e) {
             throw new IllegalStateException("Unable load api doc file from '" + APIDOC_BASE_PATH + "'", e);

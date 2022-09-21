@@ -20,5 +20,5 @@ import java.lang.annotation.*;
 @EnableCommandAdapter
 @EnablePresentationsAdapter
 public @interface EnableIntegration {
-    
+
 }

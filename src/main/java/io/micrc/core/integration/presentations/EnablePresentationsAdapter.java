@@ -4,11 +4,7 @@ import io.micrc.core.integration.presentations.springboot.ClassPathPresentations
 import io.micrc.core.integration.presentations.springboot.PresentationsAdapterAutoConfiguration;
 import org.springframework.context.annotation.Import;
 
-import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.lang.annotation.*;
 
 /**
  * 消息接收适配器启动注解，用于客户端程序启用消息接收支持

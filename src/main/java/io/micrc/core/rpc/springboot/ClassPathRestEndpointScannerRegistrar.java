@@ -5,17 +5,19 @@ import io.micrc.core.annotations.integration.derivation.DerivationsAdapter;
 import io.micrc.core.annotations.integration.presentations.PresentationsAdapter;
 import io.micrc.core.framework.json.JsonUtil;
 import io.micrc.core.message.EnableMessage;
-import io.micrc.core.rpc.RpcCommandRestRouteParamSource;
-import io.micrc.core.rpc.RpcDerivationRestRouteParamSource;
-import io.micrc.core.rpc.RpcPresentationRestRouteParamSource;
 import io.micrc.core.rpc.RpcRestRouteConfiguration;
 import io.micrc.core.rpc.RpcRestRouteConfiguration.AdaptersInfo;
 import io.micrc.core.rpc.RpcRestRouteConfiguration.RpcDefinition;
+import io.micrc.core.rpc.RpcRestRouteParamSource;
+import io.micrc.lib.ClassCastUtils;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinitionHolder;
-import org.springframework.beans.factory.support.*;
+import org.springframework.beans.factory.support.BeanDefinitionBuilder;
+import org.springframework.beans.factory.support.BeanDefinitionRegistry;
+import org.springframework.beans.factory.support.BeanNameGenerator;
+import org.springframework.beans.factory.support.GenericBeanDefinition;
 import org.springframework.context.ResourceLoaderAware;
 import org.springframework.context.annotation.ClassPathBeanDefinitionScanner;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
@@ -61,44 +63,53 @@ public class ClassPathRestEndpointScannerRegistrar implements ImportBeanDefiniti
     }
 
     @Override
-    public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry, BeanNameGenerator importBeanNameGenerator) {
-        AnnotationAttributes attributes = AnnotationAttributes.fromMap(importingClassMetadata.getAnnotationAttributes(EnableMessage.class.getName()));
+    public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry,
+                                        BeanNameGenerator importBeanNameGenerator) {
+        AnnotationAttributes attributes = AnnotationAttributes
+                .fromMap(importingClassMetadata.getAnnotationAttributes(EnableMessage.class.getName()));
         assert attributes != null;
         String[] basePackages = attributes.getStringArray("servicePackages");
         if (basePackages.length == 0 && importingClassMetadata instanceof StandardAnnotationMetadata) {
-            basePackages = new String[]{((StandardAnnotationMetadata) importingClassMetadata).getIntrospectedClass().getPackage().getName()};
+            basePackages = new String[]{((StandardAnnotationMetadata) importingClassMetadata).getIntrospectedClass()
+                    .getPackage().getName()};
         }
         if (basePackages.length == 0) {
             return;
         }
 
+        RpcRestRouteParamSource rpcRestRouteParamSource = new RpcRestRouteParamSource();
+        AdaptersInfo adaptersInfo = new AdaptersInfo();
         // 业务适配器注解扫描
-        RpcCommandRestRouteParamSource rpcCommandScannerSource = new RpcCommandRestRouteParamSource();
-        RpcCommandScanner rpcCommandScanner = new RpcCommandScanner(registry, rpcCommandScannerSource);
+        RpcCommandScanner rpcCommandScanner = new RpcCommandScanner(registry, rpcRestRouteParamSource, adaptersInfo);
         rpcCommandScanner.setResourceLoader(resourceLoader);
         rpcCommandScanner.doScan(basePackages);
 
-        BeanDefinition rpcCommandScannerSourceBeanDefinition = BeanDefinitionBuilder.genericBeanDefinition((Class<RpcCommandRestRouteParamSource>) rpcCommandScannerSource.getClass(), () -> rpcCommandScannerSource).getRawBeanDefinition();
-        registry.registerBeanDefinition(importBeanNameGenerator.generateBeanName(rpcCommandScannerSourceBeanDefinition, registry), rpcCommandScannerSourceBeanDefinition);
-
-
         // 衍生适配器注解扫描
-        RpcDerivationRestRouteParamSource rpcDerivationScannerSource = new RpcDerivationRestRouteParamSource();
-        RpcDerivationScanner rpcDerivationScanner = new RpcDerivationScanner(registry, rpcDerivationScannerSource);
+        RpcDerivationScanner rpcDerivationScanner = new RpcDerivationScanner(registry, rpcRestRouteParamSource,
+                adaptersInfo);
         rpcDerivationScanner.setResourceLoader(resourceLoader);
         rpcDerivationScanner.doScan(basePackages);
 
-        BeanDefinition rpcDerivationScannerSourceBeanDefinition = BeanDefinitionBuilder.genericBeanDefinition((Class<RpcDerivationRestRouteParamSource>) rpcDerivationScannerSource.getClass(), () -> rpcDerivationScannerSource).getRawBeanDefinition();
-        registry.registerBeanDefinition(importBeanNameGenerator.generateBeanName(rpcDerivationScannerSourceBeanDefinition, registry), rpcDerivationScannerSourceBeanDefinition);
-
         // 展示查询适配器注解扫描
-        RpcPresentationRestRouteParamSource rpcPresentationScannerSource = new RpcPresentationRestRouteParamSource();
-        RpcPresentationScanner rpcPresentationScanner = new RpcPresentationScanner(registry, rpcPresentationScannerSource);
+        RpcPresentationScanner rpcPresentationScanner = new RpcPresentationScanner(registry, rpcRestRouteParamSource,
+                adaptersInfo);
         rpcPresentationScanner.setResourceLoader(resourceLoader);
         rpcPresentationScanner.doScan(basePackages);
 
-        BeanDefinition rpcPresentationScannerBeanDefinition = BeanDefinitionBuilder.genericBeanDefinition((Class<RpcPresentationRestRouteParamSource>) rpcPresentationScannerSource.getClass(), () -> rpcPresentationScannerSource).getRawBeanDefinition();
-        registry.registerBeanDefinition(importBeanNameGenerator.generateBeanName(rpcPresentationScannerBeanDefinition, registry), rpcPresentationScannerBeanDefinition);
+        BeanDefinition rpcPresentationScannerBeanDefinition = BeanDefinitionBuilder
+                .genericBeanDefinition((Class<RpcRestRouteParamSource>) rpcRestRouteParamSource.getClass(),
+                        () -> rpcRestRouteParamSource)
+                .getRawBeanDefinition();
+        registry.registerBeanDefinition(
+                importBeanNameGenerator.generateBeanName(rpcPresentationScannerBeanDefinition, registry),
+                rpcPresentationScannerBeanDefinition);
+
+        BeanDefinition adaptersInfoBeanDefinition = BeanDefinitionBuilder
+                .genericBeanDefinition((Class<AdaptersInfo>) adaptersInfo.getClass(), () -> adaptersInfo)
+                .getRawBeanDefinition();
+        registry.registerBeanDefinition(importBeanNameGenerator.generateBeanName(adaptersInfoBeanDefinition, registry),
+                adaptersInfoBeanDefinition);
+
     }
 
     @Override
@@ -109,11 +120,14 @@ public class ClassPathRestEndpointScannerRegistrar implements ImportBeanDefiniti
 
 class RpcCommandScanner extends ClassPathBeanDefinitionScanner {
     private static final AtomicInteger INDEX = new AtomicInteger();
-    private final RpcCommandRestRouteParamSource sourceDefinition;
+    private final RpcRestRouteParamSource sourceDefinition;
+    private final AdaptersInfo adaptersInfo;
 
-    public RpcCommandScanner(BeanDefinitionRegistry registry, RpcCommandRestRouteParamSource source) {
+    public RpcCommandScanner(BeanDefinitionRegistry registry, RpcRestRouteParamSource source,
+                             AdaptersInfo adaptersInfo) {
         super(registry, false);
         this.sourceDefinition = source;
+        this.adaptersInfo = adaptersInfo;
     }
 
     @Override
@@ -127,7 +141,6 @@ class RpcCommandScanner extends ClassPathBeanDefinitionScanner {
     protected Set<BeanDefinitionHolder> doScan(String... basePackages) {
         this.addIncludeFilter(new AnnotationTypeFilter(CommandAdapter.class));
         Set<BeanDefinitionHolder> holders = super.doScan(basePackages);
-        AdaptersInfo adaptersInfo = new AdaptersInfo();
         for (BeanDefinitionHolder holder : holders) {
             GenericBeanDefinition beanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
             beanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
@@ -139,11 +152,17 @@ class RpcCommandScanner extends ClassPathBeanDefinitionScanner {
             String protocolPath = commandAdapter.protocolPath();
             String routeProtocol = commandAdapter.routeProtocol();
             String openapiProtocolJson = ClassPathRestEndpointScannerRegistrar.fileReader(protocolPath);
-            Map pathsMap = JsonUtil.writeValueAsObject(JsonUtil.readTree(openapiProtocolJson).at("/paths").toString(), HashMap.class);
+            Map<String, Object> pathsMap = ClassCastUtils.castHashMap(
+                    JsonUtil.writeValueAsObject(JsonUtil.readTree(openapiProtocolJson).at("/paths").toString(),
+                            HashMap.class),
+                    String.class,
+                    Object.class);
             if (1 != pathsMap.keySet().size()) {
-                throw new IllegalArgumentException("the " + adapterName + " openapi protocol have error, please check....");
+                throw new IllegalArgumentException(
+                        "the " + adapterName + " openapi protocol have error, please check....");
             }
-            HashMap methodMap = (HashMap) pathsMap.values().stream().toArray()[0];
+            Map<String, Object> methodMap = ClassCastUtils.castHashMap(pathsMap.values().stream().toArray()[0],
+                    String.class, Object.class);
             String path = (String) pathsMap.keySet().toArray()[0];
             String methodName = (String) methodMap.keySet().toArray()[0];
             RpcDefinition rpcDefinition = RpcDefinition.builder()
@@ -152,28 +171,15 @@ class RpcCommandScanner extends ClassPathBeanDefinitionScanner {
                     .method(methodName)
                     .address(path)
                     .routeProtocol(routeProtocol)
-                    .templateId(RpcRestRouteConfiguration.ROUTE_TMPL_REST_COMMAND)
+                    .templateId(RpcRestRouteConfiguration.ROUTE_TMPL_REST)
                     .build();
-            adaptersInfo.put(adapterName, rpcDefinition);
+            adaptersInfo.add(rpcDefinition);
             sourceDefinition.addParameter(
                     routeId(adapterName + "-" + path + "-" + methodName),
-                    rpcDefinition
-            );
+                    rpcDefinition);
         }
-        this.registBean(adaptersInfo);
         holders.clear();
         return holders;
-    }
-
-    private void registBean(Object beanInstance) {
-        GenericBeanDefinition beanDefinition = new GenericBeanDefinition();
-        beanDefinition.getConstructorArgumentValues().addGenericArgumentValue(beanInstance);
-        beanDefinition.setBeanClass(AdaptersInfo.class);
-        beanDefinition.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_NAME);
-        beanDefinition.setLazyInit(false);
-        beanDefinition.setPrimary(true);
-        BeanDefinitionHolder definitionHolder = new BeanDefinitionHolder(beanDefinition, "commandAdaptersInfo");
-        super.registerBeanDefinition(definitionHolder, super.getRegistry());
     }
 
     @Override
@@ -186,17 +192,20 @@ class RpcCommandScanner extends ClassPathBeanDefinitionScanner {
         if (!StringUtils.hasText(routeId)) {
             routeId = String.valueOf(INDEX.getAndIncrement());
         }
-        return RpcRestRouteConfiguration.ROUTE_TMPL_REST_COMMAND + "-" + routeId;
+        return RpcRestRouteConfiguration.ROUTE_TMPL_REST + "-" + routeId;
     }
 }
 
 class RpcDerivationScanner extends ClassPathBeanDefinitionScanner {
     private static final AtomicInteger INDEX = new AtomicInteger();
-    private final RpcDerivationRestRouteParamSource sourceDefinition;
+    private final RpcRestRouteParamSource sourceDefinition;
+    private final AdaptersInfo adaptersInfo;
 
-    public RpcDerivationScanner(BeanDefinitionRegistry registry, RpcDerivationRestRouteParamSource source) {
+    public RpcDerivationScanner(BeanDefinitionRegistry registry, RpcRestRouteParamSource source,
+                                AdaptersInfo adaptersInfo) {
         super(registry, false);
         this.sourceDefinition = source;
+        this.adaptersInfo = adaptersInfo;
     }
 
     @Override
@@ -214,7 +223,8 @@ class RpcDerivationScanner extends ClassPathBeanDefinitionScanner {
         for (BeanDefinitionHolder holder : holders) {
             GenericBeanDefinition beanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
             beanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
-            DerivationsAdapter derivationsAdapter = beanDefinition.getBeanClass().getAnnotation(DerivationsAdapter.class);
+            DerivationsAdapter derivationsAdapter = beanDefinition.getBeanClass()
+                    .getAnnotation(DerivationsAdapter.class);
             if (derivationsAdapter.custom()) {
                 continue;
             }
@@ -222,11 +232,17 @@ class RpcDerivationScanner extends ClassPathBeanDefinitionScanner {
             String protocolPath = derivationsAdapter.protocolPath();
             String routeProtocol = derivationsAdapter.routeProtocol();
             String openapiProtocolJson = ClassPathRestEndpointScannerRegistrar.fileReader(protocolPath);
-            Map pathsMap = JsonUtil.writeValueAsObject(JsonUtil.readTree(openapiProtocolJson).at("/paths").toString(), HashMap.class);
+            Map<String, Object> pathsMap = ClassCastUtils.castHashMap(
+                    JsonUtil.writeValueAsObject(JsonUtil.readTree(openapiProtocolJson).at("/paths").toString(),
+                            HashMap.class),
+                    String.class,
+                    Object.class);
             if (1 != pathsMap.keySet().size()) {
-                throw new IllegalArgumentException("the " + adapterName + " openapi protocol have error, please check....");
+                throw new IllegalArgumentException(
+                        "the " + adapterName + " openapi protocol have error, please check....");
             }
-            HashMap methodMap = (HashMap) pathsMap.values().stream().toArray()[0];
+            Map<String, Object> methodMap = ClassCastUtils.castHashMap(pathsMap.values().stream().toArray()[0],
+                    String.class, Object.class);
             String path = (String) pathsMap.keySet().toArray()[0];
             String methodName = (String) methodMap.keySet().toArray()[0];
             RpcDefinition rpcDefinition = RpcDefinition.builder()
@@ -235,28 +251,15 @@ class RpcDerivationScanner extends ClassPathBeanDefinitionScanner {
                     .method(methodName)
                     .address(path)
                     .routeProtocol(routeProtocol)
-                    .templateId(RpcRestRouteConfiguration.ROUTE_TMPL_REST_DERIVATION)
+                    .templateId(RpcRestRouteConfiguration.ROUTE_TMPL_REST)
                     .build();
-            adaptersInfo.put(adapterName, rpcDefinition);
+            adaptersInfo.add(rpcDefinition);
             sourceDefinition.addParameter(
                     routeId(adapterName + "-" + path + "-" + methodName),
-                    rpcDefinition
-            );
+                    rpcDefinition);
         }
-        this.registBean(adaptersInfo);
         holders.clear();
         return holders;
-    }
-
-    private void registBean(Object beanInstance) {
-        GenericBeanDefinition beanDefinition = new GenericBeanDefinition();
-        beanDefinition.getConstructorArgumentValues().addGenericArgumentValue(beanInstance);
-        beanDefinition.setBeanClass(AdaptersInfo.class);
-        beanDefinition.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_NAME);
-        beanDefinition.setLazyInit(false);
-        beanDefinition.setPrimary(true);
-        BeanDefinitionHolder definitionHolder = new BeanDefinitionHolder(beanDefinition, "derivationsAdaptersInfo");
-        super.registerBeanDefinition(definitionHolder, super.getRegistry());
     }
 
     @Override
@@ -269,17 +272,20 @@ class RpcDerivationScanner extends ClassPathBeanDefinitionScanner {
         if (!StringUtils.hasText(routeId)) {
             routeId = String.valueOf(INDEX.getAndIncrement());
         }
-        return RpcRestRouteConfiguration.ROUTE_TMPL_REST_DERIVATION + "-" + routeId;
+        return RpcRestRouteConfiguration.ROUTE_TMPL_REST + "-" + routeId;
     }
 }
 
 class RpcPresentationScanner extends ClassPathBeanDefinitionScanner {
     private static final AtomicInteger INDEX = new AtomicInteger();
-    private final RpcPresentationRestRouteParamSource sourceDefinition;
+    private final RpcRestRouteParamSource sourceDefinition;
+    private final AdaptersInfo adaptersInfo;
 
-    public RpcPresentationScanner(BeanDefinitionRegistry registry, RpcPresentationRestRouteParamSource source) {
+    public RpcPresentationScanner(BeanDefinitionRegistry registry, RpcRestRouteParamSource source,
+                                  AdaptersInfo adaptersInfo) {
         super(registry, false);
         this.sourceDefinition = source;
+        this.adaptersInfo = adaptersInfo;
     }
 
     @Override
@@ -297,7 +303,8 @@ class RpcPresentationScanner extends ClassPathBeanDefinitionScanner {
         for (BeanDefinitionHolder holder : holders) {
             GenericBeanDefinition beanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
             beanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
-            PresentationsAdapter presentationsAdapter = beanDefinition.getBeanClass().getAnnotation(PresentationsAdapter.class);
+            PresentationsAdapter presentationsAdapter = beanDefinition.getBeanClass()
+                    .getAnnotation(PresentationsAdapter.class);
             if (presentationsAdapter.custom()) {
                 continue;
             }
@@ -305,11 +312,17 @@ class RpcPresentationScanner extends ClassPathBeanDefinitionScanner {
             String protocolPath = presentationsAdapter.protocolPath();
             String routeProtocol = presentationsAdapter.routeProtocol();
             String openapiProtocolJson = ClassPathRestEndpointScannerRegistrar.fileReader(protocolPath);
-            Map pathsMap = JsonUtil.writeValueAsObject(JsonUtil.readTree(openapiProtocolJson).at("/paths").toString(), HashMap.class);
+            Map<String, Object> pathsMap = ClassCastUtils.castHashMap(
+                    JsonUtil.writeValueAsObject(JsonUtil.readTree(openapiProtocolJson).at("/paths").toString(),
+                            HashMap.class),
+                    String.class,
+                    Object.class);
             if (1 != pathsMap.keySet().size()) {
-                throw new IllegalArgumentException("the " + adapterName + " openapi protocol have error, please check....");
+                throw new IllegalArgumentException(
+                        "the " + adapterName + " openapi protocol have error, please check....");
             }
-            HashMap methodMap = (HashMap) pathsMap.values().stream().toArray()[0];
+            Map<String, Object> methodMap = ClassCastUtils.castHashMap(pathsMap.values().stream().toArray()[0],
+                    String.class, Object.class);
             String path = (String) pathsMap.keySet().toArray()[0];
             String methodName = (String) methodMap.keySet().toArray()[0];
             RpcDefinition rpcDefinition = RpcDefinition.builder()
@@ -318,28 +331,15 @@ class RpcPresentationScanner extends ClassPathBeanDefinitionScanner {
                     .method(methodName)
                     .address(path)
                     .routeProtocol(routeProtocol)
-                    .templateId(RpcRestRouteConfiguration.ROUTE_TMPL_REST_PRESENTATION)
+                    .templateId(RpcRestRouteConfiguration.ROUTE_TMPL_REST)
                     .build();
-            adaptersInfo.put(adapterName, rpcDefinition);
+            adaptersInfo.add(rpcDefinition);
             sourceDefinition.addParameter(
                     routeId(adapterName + "-" + path + "-" + methodName),
-                    rpcDefinition
-            );
+                    rpcDefinition);
         }
-        this.registBean(adaptersInfo);
         holders.clear();
         return holders;
-    }
-
-    private void registBean(Object beanInstance) {
-        GenericBeanDefinition beanDefinition = new GenericBeanDefinition();
-        beanDefinition.setBeanClass(AdaptersInfo.class);
-        beanDefinition.getConstructorArgumentValues().addGenericArgumentValue(beanInstance);
-        beanDefinition.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_NAME);
-        beanDefinition.setLazyInit(false);
-        beanDefinition.setPrimary(true);
-        BeanDefinitionHolder definitionHolder = new BeanDefinitionHolder(beanDefinition, "presentationsAdaptersInfo");
-        super.registerBeanDefinition(definitionHolder, super.getRegistry());
     }
 
     @Override
@@ -352,6 +352,6 @@ class RpcPresentationScanner extends ClassPathBeanDefinitionScanner {
         if (!StringUtils.hasText(routeId)) {
             routeId = String.valueOf(INDEX.getAndIncrement());
         }
-        return RpcRestRouteConfiguration.ROUTE_TMPL_REST_PRESENTATION + "-" + routeId;
+        return RpcRestRouteConfiguration.ROUTE_TMPL_REST + "-" + routeId;
     }
 }

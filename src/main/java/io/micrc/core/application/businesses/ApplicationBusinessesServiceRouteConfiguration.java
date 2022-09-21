@@ -8,6 +8,7 @@ import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.CommandParamIntegration;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.LogicIntegration;
 import io.micrc.core.framework.json.JsonUtil;
+import io.micrc.lib.ClassCastUtils;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -93,7 +94,6 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .end();
 
         from("direct://integration-params")
-                .log("integration-params")
                 // 得到需要集成的集成参数
                 .bean(IntegrationCommandParams.class,
                         "executableIntegrationInfo(${exchange.properties.get(unIntegrateParams)}, ${exchange.properties.get(commandJson)})")
@@ -109,15 +109,16 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                     JsonNode jsonNode = JsonUtil.readTree(body);
                     String resultCode = jsonNode.at("/code").textValue();
                     if ("200".equals(resultCode)) {
-                        Map<String, String> currentIntegrateParam = exchange.getProperty("currentIntegrateParam", Map.class);
-                        Map<String, CommandParamIntegration> unIntegrateParams = (Map<String, CommandParamIntegration>) exchange
-                                .getProperties().get("unIntegrateParams");
+                        Map<String, Object> currentIntegrateParam = ClassCastUtils.castHashMap(
+                                exchange.getProperty("currentIntegrateParam", Map.class), String.class, Object.class);
+                        Map<String, CommandParamIntegration> unIntegrateParams = ClassCastUtils.castHashMap(
+                                exchange.getProperty("unIntegrateParams", Map.class), String.class,
+                                CommandParamIntegration.class);
                         JsonNode dataNode = jsonNode.at("/data");
                         if (null == dataNode) {
                             throw new RuntimeException("the param "
                                     + unIntegrateParams.get(currentIntegrateParam.get("paramName"))
-                                    + " integrate return value is null, but the integrate result can`t be null, so you should check the protocol "
-                                    + unIntegrateParams.get(currentIntegrateParam).getProtocol());
+                                    + " integrate return value is null, but the integrate result can`t be null, so you should check...");
                         }
                         String data = dataNode.toString();
                         String commandJson = patch((String) exchange.getProperties().get("commandJson"),
@@ -126,6 +127,8 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                         exchange.getProperties().put("commandJson", commandJson);
                         // 标识该参数已成功
                         unIntegrateParams.remove(currentIntegrateParam.get("paramName"));
+                        exchange.getProperties().put("currentIntegrateParam", currentIntegrateParam);
+                        exchange.getProperties().put("unIntegrateParams", unIntegrateParams);
                     }
                 })
                 .end();
@@ -317,14 +320,15 @@ class LogicInParamsResolve {
         return JsonUtil.writeValueAsStringRetainNull(logicParams);
     }
 
-    public String toTargetParams(HashMap<String, Object> logicResult, String commandJson, String logicIntegrationJson) {
+    public String toTargetParams(Map<String, Object> logicResult, String commandJson, String logicIntegrationJson) {
         LogicIntegration logicIntegration = JsonUtil.writeValueAsObject(logicIntegrationJson, LogicIntegration.class);
         for (String key : logicResult.keySet()) {
             Object value = logicResult.get(key);
             // 当值序列化后为对象的时候
             if (value instanceof HashMap) {
-                HashMap<String, Object> valueMap = (HashMap<String, Object>) value;
-                valueMap.keySet().stream().forEach(innerKey -> {
+                Map<String, Object> valueMap = ClassCastUtils.castHashMap(value, String.class, Object.class);
+                logicResult.put(key, valueMap);
+                valueMap.keySet().forEach(innerKey -> {
                     valueMap.put(innerKey, formatTimeValue(valueMap.get(innerKey)));
                 });
             }
@@ -350,7 +354,7 @@ class LogicInParamsResolve {
     }
 
     private Object formatTimeValue(Object value) {
-        if (null != value && value.toString().contains("-") && value.toString().contains("T")
+        if (value instanceof String && value.toString().contains("-") && value.toString().contains("T")
                 && value.toString().contains(".") && value.toString().contains("+") && value.toString().contains(":")) {
             try {
                 value = this.parseDate2Timestamp((String) value);
@@ -381,8 +385,8 @@ class IntegrationCommandParams {
 
     public static String integrate(@ExchangeProperties Map<String, Object> properties) {
         // 1.判断是否有需要集成的参数
-        List<CommandParamIntegration> commandParamIntegrations = (List<CommandParamIntegration>) properties
-                .get("commandParamIntegrations");
+        List<CommandParamIntegration> commandParamIntegrations = ClassCastUtils.castArrayList(properties
+                .get("commandParamIntegrations"), CommandParamIntegration.class);
         // 初始化动态路由集成控制信息
         if (null == commandParamIntegrations) {
             commandParamIntegrations = JsonUtil.writeValueAsList(
@@ -392,7 +396,9 @@ class IntegrationCommandParams {
                     .collect(Collectors.toMap(CommandParamIntegration::getParamName, integrate -> integrate));
             properties.put("unIntegrateParams", unIntegrateParams);
         }
-        Map<String, Object> unIntegrateParams = (Map<String, Object>) properties.get("unIntegrateParams");
+        Map<String, Object> unIntegrateParams = ClassCastUtils.castHashMap(
+                properties.get("unIntegrateParams"), String.class, Object.class);
+        properties.put("unIntegrateParams", unIntegrateParams);
         if (unIntegrateParams.size() == 0) {
             // 清除中间变量
             properties.remove("currentIntegrateParam");
@@ -426,8 +432,10 @@ class IntegrationCommandParams {
                     .at("/paths").elements().next().elements().next()
                     .at("/requestBody/content").elements().next()
                     .at("/x-integrate-mapping");
-            HashMap<String, Object> integrateMappings = JsonUtil.writeValueAsObject(mappingNode.toString(),
-                    HashMap.class);
+            Map<String, Object> integrateMappings = ClassCastUtils.castHashMap(
+                    JsonUtil.writeValueAsObject(mappingNode.toString(),
+                            HashMap.class),
+                    String.class, Object.class);
             // 要求当前集成的所有映射均能够获取到其参数
             Boolean canExecute = integrateMappings.keySet().stream().allMatch(mappingKey -> {
                 return null != JsonUtil.readTree(commandJson).at((String) integrateMappings.get(mappingKey));

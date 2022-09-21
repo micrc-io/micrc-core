@@ -11,10 +11,7 @@ import org.springframework.amqp.core.AmqpAdmin;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Profile;
+import org.springframework.context.annotation.*;
 
 /**
  * message auto configuration. 注册publish/subscribe组件，创建消息队列mock connection
@@ -26,6 +23,7 @@ import org.springframework.context.annotation.Profile;
 @Configuration
 @EnableAutoConfiguration(exclude = SpringRabbitMQComponentAutoConfiguration.class)
 @Import({MessageRouteConfiguration.class})
+@ComponentScan("io.micrc.core.message")
 public class MessageAutoConfiguration {
 
     @Bean
@@ -40,8 +38,6 @@ public class MessageAutoConfiguration {
         publisher.setConnectionFactory(connectionFactory);
         publisher.setAmqpAdmin(amqpAdmin);
         publisher.setAutoDeclare(true);
-        // 设置启动时不检查监听方是否存在,防止多服务间交叉检查导致均不能够正常启动问题
-        publisher.setTestConnectionOnStartup(false);
         // 不允许空消息,就算Command为空 我们的Message本体也不会为空,如空一定是错误
         publisher.setAllowNullBody(false); // 是否允许空消息
         return publisher;
@@ -75,9 +71,14 @@ public class MessageAutoConfiguration {
         // subscriber.setPrefetchCount(250); // 预获取消息数量
         // subscriber.setRetry(); // 自定义重试逻辑 RetryOperationsInterceptor
         // subscriber.setShutdownTimeout(5000); // 等待container停止的超时时间
-        subscriber.setDeadLetterExchange("DEAD-MESSAGE-EXCHANGE");
+        subscriber.setConcurrentConsumers(10);
+        subscriber.setMaxConcurrentConsumers(100);
+        subscriber.setPrefetchCount(1000);
+        subscriber.setMaximumRetryAttempts(5);
+        subscriber.setRetryDelay(1000);
+        subscriber.setDeadLetterExchange("dead-message");
         subscriber.setDeadLetterExchangeType("direct");
-        subscriber.setDeadLetterQueue("DEAD-MESSAGE-QUEUE");
+        subscriber.setDeadLetterQueue("error");
         return subscriber;
     }
 

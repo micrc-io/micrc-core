@@ -61,12 +61,11 @@ public class ClassPathMessageAdapterScannerRegistrar implements ImportBeanDefini
             return;
         }
 
-        MessageAdapterRouteTemplateParameterSource source =
-                new MessageAdapterRouteTemplateParameterSource();
+        MessageAdapterRouteTemplateParameterSource source = new MessageAdapterRouteTemplateParameterSource();
 
         // application business service scanner
-        ApplicationMessageAdapterScanner applicationMessageAdapterScanner =
-                new ApplicationMessageAdapterScanner(registry, source);
+        ApplicationMessageAdapterScanner applicationMessageAdapterScanner = new ApplicationMessageAdapterScanner(
+                registry, source);
         applicationMessageAdapterScanner.setResourceLoader(resourceLoader);
         applicationMessageAdapterScanner.doScan(basePackages);
 
@@ -130,25 +129,31 @@ class ApplicationMessageAdapterScanner extends ClassPathBeanDefinitionScanner {
                 return false;
             });
             if (!haveAdaptMethod || adapterMethods.length != 1) {
-                throw new MethodAdapterDesignException(" the message adapter interface " + name + " need extends MessageIntegrationAdapter. please check");
+                throw new MethodAdapterDesignException(" the message adapter interface " + name
+                        + " need extends MessageIntegrationAdapter. please check");
             }
             MessageAdapter messageAdapter = beanDefinition.getBeanClass().getAnnotation(MessageAdapter.class);
             String serviceName = messageAdapter.logicName() + "Service";
-            String servicePath = basePackages[0] + ".application.businesses." + messageAdapter.rootEntityName().toLowerCase() + "." + serviceName;
+            String servicePath = basePackages[0] + ".application.businesses."
+                    + messageAdapter.rootEntityName().toLowerCase() + "." + serviceName;
             Class<?> service = Class.forName(servicePath);
             if (null == service) {
-                throw new ClassNotFoundException(" the application service interface " + servicePath + " not exist. please check");
+                throw new ClassNotFoundException(
+                        " the application service interface " + servicePath + " not exist. please check");
             }
 
             Method[] serviceMethods = service.getDeclaredMethods();
-            List<Method> haveExecuteMethod = Arrays.stream(serviceMethods).filter(method -> "execute".equals(method.getName()) && !method.isBridge()).collect(Collectors.toList());
+            List<Method> haveExecuteMethod = Arrays.stream(serviceMethods)
+                    .filter(method -> "execute".equals(method.getName()) && !method.isBridge())
+                    .collect(Collectors.toList());
             if (haveExecuteMethod.size() != 1) {
-                throw new MethodAdapterDesignException(" the application service interface " + serviceName + " need extends ApplicationBusinessesService. please check");
+                throw new MethodAdapterDesignException(" the application service interface " + serviceName
+                        + " need extends ApplicationBusinessesService. please check");
             }
-            Method execute = null;
             Class<?>[] serviceMethodParameterTypes = serviceMethods[0].getParameterTypes();
             if (serviceMethodParameterTypes.length != 1) {
-                throw new MethodAdapterDesignException(" the message endpoint service interface " + serviceName + " method execute param only can use command and only one param. please check");
+                throw new MethodAdapterDesignException(" the message endpoint service interface " + serviceName
+                        + " method execute param only can use command and only one param. please check");
             }
             String commandPath = serviceMethodParameterTypes[0].getName();
 

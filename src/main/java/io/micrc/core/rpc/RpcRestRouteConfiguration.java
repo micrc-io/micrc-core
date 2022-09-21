@@ -7,7 +7,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
-import java.util.HashMap;
+import java.util.*;
 
 /**
  * rpc rest端口请求路由，服务端点路由模版定义
@@ -18,39 +18,17 @@ import java.util.HashMap;
  */
 public class RpcRestRouteConfiguration extends MicrcRouteBuilder {
 
-    public static final String ROUTE_TMPL_REST_COMMAND =
-            RpcRestRouteConfiguration.class.getName() + ".restCommand";
-
-    public static final String ROUTE_TMPL_REST_DERIVATION =
-            RpcRestRouteConfiguration.class.getName() + ".restDerivation";
-
-    public static final String ROUTE_TMPL_REST_PRESENTATION =
-            RpcRestRouteConfiguration.class.getName() + ".restPresentation";
+    public static final String ROUTE_TMPL_REST =
+            RpcRestRouteConfiguration.class.getName() + ".rest";
 
     @Override
     public void configureRoute() throws Exception {
         // TODO 1. 通用请求路由，定义req协议（rest-openapi组件），由业务/展示逻辑中进行衍生集成时使用
+//        from("req://integration")
+//                .marshal().json().convertBodyTo(String.class)
 
         // 服务端点路由模版，rest协议（rest组件），定义rpc接入点路由，调用integration的三个服务协议（direct组件）
-        routeTemplate(ROUTE_TMPL_REST_COMMAND)
-                .templateParameter("adapterName", null, "the message adapter name")
-                .templateParameter("method", null, "the method name")
-                .templateParameter("address", null, "the address")
-                .templateParameter("routeProtocol", null, "the route protocol")
-                .from("rest:{{method}}:{{address}}")
-                .convertBodyTo(String.class)
-                .to("{{routeProtocol}}://{{adapterName}}")
-                .end();
-        routeTemplate(ROUTE_TMPL_REST_DERIVATION)
-                .templateParameter("adapterName", null, "the message adapter name")
-                .templateParameter("method", null, "the method name")
-                .templateParameter("address", null, "the address")
-                .templateParameter("routeProtocol", null, "the route protocol")
-                .from("rest:{{method}}:{{address}}")
-                .convertBodyTo(String.class)
-                .to("{{routeProtocol}}://{{adapterName}}")
-                .end();
-        routeTemplate(ROUTE_TMPL_REST_PRESENTATION)
+        routeTemplate(ROUTE_TMPL_REST)
                 .templateParameter("adapterName", null, "the message adapter name")
                 .templateParameter("method", null, "the method name")
                 .templateParameter("address", null, "the address")
@@ -96,18 +74,25 @@ public class RpcRestRouteConfiguration extends MicrcRouteBuilder {
     @NoArgsConstructor
     public static class AdaptersInfo {
 
-        private HashMap<String, RpcDefinition> adaptersInfo = new HashMap<>();
+        private final Map<String, RpcDefinition> caches = new HashMap<>();
+
+        private List<RpcDefinition> adaptersInfo = new ArrayList<>();
 
         public AdaptersInfo(AdaptersInfo adaptersInfo) {
             this.adaptersInfo = adaptersInfo.adaptersInfo;
         }
 
-        public void put(String key, RpcDefinition value) {
-            this.adaptersInfo.put(key, value);
+        public void add(RpcDefinition rpcDefinition) {
+            this.adaptersInfo.add(rpcDefinition);
         }
 
-        public RpcDefinition get(String key) {
-            return adaptersInfo.get(key);
+        public RpcDefinition get(String protocolFilePath) {
+            RpcDefinition rpcDefinition = caches.get(protocolFilePath);
+            if (null == rpcDefinition) {
+                Optional<RpcDefinition> adapter = adaptersInfo.stream().filter(adapterInfo -> protocolFilePath.equals(adapterInfo.protocolPath)).findFirst();
+                caches.put(adapter.get().getProtocolPath(), adapter.get());
+            }
+            return caches.get(protocolFilePath);
         }
     }
 }
