@@ -1,10 +1,9 @@
-package io.micrc.core.integration.presentations.springboot;
+package io.micrc.core.integration.derivations.springboot;
 
-
-import io.micrc.core.annotations.integration.presentations.PresentationsAdapter;
-import io.micrc.core.integration.presentations.EnablePresentationsAdapter;
-import io.micrc.core.integration.presentations.PresentationsAdapterRouteConfiguration;
-import io.micrc.core.integration.presentations.PresentationsAdapterRouteTemplateParameterSource;
+import io.micrc.core.annotations.integration.derivation.DerivationsAdapter;
+import io.micrc.core.integration.derivations.DerivationsAdapterRouteConfiguration;
+import io.micrc.core.integration.derivations.DerivationsAdapterRouteTemplateParameterSource;
+import io.micrc.core.integration.derivations.EnableDerivationsAdapter;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -30,14 +29,14 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * 消息接收适配器路由参数源bean注册器
+ * 衍生适配器路由参数源bean注册器
  *
  * @author hyosunghan
- * @date 2022-08-23 21:02
+ * @date 2022-09-21 13:48
  * @since 0.0.1
  */
 @Component
-public class ClassPathPresentationsAdapterScannerRegistrar implements ImportBeanDefinitionRegistrar, ResourceLoaderAware {
+public class ClassPathDerivationsAdapterScannerRegistrar implements ImportBeanDefinitionRegistrar, ResourceLoaderAware {
 
     private ResourceLoader resourceLoader;
 
@@ -47,7 +46,7 @@ public class ClassPathPresentationsAdapterScannerRegistrar implements ImportBean
                                         BeanDefinitionRegistry registry,
                                         BeanNameGenerator importBeanNameGenerator) {
         AnnotationAttributes attributes = AnnotationAttributes
-                .fromMap(importingClassMetadata.getAnnotationAttributes(EnablePresentationsAdapter.class.getName()));
+                .fromMap(importingClassMetadata.getAnnotationAttributes(EnableDerivationsAdapter.class.getName()));
         assert attributes != null;
         String[] basePackages = attributes.getStringArray("servicePackages");
         if (basePackages.length == 0 && importingClassMetadata instanceof StandardAnnotationMetadata) {
@@ -58,19 +57,19 @@ public class ClassPathPresentationsAdapterScannerRegistrar implements ImportBean
             return;
         }
 
-        PresentationsAdapterRouteTemplateParameterSource source =
-                new PresentationsAdapterRouteTemplateParameterSource();
+        DerivationsAdapterRouteTemplateParameterSource source =
+                new DerivationsAdapterRouteTemplateParameterSource();
 
-        // application presentations service scanner
-        ApplicationPresentationsAdapterScanner applicationPresentationsAdapterScanner =
-                new ApplicationPresentationsAdapterScanner(registry, source);
-        applicationPresentationsAdapterScanner.setResourceLoader(resourceLoader);
-        applicationPresentationsAdapterScanner.doScan(basePackages);
+        // application derivations service scanner
+        ApplicationDerivationsAdapterScanner applicationDerivationsAdapterScanner =
+                new ApplicationDerivationsAdapterScanner(registry, source);
+        applicationDerivationsAdapterScanner.setResourceLoader(resourceLoader);
+        applicationDerivationsAdapterScanner.doScan(basePackages);
 
         // registering
         BeanDefinition beanDefinition = BeanDefinitionBuilder
                 .genericBeanDefinition(
-                        (Class<PresentationsAdapterRouteTemplateParameterSource>) source.getClass(),
+                        (Class<DerivationsAdapterRouteTemplateParameterSource>) source.getClass(),
                         () -> source)
                 .getRawBeanDefinition();
         registry.registerBeanDefinition(importBeanNameGenerator.generateBeanName(beanDefinition, registry),
@@ -88,15 +87,15 @@ public class ClassPathPresentationsAdapterScannerRegistrar implements ImportBean
  * 消息接收适配注解扫描器
  *
  * @author hyosunghan
- * @date 2022-08-23 21:02
+ * @date 2022-09-21 14:02
  * @since 0.0.1
  */
-class ApplicationPresentationsAdapterScanner extends ClassPathBeanDefinitionScanner {
+class ApplicationDerivationsAdapterScanner extends ClassPathBeanDefinitionScanner {
     private static final AtomicInteger INDEX = new AtomicInteger();
-    private final PresentationsAdapterRouteTemplateParameterSource sourceDefinition;
+    private final DerivationsAdapterRouteTemplateParameterSource sourceDefinition;
 
-    public ApplicationPresentationsAdapterScanner(BeanDefinitionRegistry registry,
-                                                  PresentationsAdapterRouteTemplateParameterSource source) {
+    public ApplicationDerivationsAdapterScanner(BeanDefinitionRegistry registry,
+                                                  DerivationsAdapterRouteTemplateParameterSource source) {
         super(registry, false);
         this.sourceDefinition = source;
     }
@@ -110,7 +109,7 @@ class ApplicationPresentationsAdapterScanner extends ClassPathBeanDefinitionScan
     @SneakyThrows
     @Override
     protected Set<BeanDefinitionHolder> doScan(String... basePackages) {
-        this.addIncludeFilter(new AnnotationTypeFilter(PresentationsAdapter.class));
+        this.addIncludeFilter(new AnnotationTypeFilter(DerivationsAdapter.class));
         Set<BeanDefinitionHolder> holders = super.doScan(basePackages);
         for (BeanDefinitionHolder holder : holders) {
             GenericBeanDefinition beanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
@@ -121,16 +120,31 @@ class ApplicationPresentationsAdapterScanner extends ClassPathBeanDefinitionScan
             if (!haveAdaptMethod || adapterMethods.length != 1) {
                 throw new IllegalStateException(" the message adapter interface " + name + " need extends MessageIntegrationAdapter. please check");
             }
-            PresentationsAdapter presentationsAdapter = beanDefinition.getBeanClass().getAnnotation(PresentationsAdapter.class);
+            DerivationsAdapter derivationsAdapter = beanDefinition.getBeanClass().getAnnotation(DerivationsAdapter.class);
             // 需要自定义的服务不生成路由
-            if (presentationsAdapter.custom()) {
+            if (derivationsAdapter.custom()) {
                 continue;
             }
-            String serviceName = presentationsAdapter.serviceName();
+            String serviceName = derivationsAdapter.serviceName();
+//            String servicePath = basePackages[0] + ".application.derivations.store." + serviceName;
+//            Class<?> service = Class.forName(servicePath);
+//            if (null == service) {
+//                throw new ClassNotFoundException(" the application service interface " + servicePath + " not exist. please check");
+//            }
+//
+//            Method[] serviceMethods = service.getDeclaredMethods();
+//            List<Method> haveExecuteMethod = Arrays.stream(serviceMethods).filter(method -> "execute".equals(method.getName()) && !method.isBridge()).collect(Collectors.toList());
+//            if (haveExecuteMethod.size() != 1) {
+//                throw new IllegalStateException(" the application service interface " + serviceName + " need extends ApplicationBusinessesService. please check");
+//            }
+//            Class<?>[] serviceMethodParameterTypes = serviceMethods[0].getParameterTypes();
+//            if (serviceMethodParameterTypes.length != 1) {
+//                throw new IllegalStateException(" the message endpoint service interface " + serviceName + " method execute param only can use command and only one param. please check");
+//            }
             sourceDefinition.addParameter(
                     routeId(serviceName),
-                    PresentationsAdapterRouteConfiguration.ApplicationPresentationsAdapterDefinition.builder()
-                            .templateId(PresentationsAdapterRouteConfiguration.ROUTE_TMPL_PRESENTATIONS_ADAPTER)
+                    DerivationsAdapterRouteConfiguration.ApplicationDerivationsAdapterDefinition.builder()
+                            .templateId(DerivationsAdapterRouteConfiguration.ROUTE_TMPL_DERIVATIONS_ADAPTER)
                             .name(name)
                             .serviceName(serviceName)
                             .build());
@@ -149,7 +163,7 @@ class ApplicationPresentationsAdapterScanner extends ClassPathBeanDefinitionScan
         if (!StringUtils.hasText(routeId)) {
             routeId = String.valueOf(INDEX.getAndIncrement());
         }
-        return PresentationsAdapterRouteConfiguration.ROUTE_TMPL_PRESENTATIONS_ADAPTER + "-" + routeId;
+        return DerivationsAdapterRouteConfiguration.ROUTE_TMPL_DERIVATIONS_ADAPTER + "-" + routeId;
     }
 
 }

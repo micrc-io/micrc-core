@@ -16,6 +16,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -127,6 +128,7 @@ class IntegrationParams {
      * @return
      */
     public static String dynamicIntegrate(@ExchangeProperties Map<String, Object> properties) {
+        @SuppressWarnings("all")
         List<ParamIntegration> paramIntegrations = (List<ParamIntegration>) properties.get("paramIntegrations");
         // 初始化动态路由集成控制信息
         if (null == paramIntegrations) {
@@ -156,6 +158,7 @@ class IntegrationParams {
             body = new String((byte[]) body);
         }
         String param = (String) properties.get("param");
+        @SuppressWarnings("all")
         Map current = (Map) properties.get("current");
         String name = (String) current.get("name");
         ParamIntegration.Type currentIntegrateType = (ParamIntegration.Type) current.get("type");
@@ -164,6 +167,7 @@ class IntegrationParams {
         } else if (ParamIntegration.Type.INTEGRATE.equals(currentIntegrateType)) {
             body = JsonUtil.readPath((String) body, "/data");
         }
+        @SuppressWarnings("all")
         List<ParamIntegration> paramIntegrations = (List<ParamIntegration>) exchange.getProperties().get("paramIntegrations");
         // 将上次执行的结果放回至原有属性集成参数之中
         ParamIntegration find = paramIntegrations.stream()
@@ -216,6 +220,7 @@ class IntegrationParams {
                         .at("/paths").elements().next().elements().next()
                         .at("/requestBody/content").elements().next()
                         .at("/x-integrate-mapping");
+                @SuppressWarnings("all")
                 HashMap<String, Object> integrateMappings = JsonUtil.writeValueAsObject(mappingNode.toString(), HashMap.class);
                 integrateMappings.keySet().forEach(key -> {
                     paramMap.put(key, JsonUtil.readPath(param, (String) integrateMappings.get(key)));
@@ -252,10 +257,11 @@ class IntegrationParams {
      * @return
      */
     private static String fileReader(String filePath) {
-        StringBuffer fileContent = new StringBuffer();
+        StringBuilder fileContent = new StringBuilder();
         try {
             InputStream stream = Thread.currentThread().getContextClassLoader().getResourceAsStream(filePath);
-            BufferedReader in = new BufferedReader(new InputStreamReader(stream, "UTF-8"));
+            assert stream != null;
+            BufferedReader in = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
             String str = null;
             while ((str = in.readLine()) != null) {
                 fileContent.append(str);
