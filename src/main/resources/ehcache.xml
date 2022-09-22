@@ -1,0 +1,3 @@
+<ehcache>
+    <defaultCache maxEntriesLocalHeap="1000" eternal="false" timeToIdleSeconds="300" timeToLiveSeconds="600" />
+</ehcache>
