@@ -9,6 +9,7 @@ import io.micrc.lib.ClassCastUtils;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
+import org.apache.camel.Exchange;
 import org.apache.camel.ExchangeProperties;
 
 import java.lang.reflect.InvocationTargetException;
@@ -75,7 +76,7 @@ public class ApplicationCommandAdapterRouteConfiguration extends MicrcRouteBuild
 
 class AdapterParamsHandler {
     public static String convert(
-            String body,
+            Exchange exchange,
             @ExchangeProperties Map<String, Object> properties) throws ClassNotFoundException, NoSuchMethodException,
             InvocationTargetException, InstantiationException, IllegalAccessException {
         String paramsJson = (String) properties.get("paramsJson");
@@ -112,7 +113,7 @@ class AdapterParamsHandler {
                         throw new ApplicationCommandAdapterDesignException(
                                 "command target conception can not to set, please check target method params ");
                     }
-                    Object value = JsonUtil.writeValueAsObject(body, parameterTypes[0]);
+                    Object value = JsonUtil.writeValueAsObject(String.valueOf(exchange.getIn().getBody()), parameterTypes[0]);
                     targetMethod.invoke(command, value);
                     conception.setResolved(true);
                 }
@@ -128,9 +129,9 @@ class AdapterParamsHandler {
         unResolveParams.sort(Comparator.comparing(ConceptionParam::getOrder));
         ConceptionParam conceptionParam = unResolveParams.get(0);
         properties.put("currentResolveParam", conceptionParam.getName());
-        body = JsonUtil.readTree(paramsJson).at("/" + conceptionParam.getName()).toString();
-        return "bean://io.micrc.core.integration.businesses.BodyHandler?method=getBody(" + body + "), jslt://"
-                + conceptionParam.getTargetConceptionMappingPath();
+        String body = JsonUtil.readTree(paramsJson).at("/" + conceptionParam.getName()).toString();
+        exchange.getIn().setHeader("mappingFilePath", conceptionParam.getTargetConceptionMappingPath());
+        return "bean://io.micrc.core.integration.businesses.BodyHandler?method=getBody(" + body + "), json-mapping://file";
     }
 
     private static String upperStringFirst(String str) {

@@ -43,6 +43,7 @@ public class RpcRestRouteConfiguration extends MicrcRouteBuilder {
                 .from("rest:{{method}}:{{address}}")
                 .convertBodyTo(String.class)
                 .to("{{routeProtocol}}://{{adapterName}}")
+                .marshal().json().convertBodyTo(String.class)
                 .end();
     }
 
