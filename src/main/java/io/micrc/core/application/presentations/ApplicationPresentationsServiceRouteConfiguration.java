@@ -6,6 +6,7 @@ import com.github.fge.jsonpatch.JsonPatchException;
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.core.framework.json.JsonUtil;
+import io.micrc.lib.ClassCastUtils;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
@@ -128,8 +129,7 @@ class IntegrationParams {
      * @return
      */
     public static String dynamicIntegrate(@ExchangeProperties Map<String, Object> properties) {
-        @SuppressWarnings("all")
-        List<ParamIntegration> paramIntegrations = (List<ParamIntegration>) properties.get("paramIntegrations");
+        List<ParamIntegration> paramIntegrations = ClassCastUtils.castArrayList(properties.get("paramIntegrations"), ParamIntegration.class);
         // 初始化动态路由集成控制信息
         if (null == paramIntegrations) {
             paramIntegrations = JsonUtil.writeValueAsList((String) properties.get("paramIntegrationsJson"),
@@ -158,8 +158,7 @@ class IntegrationParams {
             body = new String((byte[]) body);
         }
         String param = (String) properties.get("param");
-        @SuppressWarnings("all")
-        Map current = (Map) properties.get("current");
+        Map<String, Object> current = ClassCastUtils.castHashMap(properties.get("current"), String.class, Object.class);
         String name = (String) current.get("name");
         ParamIntegration.Type currentIntegrateType = (ParamIntegration.Type) current.get("type");
         if (ParamIntegration.Type.QUERY.equals(currentIntegrateType) && body instanceof Optional) {
@@ -167,8 +166,7 @@ class IntegrationParams {
         } else if (ParamIntegration.Type.INTEGRATE.equals(currentIntegrateType)) {
             body = JsonUtil.readPath((String) body, "/data");
         }
-        @SuppressWarnings("all")
-        List<ParamIntegration> paramIntegrations = (List<ParamIntegration>) exchange.getProperties().get("paramIntegrations");
+        List<ParamIntegration> paramIntegrations = ClassCastUtils.castArrayList(exchange.getProperties().get("paramIntegrations"), ParamIntegration.class);
         // 将上次执行的结果放回至原有属性集成参数之中
         ParamIntegration find = paramIntegrations.stream()
                 .filter(paramIntegration -> name.equals(paramIntegration.getConcept()))
@@ -176,8 +174,8 @@ class IntegrationParams {
         // 标识该参数已成功
         find.setIntegrationComplete(true);
         param = add(param, "/" + find.getConcept(), JsonUtil.writeValueAsString(body));
-        properties.put("param", param);
-        properties.put("paramIntegrations", paramIntegrations);
+        exchange.getProperties().put("param", param);
+        exchange.getProperties().put("paramIntegrations", paramIntegrations);
     }
 
     /**
@@ -220,8 +218,8 @@ class IntegrationParams {
                         .at("/paths").elements().next().elements().next()
                         .at("/requestBody/content").elements().next()
                         .at("/x-integrate-mapping");
-                @SuppressWarnings("all")
-                HashMap<String, Object> integrateMappings = JsonUtil.writeValueAsObject(mappingNode.toString(), HashMap.class);
+                Object mappingObject = JsonUtil.writeValueAsObject(mappingNode.toString(), Object.class);
+                Map<String, Object> integrateMappings = ClassCastUtils.castHashMap(mappingObject, String.class, Object.class);
                 integrateMappings.keySet().forEach(key -> {
                     paramMap.put(key, JsonUtil.readPath(param, (String) integrateMappings.get(key)));
                 });
