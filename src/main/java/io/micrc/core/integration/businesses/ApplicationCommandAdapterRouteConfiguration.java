@@ -81,7 +81,6 @@ class AdapterParamsHandler {
         String paramsJson = (String) properties.get("paramsJson");
         List<ConceptionParam> conceptions = ClassCastUtils.castArrayList(properties.get("conceptions"),
                 ConceptionParam.class);
-        properties.put("conceptions", conceptions);
         Object command = properties.get("command");
         // 处理第一次进来时的情况
         if (null == conceptions && null == command) {

@@ -30,13 +30,7 @@ import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -195,8 +189,8 @@ class ApplicationPresentationsServiceScanner extends ClassPathBeanDefinitionScan
             paramIntegrations.add(new ParamIntegration(logic.name(), lowerStringFirst(logic.aggregation()), methodName, map, logic.order()));
         });
         // 集成解析
-        Arrays.stream(integrations).forEach(logic -> {
-            paramIntegrations.add(new ParamIntegration(logic.name(), logic.protocol(), logic.order()));
+        Arrays.stream(integrations).forEach(integration -> {
+            paramIntegrations.add(new ParamIntegration(integration.name(), integration.protocol(), integration.order()));
         });
         // 按照优先级排序
         paramIntegrations.sort(Comparator.comparing(ParamIntegration::getOrder));

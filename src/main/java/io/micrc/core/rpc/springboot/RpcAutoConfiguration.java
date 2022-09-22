@@ -4,8 +4,8 @@ import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.core.rpc.RpcRestRouteConfiguration;
 import org.apache.camel.RoutesBuilder;
 import org.apache.camel.builder.RouteBuilder;
+import org.apache.camel.component.direct.DirectComponent;
 import org.apache.camel.component.rest.RestComponent;
-import org.apache.camel.component.rest.openapi.RestOpenApiComponent;
 import org.apache.camel.component.rest.openapi.springboot.RestOpenApiComponentAutoConfiguration;
 import org.apache.camel.component.rest.springboot.RestComponentAutoConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -31,11 +31,11 @@ import java.util.Map;
 public class RpcAutoConfiguration {
 
     @Bean("req")
-    public RestOpenApiComponent req() {
-        RestOpenApiComponent request = new RestOpenApiComponent();
-        request.setComponentName("undertow");
+    public DirectComponent req() {
+        DirectComponent request = new DirectComponent();
         return request;
     }
+
 
     @Bean("rest")
     public RestComponent rest() {

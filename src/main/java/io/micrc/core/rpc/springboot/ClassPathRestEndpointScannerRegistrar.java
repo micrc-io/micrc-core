@@ -96,6 +96,7 @@ public class ClassPathRestEndpointScannerRegistrar implements ImportBeanDefiniti
         rpcPresentationScanner.setResourceLoader(resourceLoader);
         rpcPresentationScanner.doScan(basePackages);
 
+        @SuppressWarnings("unchecked")
         BeanDefinition rpcPresentationScannerBeanDefinition = BeanDefinitionBuilder
                 .genericBeanDefinition((Class<RpcRestRouteParamSource>) rpcRestRouteParamSource.getClass(),
                         () -> rpcRestRouteParamSource)
@@ -104,6 +105,7 @@ public class ClassPathRestEndpointScannerRegistrar implements ImportBeanDefiniti
                 importBeanNameGenerator.generateBeanName(rpcPresentationScannerBeanDefinition, registry),
                 rpcPresentationScannerBeanDefinition);
 
+        @SuppressWarnings("unchecked")
         BeanDefinition adaptersInfoBeanDefinition = BeanDefinitionBuilder
                 .genericBeanDefinition((Class<AdaptersInfo>) adaptersInfo.getClass(), () -> adaptersInfo)
                 .getRawBeanDefinition();

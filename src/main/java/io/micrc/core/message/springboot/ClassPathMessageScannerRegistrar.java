@@ -65,6 +65,7 @@ public class ClassPathMessageScannerRegistrar implements ImportBeanDefinitionReg
         messageSubscriberScanner.setResourceLoader(resourceLoader);
         messageSubscriberScanner.doScan(basePackages);
         // registering
+        @SuppressWarnings("unchecked")
         BeanDefinition beanDefinition = BeanDefinitionBuilder.genericBeanDefinition((Class<MessageSubscriberRouteParamSource>) source.getClass(), () -> source).getRawBeanDefinition();
         registry.registerBeanDefinition(importBeanNameGenerator.generateBeanName(beanDefinition, registry), beanDefinition);
     }

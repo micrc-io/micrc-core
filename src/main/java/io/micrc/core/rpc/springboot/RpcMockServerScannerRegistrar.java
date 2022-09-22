@@ -1,11 +1,20 @@
 package io.micrc.core.rpc.springboot;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import io.micrc.core.EnableMicrcSupport;
 import io.micrc.core.annotations.application.businesses.BusinessesService;
+import io.micrc.core.annotations.application.businesses.DeriveIntegration;
+import io.micrc.core.annotations.application.presentations.PresentationsService;
+import io.micrc.core.framework.json.JsonUtil;
+import io.micrc.core.rpc.IntegrationsInfo;
+import io.micrc.core.rpc.IntegrationsInfo.Integration;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.mockserver.integration.ClientAndServer;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
+import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinitionHolder;
+import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.BeanNameGenerator;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
@@ -14,14 +23,20 @@ import org.springframework.context.annotation.ClassPathBeanDefinitionScanner;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
 import org.springframework.core.annotation.AnnotationAttributes;
 import org.springframework.core.env.Environment;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.core.type.StandardAnnotationMetadata;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
 
+import java.io.*;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * rpc调用在default，local环境下的mock服务端
@@ -34,6 +49,8 @@ import java.util.Set;
 public class RpcMockServerScannerRegistrar implements ImportBeanDefinitionRegistrar, EnvironmentAware {
 
     private Environment env;
+
+    private ResourceLoader resourceLoader;
 
     @Override
     public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata,
@@ -55,14 +72,37 @@ public class RpcMockServerScannerRegistrar implements ImportBeanDefinitionRegist
         if (basePackages.length == 0) {
             return;
         }
-        new RPCRequestScanner(registry).doScan(basePackages);
+
+        ClientAndServer server = ClientAndServer.startClientAndServer(1080); // 启动mock server
+        IntegrationsInfo integrationsInfo = new IntegrationsInfo();
+        new RPCRequestScanner(registry, server, integrationsInfo).doScan(basePackages);
+        // 以mockServer为beanName，将server注册进去
+        @SuppressWarnings("unchecked")
+        BeanDefinition clientAndServerBeanDefinition = BeanDefinitionBuilder
+                .genericBeanDefinition((Class<ClientAndServer>) server.getClass(), () -> server)
+                .getRawBeanDefinition();
+        registry.registerBeanDefinition(importBeanNameGenerator.generateBeanName(clientAndServerBeanDefinition, registry),
+                clientAndServerBeanDefinition);
+        // 注册全局集成信息
+        @SuppressWarnings("unchecked")
+        BeanDefinition integrationsInfoBeanDefinition = BeanDefinitionBuilder
+                .genericBeanDefinition((Class<IntegrationsInfo>) integrationsInfo.getClass(), () -> integrationsInfo)
+                .getRawBeanDefinition();
+        registry.registerBeanDefinition(importBeanNameGenerator.generateBeanName(integrationsInfoBeanDefinition, registry),
+                integrationsInfoBeanDefinition);
     }
 
     @Slf4j
     private static class RPCRequestScanner extends ClassPathBeanDefinitionScanner {
 
-        public RPCRequestScanner(BeanDefinitionRegistry registry) {
+        private final ClientAndServer server;
+
+        private final IntegrationsInfo integrationsInfo;
+
+        public RPCRequestScanner(BeanDefinitionRegistry registry, ClientAndServer server, IntegrationsInfo integrationsInfo) {
             super(registry);
+            this.server = server;
+            this.integrationsInfo = integrationsInfo;
         }
 
         @Override
@@ -71,32 +111,93 @@ public class RpcMockServerScannerRegistrar implements ImportBeanDefinitionRegist
             return metadata.isInterface() && metadata.isIndependent();
         }
 
+        @SneakyThrows
         @Override
         protected Set<BeanDefinitionHolder> doScan(String... basePackages) {
             this.addIncludeFilter(new AnnotationTypeFilter(BusinessesService.class)); // 业务逻辑的集成
-            // this.addIncludeFilter(new AnnotationTypeFilter(PresentationsService.class)); // 展示逻辑的集成
-            // this.addIncludeFilter(new AnnotationTypeFilter(annotationType)); // 衍生逻辑的集成
+            this.addIncludeFilter(new AnnotationTypeFilter(PresentationsService.class)); // 展示逻辑的集成
+            // 衍生逻辑: 衍生不可再衍生,无rpc集成
             Set<BeanDefinitionHolder> holders = super.doScan(basePackages);
-            ClientAndServer server = ClientAndServer.startClientAndServer(1080); // 启动mock server
-            log.error(server.toString());
             for (BeanDefinitionHolder holder : holders) {
                 GenericBeanDefinition beanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
-                log.error(beanDefinition.toString());
-                // TODO 业务逻辑: 获取command的属性上的集成注解，得到openapi协议classpath路径specPath
-                // TODO server.upsert(OpenAPIExpectation.openAPIExpectation(specPath)); // 导入openapi创建expectation
-                // TODO 展示逻辑: 获取注解上的集成中的openapi协议classpath路径
-                // TODO server.upsert(OpenAPIExpectation.openAPIExpectation(specPath)); // 导入openapi创建expectation
-                // TODO 衍生逻辑: 获取注解上的集成中的openapi协议classpath路径
-                // TODO server.upsert(OpenAPIExpectation.openAPIExpectation(specPath)); // 导入openapi创建expectation
+                beanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
+                BusinessesService businessesService = beanDefinition.getBeanClass().getAnnotation(BusinessesService.class);
+                if (null != businessesService) {
+                    Method[] methods = beanDefinition.getBeanClass().getMethods();
+                    List<Method> executeMethods = Arrays.stream(methods).filter(method -> method.getName().equals("execute") && !method.isBridge()).collect(Collectors.toList());
+                    if (executeMethods.size() != 1) {
+                        throw new RuntimeException("the " + beanDefinition.getBeanClass().getName() + " don`t have only one execute method, please check this application service....");
+                    }
+                    Parameter[] parameters = executeMethods.get(0).getParameters();
+                    if (parameters.length != 1) {
+                        throw new RuntimeException("the " + beanDefinition.getBeanClass().getName() + " execute method don`t have only one command param, please check this application service....");
+                    }
+                    Field[] commandFields = parameters[0].getType().getDeclaredFields();
+                    // 获取Command身上的参数的服务集成注解
+                    Arrays.stream(commandFields).forEach(field -> {
+                        DeriveIntegration deriveIntegration = field.getAnnotation(DeriveIntegration.class);
+                        if (null != deriveIntegration) {
+                            integrationsInfo.add(this.analysisOpenApiProtocol(deriveIntegration.protocolPath()));
+                        }
+                    });
+                }
+                PresentationsService presentationsService = beanDefinition.getBeanClass().getAnnotation(PresentationsService.class);
+                if (null != presentationsService) {
+                    Arrays.stream(presentationsService.integrations()).forEach(integration -> {
+                        integrationsInfo.add(this.analysisOpenApiProtocol(integration.protocol()));
+                    });
+                }
             }
+            // MonkServer注册协议
+//            integrationsInfo.getAll().stream().forEach(integration -> {
+//                server.upsert(OpenAPIExpectation.openAPIExpectation(integration.getProtocolFilePath()));
+//            });
             holders.clear();
-            // TODO 可以以mockServer为beanName，将server注册进去
             return holders;
         }
 
         @Override
         protected void registerBeanDefinition(BeanDefinitionHolder definitionHolder, BeanDefinitionRegistry routersInfo) {
             // nothing to do. leave it out.
+        }
+
+        @SneakyThrows
+        private Integration analysisOpenApiProtocol(String protocolFilePath) {
+            String protocolContent = this.fileReader(protocolFilePath);
+            JsonNode protocolNode = JsonUtil.readTree(protocolContent);
+            JsonNode mappingNode = protocolNode
+                    .at("/paths").elements().next().elements().next()
+                    .at("/requestBody/content").elements().next();
+            // 收集host
+            JsonNode hostNode = protocolNode
+                    .at("/servers").get(0)
+                    .at("/url");
+            // 收集operationId
+            JsonNode operationNode = protocolNode
+                    .at("/paths").elements().next().elements().next()
+                    .at("/operationId");
+            return Integration.builder()
+                    .protocolFilePath(protocolFilePath)
+                    .operationId(operationNode.textValue())
+                    .host(hostNode.textValue())
+                    .build();
+        }
+
+        private String fileReader(String filePath) throws FileNotFoundException {
+            StringBuffer fileContent = new StringBuffer();
+            try {
+                InputStream stream = Thread.currentThread().getContextClassLoader()
+                        .getResourceAsStream(filePath);
+                BufferedReader in = new BufferedReader(new InputStreamReader(stream, "UTF-8"));
+                String str = null;
+                while ((str = in.readLine()) != null) {
+                    fileContent.append(str);
+                }
+                in.close();
+            } catch (IOException e) {
+                throw new FileNotFoundException("the openapi protocol file not found...");
+            }
+            return fileContent.toString();
         }
     }
 
@@ -105,3 +206,4 @@ public class RpcMockServerScannerRegistrar implements ImportBeanDefinitionRegist
         this.env = environment;
     }
 }
+

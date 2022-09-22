@@ -99,11 +99,8 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                         "executableIntegrationInfo(${exchange.properties.get(unIntegrateParams)}, ${exchange.properties.get(commandJson)})")
                 .setProperty("currentIntegrateParam", body())
                 .setBody(simple("${in.body.get(integrateParams)}"))
-                .marshal().json().convertBodyTo(String.class)
-                // 构造发送
-                .toD("rest-openapi://${exchange.properties.get(currentIntegrateParam).get(protocol)}#${exchange.properties.get(currentIntegrateParam).get(operationId)}?host=${exchange.properties.get(currentIntegrateParam).get(host)}")
-                // 处理返回
-                .convertBodyTo(String.class)
+                .setHeader("protocolFilePath", simple("${exchange.properties.get(currentIntegrateParam).get(protocol)}"))
+                .to("req://integration")
                 .process(exchange -> {
                     String body = (String) exchange.getIn().getBody();
                     JsonNode jsonNode = JsonUtil.readTree(body);
