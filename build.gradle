@@ -15,13 +15,15 @@ targetCompatibility = '11'
 ext {
     set('camel.version', '3.18.1')
     set('cm.version', '2.1.3')
-    set('springdoc.version', '1.6.11')
-    set('mockserver.version', '5.14.0')
-    set('rabbitmq-mock.version', '1.1.1')
+    set('hibernate.version', '5.6.10.Final')
+    set('caffeine.version', '3.1.1')
+    set('shedlock.version', '4.42.0')
     set('json-patch.version', '1.13')
+    set('springdoc.version', '1.6.11')
+    set('rabbitmq-mock.version', '1.1.1')
+    set('mockserver.version', '5.14.0')
     set('embedded-redis.version', '0.7.3')
     set('testcontainers.version', '2.2.7')
-    set('shedlock.version', '4.42.0')
 }
 
 configurations {
@@ -78,6 +80,9 @@ dependencies {
     implementation "com.h2database:h2"
     // db migration
     implementation "org.liquibase:liquibase-core"
+    // L2 cache
+    implementation "org.hibernate:hibernate-jcache:${property('hibernate.version')}"
+    implementation "com.github.ben-manes.caffeine:jcache:${property('caffeine.version')}"
 
     // integration camel for spring-boot base
     implementation "org.apache.camel.springboot:camel-spring-boot-starter:${property('camel.version')}"
@@ -113,9 +118,11 @@ dependencies {
     implementation "com.github.fridujo:rabbitmq-mock:${property('rabbitmq-mock.version')}"
     // implementation "com.playtika.testcontainers:embedded-rabbitmq:${property('testcontainers.version')}" // 备用。当rabbitmq-mock不适用时使用
 
-    // redis for cache and schedule
+    // caffeine, redis for cache and schedule
     implementation "org.springframework.boot:spring-boot-starter-cache"
     implementation "org.springframework.boot:spring-boot-starter-data-redis"
+    // caffeine jcache
+    implementation "com.github.ben-manes.caffeine:caffeine:${property('caffeine.version')}"
     // shedlock for schedule distributed lock
     implementation "net.javacrumbs.shedlock:shedlock-spring:${property('shedlock.version')}"
     implementation "net.javacrumbs.shedlock:shedlock-provider-redis-spring:${property('shedlock.version')}"
