@@ -73,7 +73,7 @@ dependencies {
     // jpa support for repository and query
     implementation "org.springframework.boot:spring-boot-starter-data-jpa"
     // jdbc support for event store, tracker and idempotent store
-    implementation "org.apache.camel.springboot:camel-jdbc-starter:${property('camel.version')}"
+    implementation "org.apache.camel.springboot:camel-spring-jdbc-starter:${property('camel.version')}"
     // db for default, local
     implementation "com.h2database:h2"
     // db migration
@@ -85,14 +85,13 @@ dependencies {
     implementation "org.apache.camel.springboot:camel-bean-starter:${property('camel.version')}"
     // groovy support for groovy script in route
     implementation "org.apache.camel.springboot:camel-groovy-starter:${property('camel.version')}"
+
     // json jackson support for tansform
     implementation "org.apache.camel.springboot:camel-jackson-starter:${property('camel.version')}"
     // jslt support for json(domain object) mapping
     implementation "org.apache.camel.springboot:camel-jslt-starter:${property('camel.version')}"
     // json patch support for custom router with json-pointer and json-patch
     implementation "com.github.java-json-tools:json-patch:${property('json-patch.version')}"
-
-    implementation "org.apache.camel.springboot:camel-spring-jdbc-starter:${property('camel.version')}"
 
     // http/websocket endpoints producing, used by rest openapi component
     implementation "org.apache.camel.springboot:camel-undertow-starter:${property('camel.version')}"
@@ -106,9 +105,8 @@ dependencies {
     implementation "org.springdoc:springdoc-openapi-ui:${property('springdoc.version')}"
     // mock server for rpc producer
     implementation "org.mock-server:mockserver-netty-no-dependencies:${property('mockserver.version')}"
-
     // message endpoints for consuming and producing - message producer and consumer adapter
-    implementation "org.apache.camel.springboot:camel-spring-rabbitmq-starter:${property('camel.version')}"
+    implementation "org.springframework.boot:spring-boot-starter-amqp"
     // mock rabbitmq msg
     implementation "com.github.fridujo:rabbitmq-mock:${property('rabbitmq-mock.version')}"
     // implementation "com.playtika.testcontainers:embedded-rabbitmq:${property('testcontainers.version')}" // 备用。当rabbitmq-mock不适用时使用
