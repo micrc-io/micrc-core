@@ -12,3 +12,10 @@ public class TestEntity {
     @Id
     private String id;
 }
+
+@Entity
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
+class TestEntity2 {
+    @Id
+    private String id;
+}

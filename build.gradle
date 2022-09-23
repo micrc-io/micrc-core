@@ -25,6 +25,7 @@ ext {
     set('mockserver.version', '5.14.0')
     set('embedded-redis.version', '0.7.3')
     set('testcontainers.version', '2.2.7')
+    set('jslt.version', '0.1.13')
 }
 
 configurations {
@@ -56,7 +57,7 @@ dependencies {
     implementation "io.micrc.core:micrc-annotations:0.0.1"
 
     // springboot basic
-    implementation("org.springframework.boot:spring-boot-starter")
+    implementation "org.springframework.boot:spring-boot-starter"
     implementation "org.springframework.boot:spring-boot-starter-aop"
     implementation "org.springframework.boot:spring-boot-starter-web"
     // metrics
@@ -95,7 +96,8 @@ dependencies {
     // json jackson support for tansform
     implementation "org.apache.camel.springboot:camel-jackson-starter:${property('camel.version')}"
     // jslt support for json(domain object) mapping
-    implementation "org.apache.camel.springboot:camel-jslt-starter:${property('camel.version')}"
+    implementation "com.schibsted.spt.data:jslt:${property('jslt.version')}"
+//    implementation "org.apache.camel.springboot:camel-jslt-starter:${property('camel.version')}"
     // json patch support for custom router with json-pointer and json-patch
     implementation "com.github.java-json-tools:json-patch:${property('json-patch.version')}"
 
@@ -118,7 +120,7 @@ dependencies {
     // implementation "com.playtika.testcontainers:embedded-rabbitmq:${property('testcontainers.version')}" // 备用。当rabbitmq-mock不适用时使用
 
     // caffeine, redis for cache and schedule
-    implementation("org.springframework.boot:spring-boot-starter-cache")
+    implementation "org.springframework.boot:spring-boot-starter-cache"
     implementation "org.springframework.boot:spring-boot-starter-data-redis"
     // caffeine jcache
     implementation "com.github.ben-manes.caffeine:caffeine:${property('caffeine.version')}"

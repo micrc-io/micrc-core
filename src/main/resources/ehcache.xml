@@ -1,3 +1,25 @@
-<ehcache>
-    <defaultCache maxEntriesLocalHeap="1000" eternal="false" timeToIdleSeconds="300" timeToLiveSeconds="600" />
-</ehcache>
+<?xml version="1.0" encoding="UTF-8"?>
+<config
+    xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+    xmlns:jsr107='http://www.ehcache.org/v3/jsr107'
+    xmlns='http://www.ehcache.org/v3'
+    xsi:schemaLocation="
+        http://www.ehcache.org/v3 http://www.ehcache.org/schema/ehcache-core-3.10.xsd
+        http://www.ehcache.org/v3/jsr107 http://www.ehcache.org/schema/ehcache-107-ext-3.10.xsd">
+
+  <service>
+    <jsr107:defaults enable-management="false" enable-statistics="true" default-template="defaultConfig" />
+  </service>
+
+  <cache-template name="defaultConfig">
+        <key-type>java.lang.Object</key-type>
+        <value-type>java.lang.Object</value-type>
+        <expiry>
+            <tti unit="seconds">300</tti>
+        </expiry>
+        <resources>
+            <heap unit="entries">1000</heap>
+            <offheap unit="MB">10</offheap>
+        </resources>
+    </cache-template>
+</config>

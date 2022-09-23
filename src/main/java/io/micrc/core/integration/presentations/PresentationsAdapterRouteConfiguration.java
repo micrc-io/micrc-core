@@ -29,7 +29,6 @@ public class PresentationsAdapterRouteConfiguration extends MicrcRouteBuilder {
                 .to("presentations:{{serviceName}}")
                 .unmarshal().json(Object.class)
                 .bean(Result.class, "result(${in.body})")
-                .marshal().json().convertBodyTo(String.class)
                 .end();
     }
 
