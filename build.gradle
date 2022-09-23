@@ -57,7 +57,7 @@ dependencies {
     implementation "io.micrc.core:micrc-annotations:0.0.1"
 
     // springboot basic
-    implementation("org.springframework.boot:spring-boot-starter")
+    implementation "org.springframework.boot:spring-boot-starter"
     implementation "org.springframework.boot:spring-boot-starter-aop"
     implementation "org.springframework.boot:spring-boot-starter-web"
     // metrics
@@ -120,7 +120,7 @@ dependencies {
     // implementation "com.playtika.testcontainers:embedded-rabbitmq:${property('testcontainers.version')}" // 备用。当rabbitmq-mock不适用时使用
 
     // caffeine, redis for cache and schedule
-    implementation("org.springframework.boot:spring-boot-starter-cache")
+    implementation "org.springframework.boot:spring-boot-starter-cache"
     implementation "org.springframework.boot:spring-boot-starter-data-redis"
     // caffeine jcache
     implementation "com.github.ben-manes.caffeine:caffeine:${property('caffeine.version')}"
