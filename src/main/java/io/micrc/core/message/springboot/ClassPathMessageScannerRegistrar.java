@@ -100,14 +100,15 @@ class MessagePublisherScanner extends ClassPathBeanDefinitionScanner {
             // 构造全局EventsInfo
             DomainEvents domainEvents = beanDefinition.getBeanClass().getAnnotation(DomainEvents.class);
             Arrays.stream(domainEvents.events()).forEach(eventInfo -> {
+                String channel = eventInfo.eventName() + "-" + eventInfo.channel();
                 Event event = Event.builder()
                         .eventName(eventInfo.eventName())
                         .exchangeName(eventInfo.aggregationName())
-                        .channel(eventInfo.eventName() + "-" + eventInfo.channel())
+                        .channel(channel)
                         .mappingPath(eventInfo.mappingPath())
                         .ordered(eventInfo.ordered())
                         .build();
-                eventsInfo.put(eventInfo.eventName() + "-" + eventInfo.channel(), event);
+                eventsInfo.put(channel, event);
             });
         }
         this.registBean(eventsInfo);

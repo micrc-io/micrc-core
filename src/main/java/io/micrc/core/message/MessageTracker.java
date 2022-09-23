@@ -19,6 +19,11 @@ public class MessageTracker {
     private String channel;
 
     /**
+     * 交换区 ? 必要吗?
+     */
+    private String exchange;
+
+    /**
      * 事件类型
      */
     private String region;
@@ -34,6 +39,13 @@ public class MessageTracker {
         tracker.setChannel(channel);
         tracker.setRegion(channel.split("-")[0]);
         tracker.setSequence(0);
+        return tracker;
+    }
+
+    @Consume("eventstore://tracker-move")
+    //TODO tengwang 这里不会端点的入参方法 学会后修正写法
+    public MessageTracker moveSequence(MessageTracker tracker, Integer sequence) {
+        tracker.setSequence(sequence + tracker.getSequence());
         return tracker;
     }
 }

@@ -13,6 +13,7 @@ import org.apache.camel.support.ExpressionAdapter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 消息存储、发送路由，订阅路由模版定义
@@ -43,40 +44,56 @@ public class MessageRouteConfiguration extends RouteBuilder {
         from("eventstore://sender")
                 .log("the message sender start on ${in.body}")
                 .log("spilt-获取所有需要发送的信息,读取内存对象的事件类型,按照事件类型的通道分通道每通道获取{计算出来的值-暂时先100}条-按照消息类型分组,以事件名称为Key进行分组-按照通道拆分分组,并得到其映射文件及通道地址")
-                .to("eventstore://ready-message")
+                .to("eventstore://prepare-new-message")
                 .log("split-获取已发送失败的待重发消息(按照通道臃肿比获取计算要取通道的实际消息),按照发送失败的通道与正常消息通道合并并放在头部")
+                .to("eventstore://prepare-error-message")
+                .process(exchange -> {
+                    System.out.println(exchange);
+                })
                 .log("split-按照通道里的每条消息进行发送")
                 .end();
+
         // 事件信息获取及Tracker创建路由
-        from("eventstore://ready-message")
+        from("eventstore://prepare-error-message")
+                .log("抓异常消息?按通道抓还是直接顺序的抓一定的量")
+                .end();
+
+        from("eventstore://prepare-new-message")
+                .bean(EventsInfo.class, "getAll")
+                .setProperty("eventsInfo", body())
                 .bean(EventsInfo.class, "getAllChannel")
                 .split(body().tokenize(","), new TrackerStrategy()).parallelProcessing()
                 .to("eventstore://fetch-tracker")
                 .end()
                 .setBody(exchangeProperty("trackers"))
-                .split(new SplitList())
-                .to("eventstore://fetch-message")
+                .transacted()
+                .split(new SplitList(), new MessageStrategy()).parallelProcessing()
+                .to("eventstore://fetch-new-message")
                 .end()
-                .process(exchange -> {
-                    System.out.println(exchange);
-                })
-                .end();
-        from("eventstore://fetch-message")
-                .process(exchange -> {
-                    System.out.println(exchange);
-                })
-                .setBody(simple("select * from message_message_store where region = '${body.getRegion()}' and sequence > ${body.getSequence()} limit 100"))
-                .to("spring-jdbc:datasource?useHeadersAsParameters=true&outputClass=io.micrc.core.message.EventMessage&outputType=SelectList")
-                .process(exchange -> {
-                    System.out.println(exchange);
-                })
+                .setBody(exchangeProperty("trackers"))
+                .split(new SplitList(), new MessageStrategy()).parallelProcessing()
+                .setBody(simple("update message_message_tracker set sequence = '${body.getSequence()}' where channel = '${body.getChannel()}'"))
+                .to("spring-jdbc:datasource?useHeadersAsParameters=true&outputType=SelectList&resetAutoCommit=false")
+                .end()
+                .setBody(exchangeProperty("messages"))
                 .end();
 
+        from("eventstore://fetch-new-message")
+                .setHeader("tracker", body())
+                .setBody(simple("select * from message_message_store where region = '${body.getRegion()}' and sequence > ${body.getSequence()} limit 100"))
+                .to("spring-jdbc:datasource?useHeadersAsParameters=true&outputType=SelectList&resetAutoCommit=false")
+                .setHeader("messagesCount", header("CamelJdbcRowCount"))
+                // TODO 修正在H2下String变为Clob问题, 先使用临时替代方案
+                .to("eventstore://convert-clob")
+                .setHeader("events", body())
+                .bean(MessageTracker.class, "moveSequence(${header.tracker}, ${header.messagesCount})")
+                //.toD("eventstore://tracker-move?tracker=${header.tracker}&sequence=${header.messagesCount}")
+                .end();
 
         from("eventstore://fetch-tracker")
                 .setHeader("channel", body())
                 .setBody(simple("select * from message_message_tracker where channel = :?channel"))
-                .to("spring-jdbc:datasource?useHeadersAsParameters=true&outputClass=io.micrc.core.message.MessageTracker&outputType=SelectOne")
+                .to("spring-jdbc:datasource?useHeadersAsParameters=true&outputClass=io.micrc.core.message.MessageTracker&outputType=SelectOne&resetAutoCommit=false")
                 .choice().when(body().isNull())
                 .setBody(header("channel"))
                 .to("eventstore://create-tracker")
@@ -163,27 +180,24 @@ public class MessageRouteConfiguration extends RouteBuilder {
     public static class EventsInfo {
 
         private List<String> channelsCache = new ArrayList<>();
-        private List<Event> eventsCache = new ArrayList<>();
-        private HashMap<String, Event> eventInfo = new HashMap<>();
+        private HashMap<String, Event> eventsInfo = new HashMap<>();
 
         public EventsInfo(EventsInfo eventsInfo) {
-            this.eventInfo = eventsInfo.eventInfo;
-            this.eventsCache = eventsInfo.eventsCache;
+            this.eventsInfo = eventsInfo.eventsInfo;
             this.channelsCache = eventsInfo.channelsCache;
         }
 
         public void put(String key, Event value) {
-            this.eventInfo.put(key, value);
-            this.eventsCache.add(value);
+            this.eventsInfo.put(key, value);
             this.channelsCache.add(value.channel);
         }
 
         public Event get(String key) {
-            return eventInfo.get(key);
+            return eventsInfo.get(key);
         }
 
-        public List<Event> getAllEvent() {
-            return this.eventsCache;
+        public Map<String, Event> getAll() {
+            return this.eventsInfo;
         }
 
         public List<String> getAllChannel() {
@@ -231,6 +245,32 @@ public class MessageRouteConfiguration extends RouteBuilder {
             @SuppressWarnings("unchecked")
             List<MessageTracker> trackers = (List<MessageTracker>) newExchange.getProperty("trackers");
             trackers.add((MessageTracker) oldExchange.getIn().getBody());
+            return oldExchange;
+        }
+    }
+
+    public static class MessageStrategy implements AggregationStrategy {
+        public Exchange aggregate(Exchange oldExchange, Exchange newExchange) {
+            if (oldExchange == null) {
+                newExchange.setProperty("messages", new HashMap<>());
+                oldExchange = newExchange;
+            }
+            // 此处不可使用ClassCastUtils 原因是其是多线程的,并不安全,如对其进行替换会导致其他线程异常
+            @SuppressWarnings("unchecked")
+            List<EventMessage> eventMessages = (List<EventMessage>) newExchange.getIn().getHeader("events");
+            MessageTracker tracker = (MessageTracker) newExchange.getIn().getHeader("tracker");
+            @SuppressWarnings("unchecked")
+            Map<String, EventsInfo.Event> eventInfo = (Map<String, EventsInfo.Event>) newExchange.getProperty("eventsInfo");
+            // 构造带适配的消息
+            Map<String, Object> channelEvent = new HashMap<>();
+            channelEvent.put("exchange", eventInfo.get(tracker.getChannel()).getExchangeName());
+            channelEvent.put("channel", tracker.getChannel());
+            channelEvent.put("mapping", eventInfo.get(tracker.getChannel()).getMappingPath());
+            channelEvent.put("ordered", eventInfo.get(tracker.getChannel()).getOrdered());
+            channelEvent.put("events", eventMessages);
+            @SuppressWarnings("unchecked")
+            Map<String, Object> messageMap = (Map<String, Object>) newExchange.getProperty("messages");
+            messageMap.put(tracker.getChannel(), channelEvent);
             return oldExchange;
         }
     }

@@ -1,6 +1,6 @@
 databaseChangeLog:
   - changeSet:
-      id: create-table-message-store-0.0.1
+      id: create-table-message-series-0.0.1
       author: tengwang
       preConditions:
         - onFail: MARK_RAN
@@ -63,46 +63,111 @@ databaseChangeLog:
                   type: VARCHAR(500)
                   remarks: the event type
                   constraints:
-                    nullable: true
+                    nullable: false
               - column:
                   name: sequence
                   type: BIGINT
                   remarks: the event type
                   constraints:
-                    nullable: true
+                    nullable: false
         - createTable:
-            tableName: message_error_event
+            tableName: message_error_message
             remarks: store send error or dead message
             columns:
               - column:
-                  name: channel
-                  type: VARCHAR(500)
-                  remarks: the channel of event
+                  name: error_message_id
+                  type: VARCHAR(255)
+                  remarks: the id of error event
                   constraints:
                     nullable: false
                     primaryKey: true
                     primaryKeyName: error_event-pk
               - column:
-                  name: region
-                  type: VARCHAR(500)
-                  remarks: the event type
-                  constraints:
-                    nullable: true
-              - column:
                   name: sequence
                   type: BIGINT
                   remarks: the event sequence
                   constraints:
-                    nullable: true
+                    nullable: false
+              - column:
+                  name: channel
+                  type: VARCHAR(500)
+                  remarks: the event channel
+                  constraints:
+                    nullable: false
+              - column:
+                  name: exchange
+                  type: VARCHAR(500)
+                  remarks: the event exchange
+                  constraints:
+                    nullable: false
+              - column:
+                  name: region
+                  type: VARCHAR(500)
+                  remarks: the event type
+                  constraints:
+                    nullable: false
               - column:
                   name: reason
                   type: VARCHAR(500)
-                  remarks: send error reason - the SEND is in send step error, the DEAD_MESSAGE is on consumer can not produce error
+                  remarks: send error reason - the SEND is in send step error, the DEAD_MESSAGE is on consumer can not consumer error
                   constraints:
-                    nullable: true
+                    nullable: false
               - column:
-                  name: state
+                  name: last_error_time
                   type: BIGINT
-                  remarks: the error event state - the type SEND will retry to send on last sender job, the CAN_NOT_SEND will be message not allow to send for sender
+                  remarks: the last error time
                   constraints:
-                    nullable: true
+                    nullable: false
+              - column:
+                  name: error_frequency
+                  type: INT
+                  remarks: the error message error frequency
+                  constraints:
+                    nullable: false
+        - insert:
+            columns:
+              - column:
+                  name: message_id
+                  value: '166393101435601d6dd34009b4d4ab48d789a1d579987'
+              - column:
+                  name: create_time
+                  value: 1663931014356
+              - column:
+                  name: content
+                  value: '{"source":{"id":"test-0021663931012154","state":"CREATED","authorizeInfo":{"authorizeTime":null,"cancelAuthorizeTime":null},"archiveInfo":null,"destroyInfo":null,"commissionInfo":null,"commissionCharacteristic":{"canCommission":true,"canArchive":false,"authorized":false},"belongStore":null,"belongOrder":{"orderId":"test-order-002","originalOrderId":null,"paymentInfo":null,"belongPlatform":null,"orderType":null,"logisticType":null,"orderCharacteristic":null},"orderParcelList":[],"orderItemList":[],"orderBuyer":null,"version":null},"target":{"id":"test-0021663931012154","state":"AUTHORIZED","authorizeInfo":{"authorizeTime":1663931014309,"cancelAuthorizeTime":null},"archiveInfo":null,"destroyInfo":null,"commissionInfo":null,"commissionCharacteristic":{"canCommission":false,"canArchive":false,"authorized":false},"belongStore":null,"belongOrder":{"orderId":"test-order-002","originalOrderId":null,"paymentInfo":null,"belongPlatform":null,"orderType":null,"logisticType":null,"orderCharacteristic":null},"orderParcelList":[],"orderItemList":[],"orderBuyer":null,"version":null},"commissionId":{"id":"212132132"},"characteristic":{"timeouted":null,"timeouting":null,"latestShipTime":null,"inactivated":false,"offlineResolved":false,"logisticTypes":[]},"authResult":{"result":true,"errorMessage":null,"errorCode":null,"event":"CommissionAuthorizeEvent"},"error":{"errorMessage":null,"errorCode":null},"event":"CommissionAuthorizeEvent"}'
+              - column:
+                  name: region
+                  value: 'CommissionAuthorizeEvent'
+              - column:
+                  name: sequence
+                  value: 1
+            dbms: 'h2'
+            tableName: message_message_store
+        - insert:
+            columns:
+              - column:
+                  name: error_message_id
+                  value: '166393101435601d6dd34009b4d4ab48d789a1d579988'
+              - column:
+                  name: sequence
+                  value: 1
+              - column:
+                  name: channel
+                  value: 'CommissionAuthorizeEvent-OrderResolveTrackerCreate'
+              - column:
+                  name: exchange
+                  value: 'Commission'
+              - column:
+                  name: region
+                  value: 'CommissionAuthorizeEvent'
+              - column:
+                  name: reason
+                  value: 'SEND'
+              - column:
+                  name: last_error_time
+                  value: 1663931014376
+              - column:
+                  name: error_frequency
+                  value: 1
+            dbms: 'h2'
+            tableName: message_error_message
