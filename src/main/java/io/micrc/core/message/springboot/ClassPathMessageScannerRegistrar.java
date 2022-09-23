@@ -1,8 +1,8 @@
 package io.micrc.core.message.springboot;
 
+import io.micrc.core.EnableMicrcSupport;
 import io.micrc.core.annotations.application.businesses.DomainEvents;
 import io.micrc.core.annotations.integration.message.MessageAdapter;
-import io.micrc.core.message.EnableMessage;
 import io.micrc.core.message.MessageRouteConfiguration;
 import io.micrc.core.message.MessageRouteConfiguration.EventsInfo;
 import io.micrc.core.message.MessageRouteConfiguration.EventsInfo.Event;
@@ -40,9 +40,9 @@ public class ClassPathMessageScannerRegistrar implements ImportBeanDefinitionReg
 
     @Override
     public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry, BeanNameGenerator importBeanNameGenerator) {
-        AnnotationAttributes attributes = AnnotationAttributes.fromMap(importingClassMetadata.getAnnotationAttributes(EnableMessage.class.getName()));
+        AnnotationAttributes attributes = AnnotationAttributes.fromMap(importingClassMetadata.getAnnotationAttributes(EnableMicrcSupport.class.getName()));
         assert attributes != null;
-        String[] basePackages = attributes.getStringArray("servicePackages");
+        String[] basePackages = attributes.getStringArray("basePackages");
         if (basePackages.length == 0 && importingClassMetadata instanceof StandardAnnotationMetadata) {
             basePackages = new String[]{((StandardAnnotationMetadata) importingClassMetadata).getIntrospectedClass().getPackage().getName()};
         }
@@ -103,11 +103,11 @@ class MessagePublisherScanner extends ClassPathBeanDefinitionScanner {
                 Event event = Event.builder()
                         .eventName(eventInfo.eventName())
                         .exchangeName(eventInfo.aggregationName())
-                        .channel(eventInfo.channel())
+                        .channel(eventInfo.eventName() + "-" + eventInfo.channel())
                         .mappingPath(eventInfo.mappingPath())
                         .ordered(eventInfo.ordered())
                         .build();
-                eventsInfo.put(eventInfo.channel(), event);
+                eventsInfo.put(eventInfo.eventName() + "-" + eventInfo.channel(), event);
             });
         }
         this.registBean(eventsInfo);

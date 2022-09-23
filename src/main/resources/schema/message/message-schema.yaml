@@ -43,7 +43,7 @@ databaseChangeLog:
                   type: BIGINT
                   remarks: the message sequence
                   constraints:
-                    nullable: true
+                    nullable: false
                     unique: true
                     autoIncrement: true
         - createTable:
@@ -58,12 +58,6 @@ databaseChangeLog:
                     nullable: false
                     primaryKey: true
                     primaryKeyName: tracker-pk
-              - column:
-                  name: tracker_type
-                  type: VARCHAR(255)
-                  remarks: the tracker type - ERROR is error tracker, GLOBAL is global tracker
-                  constraints:
-                    nullable: false
               - column:
                   name: region
                   type: VARCHAR(500)

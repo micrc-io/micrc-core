@@ -90,7 +90,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .setBody(exchangeProperty("commandJson"))
                 .to("eventstore://store")
                 .setBody(exchangeProperty("commandJson"))
-                .convertBodyTo(String.class)
+                .unmarshal().json(HashMap.class)
                 .end();
 
         from("direct://integration-params")

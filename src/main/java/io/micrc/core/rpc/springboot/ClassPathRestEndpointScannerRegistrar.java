@@ -1,10 +1,10 @@
 package io.micrc.core.rpc.springboot;
 
+import io.micrc.core.EnableMicrcSupport;
 import io.micrc.core.annotations.integration.command.CommandAdapter;
 import io.micrc.core.annotations.integration.derivation.DerivationsAdapter;
 import io.micrc.core.annotations.integration.presentations.PresentationsAdapter;
 import io.micrc.core.framework.json.JsonUtil;
-import io.micrc.core.message.EnableMessage;
 import io.micrc.core.rpc.RpcRestRouteConfiguration;
 import io.micrc.core.rpc.RpcRestRouteConfiguration.AdaptersInfo;
 import io.micrc.core.rpc.RpcRestRouteConfiguration.RpcDefinition;
@@ -66,9 +66,9 @@ public class ClassPathRestEndpointScannerRegistrar implements ImportBeanDefiniti
     public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry,
                                         BeanNameGenerator importBeanNameGenerator) {
         AnnotationAttributes attributes = AnnotationAttributes
-                .fromMap(importingClassMetadata.getAnnotationAttributes(EnableMessage.class.getName()));
+                .fromMap(importingClassMetadata.getAnnotationAttributes(EnableMicrcSupport.class.getName()));
         assert attributes != null;
-        String[] basePackages = attributes.getStringArray("servicePackages");
+        String[] basePackages = attributes.getStringArray("basePackages");
         if (basePackages.length == 0 && importingClassMetadata instanceof StandardAnnotationMetadata) {
             basePackages = new String[]{((StandardAnnotationMetadata) importingClassMetadata).getIntrospectedClass()
                     .getPackage().getName()};
