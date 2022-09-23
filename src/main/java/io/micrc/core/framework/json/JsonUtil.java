@@ -111,6 +111,9 @@ public class JsonUtil {
 
     public static JsonNode readTree(Object obj) {
         try {
+            if (obj instanceof String) {
+                return readTree((String) obj);
+            }
             return OBJECT_NULL_MAPPER.readTree(JsonUtil.writeValueAsString(obj));
         } catch (Exception e) {
             e.printStackTrace();

@@ -92,7 +92,7 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
         properties.setProperty("spring.jpa.properties.javax.persistence.sharedCache.mode", "ALL");
         properties.setProperty("spring.jpa.properties.hibernate.cache.region.factory_class", "jcache");
         //properties.setProperty("spring.jpa.properties.hibernate.javax.cache.provider",
-        //    "com.github.benmanes.caffeine.jcache.spi.CaffeineCachingProvider");
+        //    "org.ehcache.jsr107.EhcacheCachingProvider");
         //properties.setProperty("spring.jpa.properties.hibernate.javax.cache.uri", "ehcache.xml");
         //properties.setProperty("spring.jpa.properties.hibernate.javax.cache.missing_cache_strategy", "create");
         if (profiles.contains("default")) {
