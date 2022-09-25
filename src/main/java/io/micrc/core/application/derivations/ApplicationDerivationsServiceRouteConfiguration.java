@@ -59,7 +59,9 @@ public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteB
                 .dynamicRouter(method(IntegrationParams.class, "dynamicIntegrate"))
                 // 汇编结果处理
                 .setBody(simple("${exchange.properties.get(param)}"))
-                .to("jslt://{{assembler}}")
+                // .to("jslt://{{assembler}}")
+                .setHeader("mappingFilePath", simple("{{assembler}}"))
+                .to("json-mapping://file")
                 // 出口
                 .end();
 
@@ -75,7 +77,7 @@ public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteB
                         "(${exchange.properties.get(current).get(params)})")
                 .otherwise()
                 .setBody(simple("${exchange.properties.get(current).get(params)}"))
-                .toD("operations://post:/${exchange.properties.get(current).get(logic)}?host=localhost:8080")// todo,8888
+                .toD("operations://post:/${exchange.properties.get(current).get(logic)}?host=localhost:8888")
                 .end()
                   // 处理返回
                 .bean(IntegrationParams.class, "processResult");

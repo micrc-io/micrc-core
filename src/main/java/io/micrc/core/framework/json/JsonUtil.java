@@ -100,19 +100,10 @@ public class JsonUtil {
         return writeValueAsList(writeValueAsString(object), targetClass);
     }
 
-    public static JsonNode readTree(String json) {
-        try {
-            return OBJECT_NULL_MAPPER.readTree(json);
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        }
-    }
-
     public static JsonNode readTree(Object obj) {
         try {
             if (obj instanceof String) {
-                return readTree((String) obj);
+                return OBJECT_NULL_MAPPER.readTree((String) obj);
             }
             return OBJECT_NULL_MAPPER.readTree(JsonUtil.writeValueAsString(obj));
         } catch (Exception e) {

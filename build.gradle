@@ -25,6 +25,7 @@ ext {
     set('mockserver.version', '5.14.0')
     set('embedded-redis.version', '0.7.3')
     set('testcontainers.version', '2.2.7')
+    set('jslt.version', '0.1.13')
 }
 
 configurations {
@@ -94,7 +95,8 @@ dependencies {
     // json jackson support for tansform
     implementation "org.apache.camel.springboot:camel-jackson-starter:${property('camel.version')}"
     // jslt support for json(domain object) mapping
-    implementation "org.apache.camel.springboot:camel-jslt-starter:${property('camel.version')}"
+    implementation "com.schibsted.spt.data:jslt:${property('jslt.version')}"
+//    implementation "org.apache.camel.springboot:camel-jslt-starter:${property('camel.version')}"
     // json patch support for custom router with json-pointer and json-patch
     implementation "com.github.java-json-tools:json-patch:${property('json-patch.version')}"
 

@@ -1,7 +1,9 @@
 package io.micrc.core.message.springboot;
 
 import com.github.fridujo.rabbitmq.mock.MockConnectionFactory;
+import io.micrc.core.message.EventMessage;
 import io.micrc.core.message.MessageRouteConfiguration;
+import io.micrc.core.message.MessageTracker;
 import org.apache.camel.component.direct.DirectComponent;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
@@ -19,7 +21,7 @@ import org.springframework.context.annotation.Profile;
  */
 @Configuration
 // @EnableAutoConfiguration(exclude = SpringRabbitMQComponentAutoConfiguration.class)
-@Import({MessageRouteConfiguration.class})
+@Import({MessageRouteConfiguration.class, MessageTracker.class, EventMessage.class})
 public class MessageAutoConfiguration {
 
     @Bean

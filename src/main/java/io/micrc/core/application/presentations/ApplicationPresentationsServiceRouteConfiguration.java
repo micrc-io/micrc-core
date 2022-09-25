@@ -64,7 +64,9 @@ public class ApplicationPresentationsServiceRouteConfiguration extends MicrcRout
                 .dynamicRouter(method(IntegrationParams.class, "dynamicIntegrate"))
                 // 汇编结果处理
                 .setBody(simple("${exchange.properties.get(param)}"))
-                .to("jslt://{{assembler}}")
+                // .to("jslt://{{assembler}}")
+                .setHeader("mappingFilePath", simple("{{assembler}}"))
+                .to("json-mapping://file")
                 // 出口
                 .end();
 
