@@ -86,15 +86,6 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
     private void envForJPA(Collection<String> profiles, Properties properties) {
         properties.setProperty("spring.jpa.database-platform", "org.hibernate.dialect.MySQLDialect");
         properties.setProperty("spring.jpa.open-in-view", "false");
-        // L2 Cache
-        properties.setProperty("spring.jpa.properties.hibernate.cache.use_second_level_cache", "true");
-        properties.setProperty("spring.jpa.properties.hibernate.generate_statistics", "true");
-        properties.setProperty("spring.jpa.properties.javax.persistence.sharedCache.mode", "ALL");
-        properties.setProperty("spring.jpa.properties.hibernate.cache.region.factory_class", "jcache");
-        properties.setProperty("spring.jpa.properties.hibernate.javax.cache.provider",
-           "org.ehcache.jsr107.EhcacheCachingProvider");
-        properties.setProperty("spring.jpa.properties.hibernate.javax.cache.uri", "ehcache.xml");
-        properties.setProperty("spring.jpa.properties.hibernate.javax.cache.missing_cache_strategy", "create");
         if (profiles.contains("default")) {
             properties.setProperty("logging.level.org.springframework.orm.jpa", "DEBUG");
             properties.setProperty("logging.level.org.springframework.transaction", "DEBUG");

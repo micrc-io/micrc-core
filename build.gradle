@@ -67,6 +67,8 @@ dependencies {
     // for lombok
     compileOnly "org.projectlombok:lombok"
     annotationProcessor "org.projectlombok:lombok"
+    testCompileOnly "org.projectlombok:lombok"
+    testAnnotationProcessor "org.projectlombok:lombok"
 
     // for k8s configmap and secret
     runtimeOnly "org.springframework.cloud:spring-cloud-starter-kubernetes-fabric8-config:${property('cm.version')}"
@@ -81,9 +83,6 @@ dependencies {
     implementation "com.h2database:h2"
     // db migration
     implementation "org.liquibase:liquibase-core"
-    // L2 cache
-    implementation "org.hibernate:hibernate-jcache:${property('hibernate.version')}"
-    implementation "org.ehcache:ehcache:${property('ehcache.version')}"
 
     // integration camel for spring-boot base
     implementation "org.apache.camel.springboot:camel-spring-boot-starter:${property('camel.version')}"
@@ -120,7 +119,7 @@ dependencies {
     // caffeine, redis for cache and schedule
     implementation "org.springframework.boot:spring-boot-starter-cache"
     implementation "org.springframework.boot:spring-boot-starter-data-redis"
-    // caffeine jcache
+    // caffeine cache
     implementation "com.github.ben-manes.caffeine:caffeine:${property('caffeine.version')}"
     // shedlock for schedule distributed lock
     implementation "net.javacrumbs.shedlock:shedlock-spring:${property('shedlock.version')}"

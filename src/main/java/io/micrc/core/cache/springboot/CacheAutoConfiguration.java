@@ -1,6 +1,9 @@
 package io.micrc.core.cache.springboot;
 
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.interceptor.CacheResolver;
+import org.springframework.cache.interceptor.KeyGenerator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -36,5 +39,20 @@ public class CacheAutoConfiguration {
     @Bean(destroyMethod = "destroy")
     public RedisConnectionFactory redisConnectionFactory() {
         return new LettuceConnectionFactory("localhost", 6370);
+    }
+
+    @Bean
+    public CacheResolver repositoryCacheResolver(CacheManager cacheManager) {
+        return new RepositoryCacheResolver(cacheManager);
+    }
+
+    @Bean
+    public KeyGenerator entityIdKeyGenerator() {
+        return new EntityIdKeyGenerator();
+    }
+
+    @Bean
+    public KeyGenerator repositoryQueryKeyGenerator() {
+        return new RepositoryQueryKeyGenerator();
     }
 }

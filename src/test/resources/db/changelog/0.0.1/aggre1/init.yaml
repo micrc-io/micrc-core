@@ -32,16 +32,16 @@ databaseChangeLog:
                   type: VARCHAR(300)
                   remarks: first name of user
                   constraints:
-                    nullable: false
+                    nullable: true
               - column:
                   name: last_name
                   type: VARCHAR(300)
                   remarks: last name of user
                   constraints:
-                    nullable: false
+                    nullable: true
               - column:
                   name: full_name
                   type: VARCHAR(1000)
                   remarks: full name of user
                   constraints:
-                    nullable: false
+                    nullable: true
