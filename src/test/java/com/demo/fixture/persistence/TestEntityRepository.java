@@ -25,17 +25,20 @@ class TestRepo extends RouteBuilder {
         from("rest:get:testentity/id").setBody().constant(UserId.class.getName())
             .bean("testEntityRepository", "id(String)")
             .log("${body}");
-        from("rest:get:testentity/save").setBody().constant("{\"id\":\"xxx\",\"username\":\"test\"}")
+        from("rest:get:testentity/save")
+            .setBody().constant("{\"embeddedId\":{\"id\":123},\"username\":\"test\"}")
             .unmarshal().json(Users.class)
             .bean("testEntityRepository", "save(${body})")
             .log("${body}");
-        from("rest:get:testentity/findbyid").setBody().constant("xxx")
+        from("rest:get:testentity/findbyid").setBody().constant("{\"id\":123}")
+            .unmarshal().json(UserId.class)
             .bean("testEntityRepository", "findById(${body})")
             .log("${body}");
         from("rest:get:testentity/count")
             .bean("testEntityRepository", "count()")
             .log("${body}");
-        from("rest:get:testentity/exists").setBody().constant("xxx")
+        from("rest:get:testentity/exists").setBody().constant("{\"id\":123}")
+            .unmarshal().json(UserId.class)
             .bean("testEntityRepository", "existsById(${body})")
             .log("${body}");
     }

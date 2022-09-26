@@ -33,33 +33,44 @@ public class EntityIdKeyGenerator extends SimpleKeyGenerator {
         if (entityAnnotation == null) {
             throw new IllegalArgumentException("Caching function: " + method.getName() + "'s param must be @Entity.");
         }
-        Object param = null;
         Field idField = ReflectionUtils.findField(entity.getClass(), "id");
         Field embeddedIdField = ReflectionUtils.findField(entity.getClass(), "embeddedId");
         if (idField == null && embeddedIdField == null) {
             throw new IllegalArgumentException("Caching function: " + method.getName() + "'s param must have a id or embeddedId field");
         }
         if (idField != null) {
-            ReflectionUtils.makeAccessible(idField);
-            param = ReflectionUtils.getField(idField, entity);
-            if (param == null || idField.getAnnotation(Id.class) == null) {
-                throw new IllegalArgumentException("Caching function: " + method.getName() + "'s param must have a @Id.");
-            }
+            return idKeyGenerator(entity, method, idField);
         } else {
-            ReflectionUtils.makeAccessible(embeddedIdField);
-            param = ReflectionUtils.getField(embeddedIdField, entity);
-            if (param == null || embeddedIdField.getAnnotation(EmbeddedId.class) == null) {
-                throw new IllegalArgumentException("Caching function: " + method.getName() + "'s param must have a @EmbeddedId.");
-            }
-            idField = ReflectionUtils.findField(embeddedIdField.getType(), "id");
-            if (idField == null) {
-                throw new IllegalArgumentException("Caching function: " + method.getName() + "'s param embeddedId must have a id field");
-            }
-            ReflectionUtils.makeAccessible(idField);
-            param = ReflectionUtils.getField(idField, param);
-            if (param == null) {
-                throw new IllegalArgumentException("Caching function: " + method.getName() + "'s param embeddedId must have a id value.");
-            }
+            return embeddedIdKeyGenerator(entity, method, embeddedIdField);
+        }
+    }
+
+    private Object idKeyGenerator(Object target, Method method, Field idField) {
+        ReflectionUtils.makeAccessible(idField);
+        Object param = ReflectionUtils.getField(idField, target);
+        if (param == null || idField.getAnnotation(Id.class) == null) {
+            throw new IllegalArgumentException("Caching function: " + method.getName() + "'s param must have a @Id.");
+        }
+        return super.generate(target, method, param);
+    }
+
+    private Object embeddedIdKeyGenerator(Object target, Method method, Field embeddedIdField) {
+        ReflectionUtils.makeAccessible(embeddedIdField);
+        Object param = ReflectionUtils.getField(embeddedIdField, target);
+        if (param == null || embeddedIdField.getAnnotation(EmbeddedId.class) == null) {
+            throw new IllegalArgumentException(
+                "Caching function: " + method.getName() + "'s param must have a @EmbeddedId.");
+        }
+        Field idField = ReflectionUtils.findField(embeddedIdField.getType(), "id");
+        if (idField == null) {
+            throw new IllegalArgumentException(
+                "Caching function: " + method.getName() + "'s param embeddedId must have a id field");
+        }
+        ReflectionUtils.makeAccessible(idField);
+        param = ReflectionUtils.getField(idField, param);
+        if (param == null) {
+            throw new IllegalArgumentException(
+                "Caching function: " + method.getName() + "'s param embeddedId must have a id value.");
         }
         return super.generate(target, method, param);
     }

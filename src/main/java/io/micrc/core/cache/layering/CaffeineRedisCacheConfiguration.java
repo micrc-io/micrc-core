@@ -1,5 +1,7 @@
 package io.micrc.core.cache.layering;
 
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
 import lombok.Data;
 
 /**
@@ -10,18 +12,19 @@ import lombok.Data;
  * @date 2022-09-26 22:59
  */
 @Data
+@ConfigurationProperties(prefix = "micrc.cache.layering")
 public class CaffeineRedisCacheConfiguration {
 
-    private CaffeineCacheConfiguration caffeine;
-    private RedisCacheConfiguration redis;
+    private CaffeineCacheConfiguration caffeine = new CaffeineCacheConfiguration();
+    private RedisCacheConfiguration redis = new RedisCacheConfiguration();
     
     @Data
     public static class CaffeineCacheConfiguration {
-        private int initialCapacity;
-        private long maximumSize;
-        private long expireAfterAccess;
-        private long expireAfterWrite;
-        private long refreshAfterWrite;
+        private int initialCapacity = 1000;
+        private long maximumSize = 3000;
+        private long expireAfterAccess = 300;
+        private long expireAfterWrite = 600;
+        private long refreshAfterWrite = 300;
     }
 
     @Data

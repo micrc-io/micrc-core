@@ -19,7 +19,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @AllArgsConstructor
-public class CacheInvalidSync implements MessageListener {
+public class CacheInvalidSynchronizer implements MessageListener {
 
     private final CustomizeRedisCache redisCache;
     private final CaffeineRedisCacheManager cacheManager;

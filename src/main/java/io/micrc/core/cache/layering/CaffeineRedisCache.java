@@ -144,6 +144,6 @@ public class CaffeineRedisCache extends AbstractValueAdaptingCache {
         String keyStr = key == null ? null : (String) key;
         redisCache.getRedisTemplate().convertAndSend(
             cacheConfiguration.getRedis().getInvalidMessageChannel(),
-            new CacheInvalidSync.CacheMessage<String>(this.name, keyStr));
+            new CacheInvalidSynchronizer.CacheMessage<String>(this.name, keyStr));
     }
 }
