@@ -24,22 +24,23 @@ public class CacheInvalidSync implements MessageListener {
     private final CustomizeRedisCache redisCache;
     private final CaffeineRedisCacheManager cacheManager;
 
+    @SuppressWarnings("unchecked")
     @Override
     public void onMessage(Message message, byte[] pattern) {
-        CacheMessage cacheMessage = (CacheMessage) redisCache.getRedisTemplate()
+        CacheMessage<String> cacheMessage = (CacheMessage<String>) redisCache.getRedisTemplate()
             .getValueSerializer().deserialize(message.getBody());
         if (cacheMessage != null) {
             log.debug("Receive redis message. CacheName: {}; Key: {}. Clear local cache. ",
                 cacheMessage.getCacheName(), cacheMessage.getKey());
-            // cacheManager.clearLocal(cacheMessage.getCacheName(), cacheMessage.getKey());
+            cacheManager.clearLocal(cacheMessage.getCacheName(), cacheMessage.getKey());
         }
     }
     
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
-    public static class CacheMessage implements Serializable {
+    public static class CacheMessage<T extends Serializable> implements Serializable {
         private String cacheName;
-        private String key;
+        private T key;
     }
 }

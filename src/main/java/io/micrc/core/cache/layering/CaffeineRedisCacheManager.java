@@ -1,8 +1,10 @@
 package io.micrc.core.cache.layering;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
@@ -35,18 +37,33 @@ public class CaffeineRedisCacheManager implements CacheManager {
     public Cache getCache(String name) {
         Cache cache = caches.get(name);
         if (cache != null) return cache;
-        // cache = new CaffeineRedisCache(name, redisCache, caffeineCache(), cacheConfiguration);
-        return null;
+        cache = new CaffeineRedisCache(name, redisCache, caffeineCache(), cacheConfiguration);
+        Cache old = caches.putIfAbsent(name, cache);
+        log.info("Create cache: {}", name);
+        return old == null ? cache : old;
     }
 
-    // private com.github.benmanes.caffeine.cache.Cache<String, Object> caffeineCache() {
-    //     return Caffeine.newBuilder().expireAfterAccess(duration, unit)
-    // }
+    private com.github.benmanes.caffeine.cache.Cache<Object, Object> caffeineCache() {
+        return Caffeine.newBuilder()
+            .expireAfterAccess(cacheConfiguration.getCaffeine().getExpireAfterAccess(), TimeUnit.SECONDS)
+            .expireAfterWrite(cacheConfiguration.getCaffeine().getExpireAfterWrite(), TimeUnit.SECONDS)
+            .initialCapacity(cacheConfiguration.getCaffeine().getInitialCapacity())
+            .maximumSize(cacheConfiguration.getCaffeine().getMaximumSize())
+            .refreshAfterWrite(cacheConfiguration.getCaffeine().getRefreshAfterWrite(), TimeUnit.SECONDS)
+            .build();
+    }
 
     @Override
     public Collection<String> getCacheNames() {
-        // TODO Auto-generated method stub
-        return null;
+        return Collections.unmodifiableSet(this.caches.keySet());
     }
-    
+
+    public void clearLocal(String cacheName, Object key) {
+        Cache cache = caches.get(cacheName);
+        if(cache == null) {
+            return;
+        }
+        CaffeineRedisCache caffeineRedisCache = (CaffeineRedisCache) cache;
+        caffeineRedisCache.clearLocal(key);
+    }
 }

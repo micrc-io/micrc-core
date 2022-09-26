@@ -1,6 +1,5 @@
 package io.micrc.core.persistence;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.Optional;
 
