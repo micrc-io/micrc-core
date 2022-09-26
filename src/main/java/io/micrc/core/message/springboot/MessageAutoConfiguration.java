@@ -1,16 +1,19 @@
 package io.micrc.core.message.springboot;
 
 import com.github.fridujo.rabbitmq.mock.MockConnectionFactory;
-import io.micrc.core.message.EventMessage;
+import io.micrc.core.message.MessagePublisherSchedule;
 import io.micrc.core.message.MessageRouteConfiguration;
-import io.micrc.core.message.MessageTracker;
+import io.micrc.core.message.jpa.EventMessage;
+import io.micrc.core.message.jpa.MessageTracker;
 import org.apache.camel.component.direct.DirectComponent;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Profile;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 /**
  * message auto configuration. 注册publish/subscribe组件，创建消息队列mock connection
@@ -21,7 +24,9 @@ import org.springframework.context.annotation.Profile;
  */
 @Configuration
 // @EnableAutoConfiguration(exclude = SpringRabbitMQComponentAutoConfiguration.class)
-@Import({MessageRouteConfiguration.class, MessageTracker.class, EventMessage.class})
+@Import({MessageRouteConfiguration.class, MessagePublisherSchedule.class, MessageTracker.class, EventMessage.class})
+@EntityScan(basePackages = {"io.micrc.core.message.jpa"})
+@EnableJpaRepositories(basePackages = {"io.micrc.core.message.jpa"})
 public class MessageAutoConfiguration {
 
     @Bean
