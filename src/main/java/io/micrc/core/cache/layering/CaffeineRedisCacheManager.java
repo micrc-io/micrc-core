@@ -49,7 +49,6 @@ public class CaffeineRedisCacheManager implements CacheManager {
             .expireAfterWrite(cacheConfiguration.getCaffeine().getExpireAfterWrite(), TimeUnit.SECONDS)
             .initialCapacity(cacheConfiguration.getCaffeine().getInitialCapacity())
             .maximumSize(cacheConfiguration.getCaffeine().getMaximumSize())
-            .refreshAfterWrite(cacheConfiguration.getCaffeine().getRefreshAfterWrite(), TimeUnit.SECONDS)
             .build();
     }
 

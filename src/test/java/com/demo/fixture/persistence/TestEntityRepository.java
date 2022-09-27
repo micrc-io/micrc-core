@@ -10,10 +10,15 @@ import org.springframework.stereotype.Repository;
 
 import io.micrc.core.persistence.MicrcJpaRepository;
 
-@CacheConfig(cacheNames = { "aggre-repo" })
+@CacheConfig(
+    cacheManager = "caffeineCacheManager",
+    cacheResolver = "caffeineRepositoryCacheResolver",
+    keyGenerator = "repositoryQueryKeyGenerator",
+    cacheNames = { "aggre-repo" }
+)
 @Repository
 public interface TestEntityRepository extends MicrcJpaRepository<Users, UserId> {
-    @Cacheable(cacheResolver = "repositoryCacheResolver", keyGenerator = "repositoryQueryKeyGenerator", sync = true)
+    @Cacheable(sync = true)
     Page<Users> findByUsername(String username, Pageable pageable);
 }
 

@@ -3,6 +3,7 @@ package io.micrc.core.persistence;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.cache.annotation.CacheConfig;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
@@ -27,15 +28,63 @@ import io.micrc.lib.SnowFlakeIdentity;
  * @since 0.0.1
  * @date 2022-09-23 14:37
  */
+@CacheConfig(
+    cacheManager = "caffeineCacheManager",
+    cacheResolver = "caffeineRepositoryCacheResolver",
+    keyGenerator = "repositoryQueryKeyGenerator"
+)
 @NoRepositoryBean
 public interface MicrcJpaRepository<T, I extends IdentityAware> extends Repository<T, I> {
 
+    /**
+     * generate identity
+     *
+     * @param idClass class of identity
+     * @return instance of identity with unique id
+     * @throws Exception LinkageError if the linkage fails
+     *                   ExceptionInInitializerError if the initialization provoked by this method fails
+     *                   ClassNotFoundException if the class cannot be located
+     *                   NoSuchMethodException if a matching method is not found
+     *                   InvocationTargetException if the underlying constructor throws an exception.
+     *                   ExceptionInInitializerError if the initialization provoked by this method fails.
+     *                   SecurityException
+     *                      If a security manager, <i>s</i>, is present and
+     *                      the caller's class loader is not the same as or an
+     *                      ancestor of the class loader for the current class and
+     *                      invocation of {@link SecurityManager#checkPackageAccess
+     *                      s.checkPackageAccess()} denies access to the package
+     *                      of this class.
+     *                   IllegalAccessException
+     *                      if this {@code Constructor} object 
+     *                      is enforcing Java language access control and the underlying
+     *                      constructor is inaccessible.
+     *                   IllegalArgumentException
+     *                      if the number of actual
+     *                      and formal parameters differ; if an unwrapping
+     *                      conversion for primitive arguments fails; or if,
+     *                      after possible unwrapping, a parameter value
+     *                      cannot be converted to the corresponding formal
+     *                      parameter type by a method invocation conversion; if
+     *                      this constructor pertains to an enum type.
+     *                   InstantiationException
+     *                      if the class that declares the
+     *                      underlying constructor represents an abstract class.
+     */
     default I id(Class<I> idClass) throws Exception {
         I idObj = idClass.getConstructor().newInstance();
         idObj.setIdentity(SnowFlakeIdentity.generate());
         return idObj;
     }
 
+    /**
+     * generate identity
+     *
+     * @param idClassName FQCN of identity
+     * @return instance of identity with unique id
+     * @throws Exception LinkageError if the linkage fails
+     *                   ExceptionInInitializerError if the initialization provoked by this method fails
+     *                   ClassNotFoundException if the class cannot be located
+     */
     @SuppressWarnings("unchecked")
     default I id(String idClassName) throws Exception {
         Class<I> idClass = (Class<I>) Class.forName(idClassName);
@@ -48,7 +97,7 @@ public interface MicrcJpaRepository<T, I extends IdentityAware> extends Reposito
      * @param id model id
      * @return model
      */
-    @Cacheable(cacheResolver = "repositoryCacheResolver", key="#p0", sync = true)
+    @Cacheable(key="#p0", sync = true)
     Optional<T> findById(I id);
 
     /**
@@ -57,7 +106,7 @@ public interface MicrcJpaRepository<T, I extends IdentityAware> extends Reposito
      * @param ids model ids
      * @return models
      */
-    @Cacheable(cacheResolver = "repositoryCacheResolver", keyGenerator = "repositoryQueryKeyGenerator", sync = true)
+    @Cacheable(sync = true)
     List<T> findAllById(Iterable<I> ids);
 
     /**
@@ -69,12 +118,12 @@ public interface MicrcJpaRepository<T, I extends IdentityAware> extends Reposito
      */
     @Caching(
         put = {
-            @CachePut(cacheResolver = "repositoryCacheResolver", keyGenerator = "entityIdKeyGenerator")
+            @CachePut(keyGenerator = "entityIdKeyGenerator")
         },
         evict = {
             // TODO 专用generator，参数id为空时，代表新实体，此时才需要驱逐count缓存，其他为更新，返回空字符串为key，不驱逐
-            @CacheEvict(cacheResolver = "repositoryCacheResolver", key = "'count'"),
-            @CacheEvict(cacheResolver = "repositoryCacheResolver", allEntries = true)
+            @CacheEvict(key = "'count'"),
+            @CacheEvict(allEntries = true)
         }
     )
     <S extends T> S save(S entity);
@@ -85,7 +134,7 @@ public interface MicrcJpaRepository<T, I extends IdentityAware> extends Reposito
      * @param id model id
      * @return exists
      */
-    @Cacheable(cacheResolver = "repositoryCacheResolver", keyGenerator = "repositoryQueryKeyGenerator", sync = true)
+    @Cacheable(sync = true)
     boolean existsById(I id);
 
     /**
@@ -93,7 +142,7 @@ public interface MicrcJpaRepository<T, I extends IdentityAware> extends Reposito
      *
      * @return count
      */
-    @Cacheable(cacheResolver = "repositoryCacheResolver", key = "'count'", sync = true)
+    @Cacheable(key = "'count'", sync = true)
     long count();
 
     /**
@@ -110,11 +159,11 @@ public interface MicrcJpaRepository<T, I extends IdentityAware> extends Reposito
      */
     @Caching(
         put = {
-            @CachePut(cacheResolver = "repositoryCacheResolver", keyGenerator = "entityIdKeyGenerator")
+            @CachePut(keyGenerator = "entityIdKeyGenerator")
         },
         evict = {
-            @CacheEvict(cacheResolver = "repositoryCacheResolver", key = "'count'"),
-            @CacheEvict(cacheResolver = "repositoryCacheResolver", allEntries = true)
+            @CacheEvict(key = "'count'"),
+            @CacheEvict(allEntries = true)
         }
     )
     <S extends T> S saveAndFlush(S entity);
@@ -125,7 +174,7 @@ public interface MicrcJpaRepository<T, I extends IdentityAware> extends Reposito
      * @param pageable page and sort param
      * @return models paged
      */
-    @Cacheable(cacheResolver = "repositoryCacheResolver", keyGenerator = "repositoryQueryKeyGenerator", sync = true)
+    @Cacheable(sync = true)
     Page<T> findAll(Pageable pageable);
 
     /**
@@ -135,7 +184,7 @@ public interface MicrcJpaRepository<T, I extends IdentityAware> extends Reposito
      * @param example example dynamic criteria
      * @return model
      */
-    @Cacheable(cacheResolver = "repositoryCacheResolver", keyGenerator = "repositoryQueryKeyGenerator", sync = true)
+    @Cacheable(sync = true)
     <S extends T> Optional<S> findOne(Example<S> example);
 
     /**
@@ -146,7 +195,7 @@ public interface MicrcJpaRepository<T, I extends IdentityAware> extends Reposito
      * @param pageable page and sort param
      * @return models paged
      */
-    @Cacheable(cacheResolver = "repositoryCacheResolver", keyGenerator = "repositoryQueryKeyGenerator", sync = true)
+    @Cacheable(sync = true)
     <S extends T> Page<S> findAll(Example<S> example, Pageable pageable);
 
     /**
@@ -156,7 +205,7 @@ public interface MicrcJpaRepository<T, I extends IdentityAware> extends Reposito
      * @param example example dynamic criteria
      * @return count of models
      */
-    @Cacheable(cacheResolver = "repositoryCacheResolver", keyGenerator = "repositoryQueryKeyGenerator", sync = true)
+    @Cacheable(sync = true)
     <S extends T> long count(Example<S> example);
 
     /**
@@ -166,6 +215,6 @@ public interface MicrcJpaRepository<T, I extends IdentityAware> extends Reposito
      * @param example example dynamic criteria
      * @return model exsits
      */
-    @Cacheable(cacheResolver = "repositoryCacheResolver", keyGenerator = "repositoryQueryKeyGenerator", sync = true)
+    @Cacheable(sync = true)
     <S extends T> boolean exists(Example<S> example);
 }

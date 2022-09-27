@@ -24,7 +24,7 @@ ext {
     set('rabbitmq-mock.version', '1.1.1')
     set('mockserver.version', '5.14.0')
     set('embedded-redis.version', '0.7.3')
-    set('testcontainers.version', '2.2.7')
+    set('testcontainers.version', '2.2.8')
     set('jslt.version', '0.1.13')
 }
 
@@ -126,10 +126,10 @@ dependencies {
     implementation "net.javacrumbs.shedlock:shedlock-spring:${property('shedlock.version')}"
     implementation "net.javacrumbs.shedlock:shedlock-provider-redis-spring:${property('shedlock.version')}"
     // // mock server
-    implementation("it.ozimov:embedded-redis:${property('embedded-redis.version')}") {
-        exclude group: "org.slf4j", module: "slf4j-simple"
-    }
-    // implementation "com.playtika.testcontainers:embedded-redis:${property('testcontainers.version')}" // 备用。当embedded-redis不适用时使用
+    // implementation("it.ozimov:embedded-redis:${property('embedded-redis.version')}") {
+    //     exclude group: "org.slf4j", module: "slf4j-simple"
+    // }
+    implementation "com.playtika.testcontainers:embedded-redis:${property('testcontainers.version')}" // 备用。当embedded-redis不适用时使用
 
 }
 

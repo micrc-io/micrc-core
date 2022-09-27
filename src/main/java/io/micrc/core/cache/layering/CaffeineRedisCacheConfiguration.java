@@ -22,9 +22,9 @@ public class CaffeineRedisCacheConfiguration {
     public static class CaffeineCacheConfiguration {
         private int initialCapacity = 1000;
         private long maximumSize = 3000;
-        private long expireAfterAccess = 300;
-        private long expireAfterWrite = 600;
-        private long refreshAfterWrite = 300;
+        private long expireAfterAccess = 1800;
+        private long expireAfterWrite = 3600;
+        // private long refreshAfterWrite = 300; // TODO ?
     }
 
     @Data

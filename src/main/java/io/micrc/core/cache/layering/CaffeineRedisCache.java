@@ -137,11 +137,11 @@ public class CaffeineRedisCache extends AbstractValueAdaptingCache {
     }
 
     private String getKey(Object key) {
-        return this.name.concat(":").concat((String) key);
+        return this.name.concat(":").concat(key.toString());
     }
 
     private void pushInvalid(Object key) {
-        String keyStr = key == null ? null : (String) key;
+        String keyStr = key == null ? null : key.toString();
         redisCache.getRedisTemplate().convertAndSend(
             cacheConfiguration.getRedis().getInvalidMessageChannel(),
             new CacheInvalidSynchronizer.CacheMessage<String>(this.name, keyStr));

@@ -1,7 +1,6 @@
 package com.demo.fixture.cache;
 
 import org.apache.camel.builder.RouteBuilder;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 
 import io.micrc.core.annotations.application.businesses.BusinessesExecution;
@@ -33,7 +32,6 @@ public interface CachedService extends ApplicationBusinessesService<CachedServic
 
     @Component("CachedService")
     public static class CachedServiceImpl implements CachedService {
-        @Cacheable("CachedServiceCache")
         @BusinessesExecution
         @Override
         public void execute(Command command) {
