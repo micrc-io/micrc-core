@@ -48,6 +48,7 @@ public class ApplicationCommandAdapterRouteConfiguration extends MicrcRouteBuild
                 .marshal().json().convertBodyTo(String.class)
                 .setHeader("pointer", simple("/error"))
                 .to("json-patch://select")
+                .marshal().json().convertBodyTo(String.class)
                 .unmarshal().json(ErrorInfo.class)
                 // TODO 设置command对Data的映射,使用protocol读取其x-result-mapping.暂时使用command替代
                 .bean(Result.class, "result(${body}, ${exchange.properties.get(command)})");

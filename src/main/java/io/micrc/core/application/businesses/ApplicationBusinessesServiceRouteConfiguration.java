@@ -81,6 +81,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .setBody(exchangeProperty("commandJson"))
                 .setHeader("pointer", constant("/target"))
                 .to("json-patch://select")
+                .marshal().json().convertBodyTo(String.class)
                 .setHeader("CamelJacksonUnmarshalType").simple("{{aggregationPath}}")
                 .to("dataformat:jackson:unmarshal?allow-unmarshall-type=true")
                 .removeHeader("pointer")
