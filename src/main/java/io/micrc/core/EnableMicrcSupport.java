@@ -11,7 +11,11 @@ import io.micrc.core.rpc.springboot.ClassPathRestEndpointScannerRegistrar;
 import io.micrc.core.rpc.springboot.RpcAutoConfiguration;
 import io.micrc.core.rpc.springboot.RpcMockServerScannerRegistrar;
 import io.micrc.core.schedule.springboot.ScheduleAutoConfiguration;
+
+import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 import java.lang.annotation.*;
 
@@ -25,6 +29,9 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 @Documented
+@EntityScan
+@EnableJpaRepositories
+@EnableCaching
 @EnableApplicationService
 @EnableIntegration
 @Import({
