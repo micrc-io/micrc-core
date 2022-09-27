@@ -96,7 +96,6 @@ dependencies {
     implementation "org.apache.camel.springboot:camel-jackson-starter:${property('camel.version')}"
     // jslt support for json(domain object) mapping
     implementation "com.schibsted.spt.data:jslt:${property('jslt.version')}"
-//    implementation "org.apache.camel.springboot:camel-jslt-starter:${property('camel.version')}"
     // json patch support for custom router with json-pointer and json-patch
     implementation "com.github.java-json-tools:json-patch:${property('json-patch.version')}"
 

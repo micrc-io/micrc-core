@@ -13,6 +13,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.NoRepositoryBean;
 import org.springframework.data.repository.Repository;
 
+import io.micrc.lib.SnowFlakeIdentity;
+
 /**
  * 资源库基础接口，所有资源库接口应该继承这个接口作为jpa仓库
  * 自带缓存支持，具体资源库必须注解@CacheConfig并配置缓存名称(按聚合名称配置), 自定义方法必须配置
@@ -26,7 +28,20 @@ import org.springframework.data.repository.Repository;
  * @date 2022-09-23 14:37
  */
 @NoRepositoryBean
-public interface MicrcJpaRepository<T, I> extends Repository<T, I> {
+public interface MicrcJpaRepository<T, I extends IdentityAware> extends Repository<T, I> {
+
+    default I id(Class<I> idClass) throws Exception {
+        I idObj = idClass.getConstructor().newInstance();
+        idObj.setIdentity(SnowFlakeIdentity.generate());
+        return idObj;
+    }
+
+    @SuppressWarnings("unchecked")
+    default I id(String idClassName) throws Exception {
+        Class<I> idClass = (Class<I>) Class.forName(idClassName);
+        return id(idClass);
+    }
+
     /**
      * find model by id
      *

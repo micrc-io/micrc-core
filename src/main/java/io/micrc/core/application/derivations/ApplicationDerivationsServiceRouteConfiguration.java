@@ -159,7 +159,7 @@ class IntegrationParams {
         if (ParamIntegration.Type.QUERY.equals(currentIntegrateType) && body instanceof Optional) {
             body = ((Optional<?>) body).orElseThrow();
         } else if (ParamIntegration.Type.OPERATE.equals(currentIntegrateType)) {
-            body = JsonUtil.readPath((String) body, "/data");
+            body = JsonUtil.readPath((String) body, "");
         }
         List<ParamIntegration> paramIntegrations = ClassCastUtils.castArrayList(exchange.getProperties().get("paramIntegrations"), ParamIntegration.class);
         // 将上次执行的结果放回至原有属性集成参数之中
