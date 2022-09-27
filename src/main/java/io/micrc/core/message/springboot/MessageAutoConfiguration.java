@@ -1,19 +1,26 @@
 package io.micrc.core.message.springboot;
 
-import com.github.fridujo.rabbitmq.mock.MockConnectionFactory;
-import io.micrc.core.message.MessagePublisherSchedule;
+import com.rabbitmq.client.ShutdownSignalException;
+import io.micrc.core.message.MessageCallback;
 import io.micrc.core.message.MessageRouteConfiguration;
+import io.micrc.core.message.jpa.ErrorMessage;
 import io.micrc.core.message.jpa.EventMessage;
 import io.micrc.core.message.jpa.MessageTracker;
 import org.apache.camel.component.direct.DirectComponent;
-import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
+import org.springframework.amqp.core.*;
+import org.springframework.amqp.rabbit.connection.Connection;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.connection.ConnectionListener;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Profile;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+
 
 /**
  * message auto configuration. 注册publish/subscribe组件，创建消息队列mock connection
@@ -23,28 +30,72 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
  * @since 0.0.1
  */
 @Configuration
-// @EnableAutoConfiguration(exclude = SpringRabbitMQComponentAutoConfiguration.class)
-@Import({MessageRouteConfiguration.class, MessagePublisherSchedule.class, MessageTracker.class, EventMessage.class})
+@Import({
+        MessageRouteConfiguration.class,
+
+        MessageCallback.class,
+        MessageTracker.class,
+        EventMessage.class,
+        ErrorMessage.class
+})
 @EntityScan(basePackages = {"io.micrc.core.message.jpa"})
 @EnableJpaRepositories(basePackages = {"io.micrc.core.message.jpa"})
-public class MessageAutoConfiguration {
+public class MessageAutoConfiguration implements ApplicationRunner {
+
+    public static final String DEAD_LETTER_EXCHANGE_KEY = "x-dead-letter-exchange";
+
+    public static final String DEAD_LETTER_EXCHANGE_ROUTING_KEY = "x-dead-letter-routing-key";
+
+    public static final String DEAD_LETTER_EXCHANGE_NAME = "dead-message";
+
+    public static final String DEAD_LETTER_QUEUE_NAME = "error";
+
+    public static final String DEAD_LETTER_ROUTING_KEY = "error";
+
+    @Autowired
+    private ConnectionFactory connectionFactory;
+
+    @Autowired
+    private MessageCallback messageCallback;
+
+    @Autowired
+    private RabbitTemplate template;
 
     @Bean
-    @Profile({"default", "local"})
-    public ConnectionFactory connectionFactory() {
-        return new CachingConnectionFactory(new MockConnectionFactory());
+    public Exchange deadLetterExchange() {
+        return ExchangeBuilder
+                .directExchange(DEAD_LETTER_EXCHANGE_NAME)
+                .durable(true)
+                .build();
     }
 
-//    @Bean("publish")
-//    public SpringRabbitMQComponent publish(AmqpAdmin amqpAdmin, ConnectionFactory connectionFactory) {
-//        SpringRabbitMQComponent publisher = new SpringRabbitMQComponent();
-//        publisher.setConnectionFactory(connectionFactory);
-//        publisher.setAmqpAdmin(amqpAdmin);
-//        publisher.setAutoDeclare(true);
-//        // 不允许空消息,就算Command为空 我们的Message本体也不会为空,如空一定是错误
-//        publisher.setAllowNullBody(false); // 是否允许空消息
-//        return publisher;
-//    }
+    @Bean
+    public Queue deadLetterQueue() {
+        return QueueBuilder
+                .durable(DEAD_LETTER_QUEUE_NAME)
+                .build();
+    }
+
+    @Bean
+    public Binding deadLetterBinding(Queue deadLetterQueue, Exchange deadLetterExchange) {
+        return BindingBuilder
+                .bind(deadLetterQueue)
+                .to(deadLetterExchange)
+                .with(DEAD_LETTER_ROUTING_KEY)
+                .noargs();
+    }
+
+    @Bean("publish")
+    public DirectComponent publish() {
+        DirectComponent publish = new DirectComponent();
+        return publish;
+    }
+
+    @Bean("subscribe")
+    public DirectComponent subscribe() {
+        DirectComponent subscribe = new DirectComponent();
+        return subscribe;
+    }
 
     @Bean("eventstore")
     public DirectComponent eventStore() {
@@ -52,57 +103,35 @@ public class MessageAutoConfiguration {
         return eventStore;
     }
 
-//    @Bean("subscribe")
-//    public SpringRabbitMQComponent subscribe(AmqpAdmin amqpAdmin, ConnectionFactory connectionFactory) {
-//        SpringRabbitMQComponent subscriber = new SpringRabbitMQComponent();
-//        subscriber.setConnectionFactory(connectionFactory);
-//        subscriber.setAmqpAdmin(amqpAdmin);
-//        subscriber.setTestConnectionOnStartup(true);
-//        subscriber.setAutoDeclare(true);
-//        subscriber.setAutoStartup(true);
-//        // subscriber.setBridgeErrorHandler(true); // consumer内部异常会委托给路由错误处理器处理，自定义路由异常处理器
-//        // subscriber.setDeadLetterExchange(""); // dlq
-//        // subscriber.setDeadLetterExchangeType(""); // dlq
-//        // subscriber.setDeadLetterQueue(""); // dlq
-//        // subscriber.setDeadLetterRoutingKey(""); // dlq
-//        // subscriber.setMaximumRetryAttempts(5); // 消息处理失败的重试次数
-//        // subscriber.setRejectAndDontRequeue(true); // 是否拒绝重新排队失败消息，而发到dlq
-//        // subscriber.setRetryDelay(1000); // 失败消息重新投递延迟
-//        // subscriber.setConcurrentConsumers(1); // 并发消费者数量
-//        // subscriber.setMaxConcurrentConsumers(); // 最大并发消费者?
-//        // subscriber.setMessageListenerContainerType(); // listener container type? DMLC - SMLC
-//        // subscriber.setPrefetchCount(250); // 预获取消息数量
-//        // subscriber.setRetry(); // 自定义重试逻辑 RetryOperationsInterceptor
-//        // subscriber.setShutdownTimeout(5000); // 等待container停止的超时时间
-//        subscriber.setConcurrentConsumers(10);
-//        subscriber.setMaxConcurrentConsumers(100);
-//        subscriber.setPrefetchCount(1000);
-//        subscriber.setMaximumRetryAttempts(5);
-//        subscriber.setRetryDelay(1000);
-//        subscriber.setDeadLetterExchange("dead-message");
-//        subscriber.setDeadLetterExchangeType("direct");
-//        subscriber.setDeadLetterQueue("error");
-//        return subscriber;
-//    }
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        template.setMandatory(true);
+        // 设置出错回调
+        template.setReturnsCallback(messageCallback);
+        // 设置返回回调
+        template.setConfirmCallback(messageCallback);
+        // 设置在链接时的监听器
+        template.getConnectionFactory().addConnectionListener(new ConnectionListener() {
+            @Override
+            public void onCreate(Connection connection) {
+            }
 
-//    @Bean
-//    public RoutesBuilder rabbitmqTest() {
-//        return new MicrcRouteBuilder() {
-//            @Override
-//            public void configureRoute() throws Exception {
-//                from("direct:rabbitmqTest").setBody(simple("test"))
-//                        .log("sending")
-//                        .setBody(simple("test message"))
-//                        .to("publish:Commission?queues=CommissionAuthEvent-OrderResolveTrackerCreate");
-//                from("subscribe:Commission?queues=CommissionAuthEvent-OrderResolveTrackerCreate&acknowledgeMode=MANUAL")
-//                        //.setHeader("CamelRabbitmqRequeue", constant(true))
-//                        .log("the message is --> ${in.body}")
-//                        //.unmarshal().json(HashMap.class)
-//                        .log("msg test done.");
-//                from("timer:rabbitmqTest?delay=10000&repeatCount=1")
-//                        .log("starting rabbitmqTest...").to("direct:rabbitmqTest");
-//            }
-//
-//        };
+            @Override
+            public void onShutDown(ShutdownSignalException signal) {
+                ConnectionListener.super.onShutDown(signal);
+            }
+
+            @Override
+            public void onFailed(Exception exception) {
+                ConnectionListener.super.onFailed(exception);
+            }
+        });
+    }
+
+
+//    @RabbitListener(queues = RabbitMQStudentCourseTopicConfig.DEAD_LETTER_QUEUE)
+//    public void doChooseCourse(Message message, @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag, Channel channel)throws IOException {
+//        System.out.println("收到死信消息:" + new String(message.getBody()));
+//        channel.basicAck(deliveryTag,false);
 //    }
 }

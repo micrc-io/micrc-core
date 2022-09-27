@@ -1,12 +1,18 @@
 package io.micrc.core.message.jpa;
 
+import io.micrc.core.framework.json.JsonUtil;
 import io.micrc.core.message.MessageRouteConfiguration.EventsInfo.Event;
 import lombok.Data;
+import org.apache.camel.Body;
 import org.apache.camel.Consume;
+import org.apache.camel.Header;
+import org.springframework.amqp.rabbit.connection.CorrelationData;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
+import java.util.List;
 
 /**
  * 消息跟踪器
@@ -29,7 +35,7 @@ public class MessageTracker {
     private String channel;
 
     /**
-     * 交换区 ? 必要吗?
+     * 交换区
      */
     private String exchange;
 
@@ -41,7 +47,7 @@ public class MessageTracker {
     /**
      * 发送序列
      */
-    private Integer sequence;
+    private Long sequence;
 
     @Consume("eventstore://create-tracker")
     public MessageTracker create(Event event) {
@@ -49,15 +55,20 @@ public class MessageTracker {
         tracker.setChannel(event.getChannel());
         tracker.setRegion(event.getEventName());
         tracker.setExchange(event.getExchangeName());
-        tracker.setSequence(0);
+        tracker.setSequence(0L);
         tracker.setTrackerId(event.getExchangeName() + "-" + event.getChannel());
         return tracker;
     }
 
     @Consume("eventstore://tracker-move")
-    //TODO tengwang 这里不会端点的入参方法 学会后修正写法
-    public MessageTracker moveSequence(MessageTracker tracker, Integer sequence) {
-        tracker.setSequence(sequence + tracker.getSequence());
+    public MessageTracker move(@Body MessageTracker tracker, @Header("eventMessages") List<EventMessage> eventMessages) {
+        tracker.setSequence(eventMessages.get(eventMessages.size() - 1).getSequence());
         return tracker;
+    }
+
+    @Consume("publish://sending")
+    public void send(@Body EventMessage eventMessage, @Header("template") RabbitTemplate template, @Header("tracker") MessageTracker tracker) {
+        CorrelationData correlationData = new CorrelationData(JsonUtil.writeValueAsString(tracker));
+        template.convertAndSend(tracker.getExchange(), tracker.getChannel(), eventMessage, correlationData);
     }
 }

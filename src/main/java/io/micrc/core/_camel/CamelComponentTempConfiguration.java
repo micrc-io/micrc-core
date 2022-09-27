@@ -100,7 +100,7 @@ public class CamelComponentTempConfiguration {
                         .process(exchange -> {
                             String patchStr = "[{ \"op\": \"replace\", \"path\": \"{{path}}\", \"value\": {{value}} }]";
                             String pathReplaced = patchStr.replace("{{path}}", String.valueOf(exchange.getIn().getHeader("path")));
-                            String valueReplaced = pathReplaced.replace("{{value}}", String.valueOf(exchange.getIn().getHeader("header")));
+                            String valueReplaced = pathReplaced.replace("{{value}}", String.valueOf(exchange.getIn().getHeader("value")));
                             JsonPatch patch = JsonPatch.fromJson(JsonUtil.readTree(valueReplaced));
                             exchange.getIn().setBody(JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(exchange.getIn().getBody()))));
                         })
@@ -109,7 +109,7 @@ public class CamelComponentTempConfiguration {
                         .process(exchange -> {
                             String addStr = "[{ \"op\": \"add\", \"path\": \"{{path}}\", \"value\": {{value}} }]";
                             String pathReplaced = addStr.replace("{{path}}", String.valueOf(exchange.getIn().getHeader("path")));
-                            String valueReplaced = pathReplaced.replace("{{value}}", String.valueOf(exchange.getIn().getHeader("header")));
+                            String valueReplaced = pathReplaced.replace("{{value}}", String.valueOf(exchange.getIn().getHeader("value")));
                             JsonPatch patch = JsonPatch.fromJson(JsonUtil.readTree(valueReplaced));
                             exchange.getIn().setBody(JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(exchange.getIn().getBody()))));
                         })
@@ -117,5 +117,4 @@ public class CamelComponentTempConfiguration {
             }
         };
     }
-
 }

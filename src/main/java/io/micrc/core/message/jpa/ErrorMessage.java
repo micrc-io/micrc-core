@@ -1,6 +1,8 @@
 package io.micrc.core.message.jpa;
 
 import lombok.Data;
+import org.apache.camel.Body;
+import org.apache.camel.Consume;
 
 import javax.persistence.Entity;
 import javax.persistence.Id;
@@ -59,13 +61,14 @@ public class ErrorMessage {
      */
     private Integer errorFrequency = 1;
 
-    public ErrorMessage haveError(String region, Long sequence, String exchange, String channel, String reason) {
-        ErrorMessage errorMessage = new ErrorMessage();
-        errorMessage.setRegion(region);
-        errorMessage.setSequence(sequence);
-        errorMessage.setExchange(exchange);
-        errorMessage.setChannel(channel);
-        errorMessage.setReason(reason);
+    /**
+     * 发送状态 NOT_SEND未发送 STOP不发送 SENDING发送中
+     */
+    private String state = "NOT_SEND";
+
+    @Consume("eventstore://error-message-sending")
+    public ErrorMessage sending(@Body ErrorMessage errorMessage) {
+        errorMessage.setState("SENDING");
         return errorMessage;
     }
 }
