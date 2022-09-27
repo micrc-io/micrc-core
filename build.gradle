@@ -114,7 +114,7 @@ dependencies {
     // message endpoints for consuming and producing - message producer and consumer adapter
     implementation "org.springframework.boot:spring-boot-starter-amqp"
     // mock rabbitmq msg
-    implementation "com.github.fridujo:rabbitmq-mock:${property('rabbitmq-mock.version')}"
+    // implementation "com.github.fridujo:rabbitmq-mock:${property('rabbitmq-mock.version')}"
     // implementation "com.playtika.testcontainers:embedded-rabbitmq:${property('testcontainers.version')}" // 备用。当rabbitmq-mock不适用时使用
 
     // caffeine, redis for cache and schedule

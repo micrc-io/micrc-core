@@ -1,5 +1,6 @@
 org.springframework.boot.env.EnvironmentPostProcessor=\
   io.micrc.core.configuration.springboot.MicrcEnvironmentProcessor,\
   io.micrc.core.persistence.springboot.PersistenceEnvironmentProcessor,\
+  io.micrc.core.cache.springboot.CacheEnvironmentProcessor,\
   io.micrc.core.rpc.springboot.RpcEnvironmentProcessor,\
-  io.micrc.core.cache.springboot.CacheEnvironmentProcessor
+  io.micrc.core.message.springboot.MessageEnvironmentProcessor

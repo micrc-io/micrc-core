@@ -1,8 +1,6 @@
 package io.micrc.core._camel;
 
-import com.fasterxml.jackson.core.JsonPointer;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.MissingNode;
 import com.github.fge.jsonpatch.JsonPatch;
 import com.schibsted.spt.data.jslt.Expression;
 import com.schibsted.spt.data.jslt.Parser;
@@ -87,20 +85,15 @@ public class CamelComponentTempConfiguration {
                 from("json-patch://select")
                         .process(exchange -> {
                             String content = String.valueOf(exchange.getIn().getBody());
-                            JsonNode originalJsonNode = JsonUtil.readTree(content);
-                            JsonPointer jsonPointer = JsonPointer.compile(String.valueOf(exchange.getIn().getHeader("pointer")));
-                            JsonNode node = originalJsonNode.at(jsonPointer);
-                            if (node instanceof MissingNode) {
-                                exchange.getIn().setBody(null);
-                            }
-                            exchange.getIn().setBody(JsonUtil.writeValueAsStringRetainNull(node));
+                            String pointer = String.valueOf(exchange.getIn().getHeader("pointer"));
+                            exchange.getIn().setBody(JsonUtil.readPath(content, pointer));
                         })
                         .end();
                 from("json-patch://patch")
                         .process(exchange -> {
                             String patchStr = "[{ \"op\": \"replace\", \"path\": \"{{path}}\", \"value\": {{value}} }]";
                             String pathReplaced = patchStr.replace("{{path}}", String.valueOf(exchange.getIn().getHeader("path")));
-                            String valueReplaced = pathReplaced.replace("{{value}}", String.valueOf(exchange.getIn().getHeader("header")));
+                            String valueReplaced = pathReplaced.replace("{{value}}", String.valueOf(exchange.getIn().getHeader("value")));
                             JsonPatch patch = JsonPatch.fromJson(JsonUtil.readTree(valueReplaced));
                             exchange.getIn().setBody(JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(exchange.getIn().getBody()))));
                         })
@@ -109,7 +102,7 @@ public class CamelComponentTempConfiguration {
                         .process(exchange -> {
                             String addStr = "[{ \"op\": \"add\", \"path\": \"{{path}}\", \"value\": {{value}} }]";
                             String pathReplaced = addStr.replace("{{path}}", String.valueOf(exchange.getIn().getHeader("path")));
-                            String valueReplaced = pathReplaced.replace("{{value}}", String.valueOf(exchange.getIn().getHeader("header")));
+                            String valueReplaced = pathReplaced.replace("{{value}}", String.valueOf(exchange.getIn().getHeader("value")));
                             JsonPatch patch = JsonPatch.fromJson(JsonUtil.readTree(valueReplaced));
                             exchange.getIn().setBody(JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(exchange.getIn().getBody()))));
                         })
@@ -117,5 +110,4 @@ public class CamelComponentTempConfiguration {
             }
         };
     }
-
 }

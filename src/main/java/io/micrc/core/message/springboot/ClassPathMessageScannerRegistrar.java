@@ -11,9 +11,11 @@ import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinitionHolder;
-import org.springframework.beans.factory.support.*;
+import org.springframework.beans.factory.support.BeanDefinitionBuilder;
+import org.springframework.beans.factory.support.BeanDefinitionRegistry;
+import org.springframework.beans.factory.support.BeanNameGenerator;
+import org.springframework.beans.factory.support.GenericBeanDefinition;
 import org.springframework.context.ResourceLoaderAware;
-import org.springframework.context.annotation.AnnotationBeanNameGenerator;
 import org.springframework.context.annotation.ClassPathBeanDefinitionScanner;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
 import org.springframework.core.annotation.AnnotationAttributes;
@@ -50,10 +52,12 @@ public class ClassPathMessageScannerRegistrar implements ImportBeanDefinitionReg
             return;
         }
 
+        EventsInfo eventsInfo = new EventsInfo();
+
         /**
          * 发送器注解扫描
          */
-        MessagePublisherScanner messagePublisherScanner = new MessagePublisherScanner(registry);
+        MessagePublisherScanner messagePublisherScanner = new MessagePublisherScanner(registry, eventsInfo);
         messagePublisherScanner.setResourceLoader(resourceLoader);
         messagePublisherScanner.doScan(basePackages);
 
@@ -68,6 +72,9 @@ public class ClassPathMessageScannerRegistrar implements ImportBeanDefinitionReg
         @SuppressWarnings("unchecked")
         BeanDefinition beanDefinition = BeanDefinitionBuilder.genericBeanDefinition((Class<MessageSubscriberRouteParamSource>) source.getClass(), () -> source).getRawBeanDefinition();
         registry.registerBeanDefinition(importBeanNameGenerator.generateBeanName(beanDefinition, registry), beanDefinition);
+        @SuppressWarnings("unchecked")
+        BeanDefinition eventsInfoBeanDefinition = BeanDefinitionBuilder.genericBeanDefinition((Class<EventsInfo>) eventsInfo.getClass(), () -> eventsInfo).getRawBeanDefinition();
+        registry.registerBeanDefinition(importBeanNameGenerator.generateBeanName(eventsInfoBeanDefinition, registry), eventsInfoBeanDefinition);
     }
 
     @Override
@@ -78,8 +85,11 @@ public class ClassPathMessageScannerRegistrar implements ImportBeanDefinitionReg
 
 class MessagePublisherScanner extends ClassPathBeanDefinitionScanner {
 
-    public MessagePublisherScanner(BeanDefinitionRegistry registry) {
+    private final EventsInfo eventsInfo;
+
+    public MessagePublisherScanner(BeanDefinitionRegistry registry, EventsInfo eventsInfo) {
         super(registry, false);
+        this.eventsInfo = eventsInfo;
     }
 
     @Override
@@ -93,7 +103,6 @@ class MessagePublisherScanner extends ClassPathBeanDefinitionScanner {
     protected Set<BeanDefinitionHolder> doScan(String... basePackages) {
         this.addIncludeFilter(new AnnotationTypeFilter(DomainEvents.class));
         Set<BeanDefinitionHolder> holders = super.doScan(basePackages);
-        EventsInfo eventsInfo = new EventsInfo();
         for (BeanDefinitionHolder holder : holders) {
             GenericBeanDefinition beanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
             beanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
@@ -111,22 +120,8 @@ class MessagePublisherScanner extends ClassPathBeanDefinitionScanner {
                 eventsInfo.put(channel, event);
             });
         }
-        this.registBean(eventsInfo);
         holders.clear();
         return holders;
-    }
-
-    private void registBean(Object beanInstance) {
-        GenericBeanDefinition beanDefinition = new GenericBeanDefinition();
-        beanDefinition.getConstructorArgumentValues().addGenericArgumentValue(beanInstance);
-        beanDefinition.setBeanClass(EventsInfo.class);
-        beanDefinition.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_TYPE);
-        beanDefinition.setLazyInit(false);
-        beanDefinition.setPrimary(true);
-        beanDefinition.setScope("singleton");
-        String beanName = AnnotationBeanNameGenerator.INSTANCE.generateBeanName(beanDefinition, super.getRegistry());
-        BeanDefinitionHolder definitionHolder = new BeanDefinitionHolder(beanDefinition, beanName);
-        super.registerBeanDefinition(definitionHolder, super.getRegistry());
     }
 
     @Override

@@ -42,22 +42,35 @@ databaseChangeLog:
                   name: sequence
                   type: BIGINT
                   remarks: the message sequence
+                  autoIncrement: true
                   constraints:
                     nullable: false
                     unique: true
-                    autoIncrement: true
+
         - createTable:
             tableName: message_message_tracker
             remarks: message tracker
             columns:
+              - column:
+                  name: tracker_id
+                  type: VARCHAR(500)
+                  remarks: the id of tracker
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: tracker-pk
               - column:
                   name: channel
                   type: VARCHAR(500)
                   remarks: the channel of event
                   constraints:
                     nullable: false
-                    primaryKey: true
-                    primaryKeyName: tracker-pk
+              - column:
+                  name: exchange
+                  type: VARCHAR(500)
+                  remarks: the event exchange
+                  constraints:
+                    nullable: true
               - column:
                   name: region
                   type: VARCHAR(500)
@@ -124,6 +137,12 @@ databaseChangeLog:
                   remarks: the error message error frequency
                   constraints:
                     nullable: false
+              - column:
+                  name: state
+                  type: VARCHAR(500)
+                  remarks: send state - NOT_SEND未发送 STOP不发送 SENDING发送中
+                  constraints:
+                    nullable: false
         - insert:
             columns:
               - column:
@@ -169,5 +188,8 @@ databaseChangeLog:
               - column:
                   name: error_frequency
                   value: 1
+              - column:
+                  name: state
+                  value: 'NOT_SEND'
             dbms: 'h2'
             tableName: message_error_message
