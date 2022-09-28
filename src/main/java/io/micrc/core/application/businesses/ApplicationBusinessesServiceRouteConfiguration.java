@@ -8,11 +8,14 @@ import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.CommandParamIntegration;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.LogicIntegration;
 import io.micrc.core.framework.json.JsonUtil;
+import io.micrc.core.rpc.ErrorInfo;
+import io.micrc.core.rpc.LogicRequest;
 import io.micrc.lib.ClassCastUtils;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import org.apache.camel.Exchange;
 import org.apache.camel.ExchangeProperties;
 
 import java.io.BufferedReader;
@@ -44,6 +47,13 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
 
     @Override
     public void configureRoute() throws Exception {
+        // 拦截器检查commandJson里边有错误信息时直接处理并终止路由
+        intercept()
+                .when(exchange -> JsonUtil.readPath((String) exchange.getProperties().get("commandJson"), "/error/errorCode") != null)
+                .to("direct://commandAdapterResult") // 适配器层处理
+                .marshal().json().convertBodyTo(String.class) // REST返回
+                .stop();
+
         routeTemplate(ROUTE_TMPL_BUSINESSES_SERVICE)
                 .templateParameter("serviceName", null, "the business service name")
                 .templateParameter("logicName", null, "the logicName")
@@ -91,7 +101,6 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .setBody(exchangeProperty("commandJson"))
                 .to("eventstore://store")
                 .setBody(exchangeProperty("commandJson"))
-                .unmarshal().json(HashMap.class)
                 .end();
 
         from("direct://integration-params")
@@ -133,23 +142,26 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
 
         from("logic://logic-execute")
                 // 2.1 执行前置校验
-                .toD("logicexecute://post:/${exchange.properties.get(logicName)}/before?host=localhost:8888")
+                .setHeader("logic", simple("${exchange.properties.get(logicName)}/before"))
+                .bean(LogicRequest.class, "request")
                 .unmarshal().json(HashMap.class)
-                .bean(ResultCheck.class, "check(${body})")
+                .bean(ResultCheck.class, "check(${body}, ${exchange})")
                 // TODO 逻辑检查异常是否存在及回滚事务
                 // 2.2 执行逻辑
                 .setBody(exchangeProperty("logicIntegrationJson"))
                 .unmarshal().json(LogicIntegration.class)
                 .bean(LogicInParamsResolve.class, "toLogicParams(${body}, ${exchange.properties.get(commandJson)})")
-                .toD("logicexecute://post:/${exchange.properties.get(logicName)}/logic?host=localhost:8888")
+                .setHeader("logic", simple("${exchange.properties.get(logicName)}/logic"))
+                .bean(LogicRequest.class, "request")
                 .unmarshal().json(HashMap.class)
                 .bean(LogicInParamsResolve.class,
                         "toTargetParams(${body}, ${exchange.properties.get(commandJson)}, ${exchange.properties.get(logicIntegrationJson)})")
                 .setProperty("commandJson", body())
                 // 2.3 执行后置校验
-                .toD("logicexecute://post:/${exchange.properties.get(logicName)}/before?host=localhost:8888")
+                .setHeader("logic", simple("${exchange.properties.get(logicName)}/after"))
+                .bean(LogicRequest.class, "request")
                 .unmarshal().json(HashMap.class)
-                .bean(ResultCheck.class, "check(${body})")
+                .bean(ResultCheck.class, "check(${body}, ${exchange})")
                 // TODO 逻辑检查异常是否存在及回滚事务
                 .end();
     }
@@ -206,7 +218,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
         protected String logicIntegrationJson;
     }
 
-    private String patch(String original, String path, String value) {
+    private static String patch(String original, String path, String value) {
         String patchCommand = "[{ \"op\": \"replace\", \"path\": \"{{path}}\", \"value\": {{value}} }]";
 
         try {
@@ -282,15 +294,20 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
     }
 
     public static class ResultCheck {
-        public static void check(HashMap<String, Object> checkResult) {
+        public static void check(HashMap<String, Object> checkResult, Exchange exchange) {
+            ErrorInfo errorInfo = new ErrorInfo();
             if (null == checkResult.get("checkResult")) {
-                // 抛出一个异常
-                throw new RuntimeException("check result is null, please check dmn...");
+                errorInfo.setErrorCode("unknown");
             }
             if (!(Boolean) checkResult.get("checkResult")) {
-                // 抛出一个异常
-                // throw new RuntimeException((String) checkResult.get("errorCode"), (String)
-                // checkResult.get("errorMessage"));
+                errorInfo.setErrorCode((String) checkResult.get("errorCode"));
+            }
+            if (null != errorInfo.getErrorCode()) {
+                String commandJson = patch((String) exchange.getProperties().get("commandJson"),
+                        "/error",
+                        JsonUtil.writeValueAsString(errorInfo));
+                exchange.getProperties().put("commandJson", commandJson);
+                exchange.getIn().setBody(commandJson);
             }
         }
     }

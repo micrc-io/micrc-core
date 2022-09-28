@@ -4,7 +4,6 @@ import org.apache.commons.logging.Log;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.env.EnvironmentPostProcessor;
 import org.springframework.core.env.ConfigurableEnvironment;
-import org.springframework.core.env.MutablePropertySources;
 import org.springframework.core.env.PropertiesPropertySource;
 
 import java.util.Arrays;
@@ -32,12 +31,12 @@ public class MessageEnvironmentProcessor implements EnvironmentPostProcessor {
         Optional<String> profileStr = Optional.ofNullable(environment.getProperty("application.profiles"));
         List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
         Properties properties = new Properties();
-        envForRabbitMQ(profiles, properties, environment.getPropertySources());
+        envForRabbitMQ(profiles, properties);
         PropertiesPropertySource source = new PropertiesPropertySource("micrc-message", properties);
         environment.getPropertySources().addLast(source);
     }
 
-    private void envForRabbitMQ(List<String> profiles, Properties properties, MutablePropertySources propertySources) {
+    private void envForRabbitMQ(List<String> profiles, Properties properties) {
         properties.setProperty("spring.rabbitmq.template.mandatory", "true");
         properties.setProperty("spring.rabbitmq.publisher-confirm-type", "correlated");
         properties.setProperty("spring.rabbitmq.publisher-returns", "true");
@@ -47,11 +46,25 @@ public class MessageEnvironmentProcessor implements EnvironmentPostProcessor {
         properties.setProperty("spring.rabbitmq.listener.simple.retry.max-attempts", "3");
         properties.setProperty("spring.rabbitmq.listener.simple.retry.max-interval", "15000ms");
         properties.setProperty("spring.rabbitmq.listener.simple.retry.initial-interval", "1000ms");
-        if (profiles.contains("local") || profiles.contains("default")) {
-            properties.setProperty("spring.rabbitmq.host", "127.0.0.1");
-            properties.setProperty("spring.rabbitmq.port", "5672");
-            properties.setProperty("spring.rabbitmq.username", "rabbit");
-            properties.setProperty("spring.rabbitmq.password", "rabbit");
+
+        if (profiles.contains("default") || profiles.contains("local")) {
+            log.info("Embedded rabbitmq server configuration for profiles: default/local");
+            // embedded rabbitmq
+            properties.setProperty("embedded.rabbitmq.enabled", "true");
+            properties.setProperty("embedded.rabbitmq.reuseContainer", "true");
+            properties.setProperty("embedded.rabbitmq.password", "rabbitmq");
+            properties.setProperty("embedded.rabbitmq.vhost", "/");
+            properties.setProperty("embedded.rabbitmq.dockerImage", "rabbitmq:3.9-management");
+            properties.setProperty("embedded.rabbitmq.waitTimeoutInSeconds", "60");
+            // default/local rabbitmq config
+            properties.setProperty("spring.rabbitmq.host", "${embedded.rabbitmq.host}");
+            properties.setProperty("spring.rabbitmq.port", "${embedded.rabbitmq.port}");
+            properties.setProperty("spring.rabbitmq.username", "${embedded.rabbitmq.user}");
+            properties.setProperty("spring.rabbitmq.password", "${embedded.rabbitmq.password}");
+            properties.setProperty("spring.rabbitmq.virtual-host", "${embedded.rabbitmq.vhost}");
+            properties.setProperty("micrc.embedded.rabbitmq.httpPort", "${embedded.rabbitmq.httpPort}");
+        } else {
+            properties.setProperty("embedded.rabbitmq.enabled", "false");
         }
     }
 }

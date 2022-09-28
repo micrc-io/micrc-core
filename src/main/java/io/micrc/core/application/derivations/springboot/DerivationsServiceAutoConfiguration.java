@@ -3,7 +3,6 @@ package io.micrc.core.application.derivations.springboot;
 import io.micrc.core.application.derivations.ApplicationDerivationsServiceRouteTemplateParameterSource;
 import org.apache.camel.CamelContext;
 import org.apache.camel.component.direct.DirectComponent;
-import org.apache.camel.component.rest.RestComponent;
 import org.apache.camel.spi.RouteTemplateParameterSource;
 import org.apache.camel.spring.boot.CamelContextConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -48,11 +47,5 @@ public class DerivationsServiceAutoConfiguration {
     public DirectComponent derivationsService() {
         DirectComponent derivationsService = new DirectComponent();
         return derivationsService;
-    }
-
-    @Bean("operations")
-    public RestComponent operations() {
-        RestComponent operations = new RestComponent();
-        return operations;
     }
 }

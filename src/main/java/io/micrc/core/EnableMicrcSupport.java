@@ -3,6 +3,7 @@ package io.micrc.core;
 import io.micrc.core._camel.CamelComponentTempConfiguration;
 import io.micrc.core.application.EnableApplicationService;
 import io.micrc.core.cache.springboot.CacheAutoConfiguration;
+import io.micrc.core.configuration.springboot.EmbeddedServerLoggingApplicationRunner;
 import io.micrc.core.integration.EnableIntegration;
 import io.micrc.core.message.springboot.ClassPathMessageScannerRegistrar;
 import io.micrc.core.message.springboot.MessageAutoConfiguration;
@@ -35,15 +36,16 @@ import java.lang.annotation.*;
 @EnableApplicationService
 @EnableIntegration
 @Import({
-        CamelComponentTempConfiguration.class,
-        PersistenceAutoConfiguration.class,
-        RpcAutoConfiguration.class,
-        ClassPathRestEndpointScannerRegistrar.class,
-        RpcMockServerScannerRegistrar.class,
-        CacheAutoConfiguration.class,
-        ScheduleAutoConfiguration.class,
-        ClassPathMessageScannerRegistrar.class,
-        MessageAutoConfiguration.class
+    CamelComponentTempConfiguration.class,
+    EmbeddedServerLoggingApplicationRunner.class,
+    PersistenceAutoConfiguration.class,
+    CacheAutoConfiguration.class,
+    RpcAutoConfiguration.class,
+    ClassPathRestEndpointScannerRegistrar.class,
+    RpcMockServerScannerRegistrar.class,
+    MessageAutoConfiguration.class,
+    ClassPathMessageScannerRegistrar.class,
+    ScheduleAutoConfiguration.class,
 })
 public @interface EnableMicrcSupport {
     String[] basePackages() default {};

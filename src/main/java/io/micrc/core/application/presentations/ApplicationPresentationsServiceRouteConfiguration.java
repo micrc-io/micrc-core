@@ -82,9 +82,7 @@ public class ApplicationPresentationsServiceRouteConfiguration extends MicrcRout
                         "(${exchange.properties.get(current).get(params)})")
                 .otherwise()
                 .setBody(simple("${exchange.properties.get(current).get(params)}"))
-                .toD("rest-openapi://${exchange.properties.get(current).get(protocol)}" +
-                        "#${exchange.properties.get(current).get(operationId)}" +
-                        "?host=${exchange.properties.get(current).get(host)}")
+                .to("req://integration")
                 .end()
                   // 处理返回
                 .bean(IntegrationParams.class, "processResult");

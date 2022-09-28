@@ -23,6 +23,13 @@ public class RpcRestRouteConfiguration extends MicrcRouteBuilder {
 
     @Override
     public void configureRoute() throws Exception {
+
+        // 逻辑请求路由，定义req协议
+        from("req://logic")
+                .toD("rest://post:/${header.logic}?host=localhost:8888")
+                .convertBodyTo(String.class)
+                .end();
+
         // 通用请求路由，定义req协议，由业务/展示逻辑中进行衍生集成时使用
         from("req://integration")
                 .marshal().json().convertBodyTo(String.class)

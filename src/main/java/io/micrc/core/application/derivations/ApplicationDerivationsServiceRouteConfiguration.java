@@ -5,6 +5,7 @@ import com.github.fge.jsonpatch.JsonPatchException;
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.core.framework.json.JsonUtil;
+import io.micrc.core.rpc.LogicRequest;
 import io.micrc.lib.ClassCastUtils;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -77,7 +78,8 @@ public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteB
                         "(${exchange.properties.get(current).get(params)})")
                 .otherwise()
                 .setBody(simple("${exchange.properties.get(current).get(params)}"))
-                .toD("operations://post:/${exchange.properties.get(current).get(logic)}?host=localhost:8888")
+                .setHeader("logic", simple("${exchange.properties.get(current).get(logic)}"))
+                .bean(LogicRequest.class, "request")
                 .end()
                   // 处理返回
                 .bean(IntegrationParams.class, "processResult");
