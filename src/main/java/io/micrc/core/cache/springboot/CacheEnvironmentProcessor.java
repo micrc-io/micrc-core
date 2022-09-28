@@ -40,7 +40,7 @@ public class CacheEnvironmentProcessor implements EnvironmentPostProcessor {
             log.info("Start embedded redis for env 'default' or 'local'. ");
             // embedded redis
             properties.setProperty("embedded.redis.enabled", "true");
-            properties.setProperty("embedded.redis.reuseContainer", "false");
+            properties.setProperty("embedded.redis.reuseContainer", "false"); // TODO 确定版本后改为true
             properties.setProperty("embedded.redis.dockerImage", "redis:6.2-alpine");
             properties.setProperty("embedded.redis.waitTimeoutInSeconds", "60");
             properties.setProperty("embedded.redis.clustered", "false");

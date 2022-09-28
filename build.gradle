@@ -114,8 +114,7 @@ dependencies {
     // message endpoints for consuming and producing - message producer and consumer adapter
     implementation "org.springframework.boot:spring-boot-starter-amqp"
     // mock rabbitmq msg
-    // implementation "com.github.fridujo:rabbitmq-mock:${property('rabbitmq-mock.version')}"
-    // implementation "com.playtika.testcontainers:embedded-rabbitmq:${property('testcontainers.version')}" // 备用。当rabbitmq-mock不适用时使用
+    implementation "com.playtika.testcontainers:embedded-rabbitmq:${property('testcontainers.version')}"
 
     // caffeine, redis for cache and schedule
     implementation "org.springframework.boot:spring-boot-starter-cache"
@@ -125,11 +124,8 @@ dependencies {
     // shedlock for schedule distributed lock
     implementation "net.javacrumbs.shedlock:shedlock-spring:${property('shedlock.version')}"
     implementation "net.javacrumbs.shedlock:shedlock-provider-redis-spring:${property('shedlock.version')}"
-    // // mock server
-    // implementation("it.ozimov:embedded-redis:${property('embedded-redis.version')}") {
-    //     exclude group: "org.slf4j", module: "slf4j-simple"
-    // }
-    implementation "com.playtika.testcontainers:embedded-redis:${property('testcontainers.version')}" // 备用。当embedded-redis不适用时使用
+    // mock server
+    implementation "com.playtika.testcontainers:embedded-redis:${property('testcontainers.version')}"
 
 }
 
