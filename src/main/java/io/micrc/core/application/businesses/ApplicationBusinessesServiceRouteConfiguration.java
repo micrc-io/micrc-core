@@ -49,7 +49,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
     public void configureRoute() throws Exception {
         // 拦截器检查commandJson里边有错误信息时直接处理并终止路由
         intercept()
-                .when(exchange -> JsonUtil.readPath((String) exchange.getProperties().get("commandJson"), "/error") != null)
+                .when(exchange -> JsonUtil.readPath((String) exchange.getProperties().get("commandJson"), "/error/errorCode") != null)
                 .to("direct://commandAdapterResult") // 适配器层处理
                 .marshal().json().convertBodyTo(String.class) // REST返回
                 .stop();
