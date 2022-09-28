@@ -7,7 +7,7 @@ import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 
-import org.springframework.cache.interceptor.SimpleKeyGenerator;
+import org.springframework.cache.interceptor.KeyGenerator;
 import org.springframework.util.ReflectionUtils;
 
 import lombok.SneakyThrows;
@@ -20,7 +20,7 @@ import lombok.SneakyThrows;
  * @since 0.0.1
  * @date 2022-09-25 09:31
  */
-public class EntityIdKeyGenerator extends SimpleKeyGenerator {
+public class EntityIdKeyGenerator implements KeyGenerator {
 
     @SneakyThrows
     @Override
@@ -51,7 +51,7 @@ public class EntityIdKeyGenerator extends SimpleKeyGenerator {
         if (param == null || idField.getAnnotation(Id.class) == null) {
             throw new IllegalArgumentException("Caching function: " + method.getName() + "'s param must have a @Id.");
         }
-        return super.generate(target, method, param);
+        return param;
     }
 
     private Object embeddedIdKeyGenerator(Object target, Method method, Field embeddedIdField) {
@@ -72,6 +72,6 @@ public class EntityIdKeyGenerator extends SimpleKeyGenerator {
             throw new IllegalArgumentException(
                 "Caching function: " + method.getName() + "'s param embeddedId must have a id value.");
         }
-        return super.generate(target, method, param);
+        return param;
     }
 }
