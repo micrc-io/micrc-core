@@ -143,6 +143,12 @@ databaseChangeLog:
                   remarks: send state - NOT_SEND未发送 STOP不发送 SENDING发送中
                   constraints:
                     nullable: false
+              - column:
+                  name: content
+                  type: text
+                  remarks: message content
+                  constraints:
+                    nullable: false
         - insert:
             columns:
               - column:
@@ -191,5 +197,8 @@ databaseChangeLog:
               - column:
                   name: state
                   value: 'NOT_SEND'
+              - column:
+                  name: content
+                  value: '{"source":{"id":"test-0021663931012154","state":"CREATED","authorizeInfo":{"authorizeTime":null,"cancelAuthorizeTime":null},"archiveInfo":null,"destroyInfo":null,"commissionInfo":null,"commissionCharacteristic":{"canCommission":true,"canArchive":false,"authorized":false},"belongStore":null,"belongOrder":{"orderId":"test-order-002","originalOrderId":null,"paymentInfo":null,"belongPlatform":null,"orderType":null,"logisticType":null,"orderCharacteristic":null},"orderParcelList":[],"orderItemList":[],"orderBuyer":null,"version":null},"target":{"id":"test-0021663931012154","state":"AUTHORIZED","authorizeInfo":{"authorizeTime":1663931014309,"cancelAuthorizeTime":null},"archiveInfo":null,"destroyInfo":null,"commissionInfo":null,"commissionCharacteristic":{"canCommission":false,"canArchive":false,"authorized":false},"belongStore":null,"belongOrder":{"orderId":"test-order-002","originalOrderId":null,"paymentInfo":null,"belongPlatform":null,"orderType":null,"logisticType":null,"orderCharacteristic":null},"orderParcelList":[],"orderItemList":[],"orderBuyer":null,"version":null},"authResult":{"result":true,"errorMessage":null,"errorCode":null,"event":"CommissionAuthorizeEvent"},"commissionId":{"id":"212132132"}}'
             dbms: 'h2'
             tableName: message_error_message

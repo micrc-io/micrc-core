@@ -1,10 +1,20 @@
 package io.micrc.core.message;
 
+import io.micrc.core.framework.json.JsonUtil;
+import io.micrc.core.message.jpa.EventMessage;
+import lombok.SneakyThrows;
+import org.apache.camel.ProducerTemplate;
 import org.springframework.amqp.core.ReturnedMessage;
 import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate.ConfirmCallback;
 import org.springframework.amqp.rabbit.core.RabbitTemplate.ReturnsCallback;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.io.ByteArrayInputStream;
+import java.io.ObjectInputStream;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * TODO
@@ -17,6 +27,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class MessageCallback implements ConfirmCallback, ReturnsCallback {
 
+    @Autowired
+    private ProducerTemplate template;
+
+
     /**
      * 成功失败都会回调(ack判断)
      *
@@ -26,9 +40,21 @@ public class MessageCallback implements ConfirmCallback, ReturnsCallback {
      */
     @Override
     public void confirm(CorrelationData correlationData, boolean ack, String cause) {
-        System.err.println("correlationData: " + correlationData);
-        if (!ack) {
-            // 失败回写异常消息表
+        Map<String, Object> messageDetail = JsonUtil.writeValueAsObject(correlationData.getId(), HashMap.class);
+        String messageType = (String) messageDetail.get("type");
+        if(ack){
+            // 异常消息且成功--去删除异常表里的死信消息
+            // 正常消息且成功--不予处理
+            template.sendBodyAndHeader("publish://success-sending-resolve", messageDetail, "type", messageType);
+        }
+        if(!ack){
+            // 异常消息且失败--修改异常表,记录发送次数
+            // 正常消息且失败--添加异常消息并记录原因为发送失败
+            Map<String, Object> headers = new HashMap<>();
+            EventMessage eventMessage = (EventMessage) toObject(correlationData.getReturned().getMessage().getBody());
+            headers.put("eventMessage", eventMessage);
+            headers.put("type", messageType);
+            template.sendBodyAndHeaders("publish://error-sending-resolve", messageDetail, headers);
         }
     }
 
@@ -39,6 +65,23 @@ public class MessageCallback implements ConfirmCallback, ReturnsCallback {
      */
     @Override
     public void returnedMessage(ReturnedMessage returned) {
-        System.out.println(returned);
+        Map<String, Object> messageDetail = JsonUtil.writeValueAsObject(returned.getMessage().getMessageProperties().getHeader("spring_returned_message_correlation").toString(), HashMap.class);
+        String messageType = (String) messageDetail.get("type");
+        EventMessage eventMessage = (EventMessage) toObject(returned.getMessage().getBody());
+        Map<String, Object> headers = new HashMap<>();
+        headers.put("eventMessage", eventMessage);
+        headers.put("type", messageType);
+        template.sendBodyAndHeaders("publish://success-sending-resolve", messageDetail, headers);
+    }
+
+    @SneakyThrows
+    public Object toObject(byte[] bytes) {
+        Object obj = null;
+        ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+        ObjectInputStream ois = new ObjectInputStream(bis);
+        obj = ois.readObject();
+        ois.close();
+        bis.close();
+        return obj;
     }
 }

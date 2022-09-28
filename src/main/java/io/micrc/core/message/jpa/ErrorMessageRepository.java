@@ -30,4 +30,18 @@ public interface ErrorMessageRepository extends JpaRepository<ErrorMessage, Stri
             @Param(value = "channel") String channel,
             @Param(value = "count") Integer count
     );
+
+    void deleteByExchangeAndChannelAndSequenceAndRegion(
+            @Param(value = "exchange") String exchange,
+            @Param(value = "channel") String channel,
+            @Param(value = "sequence") Long sequence,
+            @Param(value = "region") String region
+    );
+
+    ErrorMessage findFirstByExchangeAndChannelAndSequenceAndRegion(
+            @Param(value = "exchange") String exchange,
+            @Param(value = "channel") String channel,
+            @Param(value = "sequence") Long sequence,
+            @Param(value = "region") String region
+    );
 }

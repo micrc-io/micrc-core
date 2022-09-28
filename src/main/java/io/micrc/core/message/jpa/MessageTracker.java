@@ -12,7 +12,9 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 消息跟踪器
@@ -67,8 +69,19 @@ public class MessageTracker {
     }
 
     @Consume("publish://sending")
-    public void send(@Body EventMessage eventMessage, @Header("template") RabbitTemplate template, @Header("tracker") MessageTracker tracker) {
-        CorrelationData correlationData = new CorrelationData(JsonUtil.writeValueAsString(tracker));
+    public void send(
+            @Body EventMessage eventMessage,
+            @Header("template") RabbitTemplate template,
+            @Header("tracker") MessageTracker tracker,
+            @Header("type") String type
+    ) {
+        Map<String, Object> messageDetail = new HashMap<>();
+        messageDetail.put("exchange", tracker.getExchange());
+        messageDetail.put("channel", tracker.getChannel());
+        messageDetail.put("region", tracker.getRegion());
+        messageDetail.put("sequence", eventMessage.getSequence());
+        messageDetail.put("type", type);
+        CorrelationData correlationData = new CorrelationData(JsonUtil.writeValueAsString(messageDetail));
         template.convertAndSend(tracker.getExchange(), tracker.getChannel(), eventMessage, correlationData);
     }
 }

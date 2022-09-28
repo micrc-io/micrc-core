@@ -25,8 +25,9 @@ import java.util.*;
  */
 public class MessageRouteConfiguration extends RouteBuilder {
 
+
     @Autowired
-    private RabbitTemplate rabbitTemplate;
+    private RabbitTemplate template;
 
     public static final String ROUTE_TMPL_MESSAGE_SUBSCRIBER =
             MessageRouteConfiguration.class.getName() + ".messageSubscriber";
@@ -42,7 +43,6 @@ public class MessageRouteConfiguration extends RouteBuilder {
                 .bean(EventMessageRepository.class, "save")
                 .end();
 
-        // TODO 调度转发消息通用路由，从事件表中获取消息，使用消息跟踪表控制发送，使用publish协议（spring-rabbitmq组件）发送
         from("eventstore://sender")
                 .routeId("eventstore://sender")
                 .transacted()
@@ -77,11 +77,12 @@ public class MessageRouteConfiguration extends RouteBuilder {
                 .endChoice()
                 .end()
                 .setBody(exchangeProperty("errorEvents"))
-                .split(new SplitList(), new ErrorEventSendStrategy()).parallelProcessing()
+                .split(new SplitList()).parallelProcessing()
                 .to("publish://send-error")
                 .end()
                 .end()
                 .end();
+        // 通用异常消息发送路由
         from("publish://send-error") // publish
                 .routeId("direct://send-error")
                 .setHeader("errorMessage", body())
@@ -100,19 +101,14 @@ public class MessageRouteConfiguration extends RouteBuilder {
                 .to("eventstore://message-set-content")
                 .setHeader("currentMessage", body())
                 .to("publish://get-template")
-                .process(exchange -> {
-                    System.out.println(exchange);
-                })
                 .setHeader("template", body())
+                .setHeader("type", constant("ERROR"))
                 .setHeader("tracker", exchangeProperty("currentTracker"))
                 .setBody(header("currentMessage"))
-                .process(exchange -> {
-                    System.out.println(exchange);
-                })
                 .to("publish://sending")
                 .end();
 
-        // TODO 通用消息发送路由
+        // 通用正常消息发送路由
         from("direct://send-normal") // publish
                 .log("开始发送消息")
                 .log("进行参数转换适配")
@@ -140,20 +136,36 @@ public class MessageRouteConfiguration extends RouteBuilder {
                 .log("针对检查结果,不存在异常则对消息进行ack,否则ack失败")
                 .end();
 
-        // TODO 死信监听路由,落盘本地Tracker关联表
-        //from("direct://dead-message?queues=error")
-        from("direct://dead-message")
-                .log("获取当前消息的消息体以及消息头")
-                .log("开启事务")
-                .log("记录该消息是哪个通道的消息并存储至Tracker失败关联表,并记录原因为消费失败")
-                .log("提交事务")
-                .log("ack应答死信已消费")
+        // 死信监听路由,落盘本地Tracker关联表
+        from("subscribe://dead-message")
+                .transacted()
+                .to("eventstore://dead-message-store")
+                .bean(ErrorMessageRepository.class, "save")
                 .end();
-    }
 
-    @Consume("publish://get-template")
-    public RabbitTemplate getTemplate() {
-        return this.rabbitTemplate;
+        // 发送失败监听路由,落盘本地Tracker关联表
+        from("publish://error-sending-resolve")
+                .transacted()
+                .log("发送失败监听路由,落盘本地Tracker关联表")
+                .choice()
+                    .when(header("type").isEqualTo("ERROR"))
+                        .bean(ErrorMessageRepository.class, "findFirstByExchangeAndChannelAndSequenceAndRegion(${body.get(exchange)}, ${body.get(channel)}, ${body.get(sequence)}, ${body.get(region)})")
+                        .to("eventstore://send-error-error-message-store")
+                        .bean(ErrorMessageRepository.class, "save")
+                    .endChoice()
+                    .when(header("type").isEqualTo("NORMAL"))
+                        .to("eventstore://send-normal-error-message-store")
+                        .bean(ErrorMessageRepository.class, "save")
+                    .endChoice()
+                .end()
+                .end();
+        // 发送成功监听路由,如发送的是异常消息需要移除异常表数据
+        from("publish://success-sending-resolve")
+                .transacted()
+                .choice()
+                .when(header("type").isEqualTo("ERROR"))
+                    .bean(ErrorMessageRepository.class, "deleteByExchangeAndChannelAndSequenceAndRegion(${body.get(exchange)}, ${body.get(channel)}, ${body.get(sequence)}, ${body.get(region)})")
+                .end();
     }
 
     @EqualsAndHashCode(callSuper = true)
@@ -245,13 +257,9 @@ public class MessageRouteConfiguration extends RouteBuilder {
         }
     }
 
-    public static class ErrorEventSendStrategy implements AggregationStrategy {
-        public Exchange aggregate(Exchange oldExchange, Exchange newExchange) {
-            if (oldExchange == null) {
-                return newExchange;
-            }
-            return oldExchange;
-        }
+    @Consume("publish://get-template")
+    public RabbitTemplate getTemplate() {
+        return this.template;
     }
 
 

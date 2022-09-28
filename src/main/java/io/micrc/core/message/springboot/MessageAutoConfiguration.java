@@ -4,6 +4,7 @@ import com.rabbitmq.client.ShutdownSignalException;
 import io.micrc.core.message.MessageCallback;
 import io.micrc.core.message.MessageRouteConfiguration;
 import io.micrc.core.message.jpa.ErrorMessage;
+import io.micrc.core.message.jpa.ErrorMessage.DeadMessageResolver;
 import io.micrc.core.message.jpa.EventMessage;
 import io.micrc.core.message.jpa.MessageTracker;
 import org.apache.camel.component.direct.DirectComponent;
@@ -36,7 +37,8 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
         MessageCallback.class,
         MessageTracker.class,
         EventMessage.class,
-        ErrorMessage.class
+        ErrorMessage.class,
+        DeadMessageResolver.class
 })
 @EntityScan(basePackages = {"io.micrc.core.message.jpa"})
 @EnableJpaRepositories(basePackages = {"io.micrc.core.message.jpa"})
