@@ -47,6 +47,13 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
 
     @Override
     public void configureRoute() throws Exception {
+        // 拦截器检查commandJson里边有错误信息时直接处理并终止路由
+        intercept()
+                .when(exchange -> JsonUtil.readPath((String) exchange.getProperties().get("commandJson"), "/error/errorCode") != null)
+                .to("direct://commandAdapterResult") // 适配器层处理
+                .marshal().json().convertBodyTo(String.class) // REST返回
+                .stop();
+
         routeTemplate(ROUTE_TMPL_BUSINESSES_SERVICE)
                 .templateParameter("serviceName", null, "the business service name")
                 .templateParameter("logicName", null, "the logicName")
@@ -94,7 +101,6 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .setBody(exchangeProperty("commandJson"))
                 .to("eventstore://store")
                 .setBody(exchangeProperty("commandJson"))
-                .unmarshal().json(HashMap.class)
                 .end();
 
         from("direct://integration-params")
@@ -292,26 +298,16 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
             ErrorInfo errorInfo = new ErrorInfo();
             if (null == checkResult.get("checkResult")) {
                 errorInfo.setErrorCode("unknown");
-                String commandJson = patch((String) exchange.getProperties().get("commandJson"),
-                        "/error",
-                        JsonUtil.writeValueAsString(errorInfo));
-                exchange.getProperties().put("commandJson", commandJson);
-                exchange.getIn().setBody(commandJson);
-//                exchange.setRollbackOnly(true);
-//                // 抛出一个异常
-//                throw new RuntimeException("check result is null, please check dmn...");
             }
             if (!(Boolean) checkResult.get("checkResult")) {
                 errorInfo.setErrorCode((String) checkResult.get("errorCode"));
+            }
+            if (null != errorInfo.getErrorCode()) {
                 String commandJson = patch((String) exchange.getProperties().get("commandJson"),
                         "/error",
                         JsonUtil.writeValueAsString(errorInfo));
                 exchange.getProperties().put("commandJson", commandJson);
                 exchange.getIn().setBody(commandJson);
-//                exchange.setRollbackOnly(true);
-//                // 抛出一个异常
-//                 throw new RuntimeException((String) checkResult.get("errorCode"));
-//                         , (String) checkResult.get("errorMessage"));
             }
         }
     }

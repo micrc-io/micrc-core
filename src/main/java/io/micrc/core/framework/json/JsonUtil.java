@@ -152,7 +152,7 @@ public class JsonUtil {
                 return jsonNode.booleanValue();
             }
             // 路径不存在，返回null
-            if (jsonNode instanceof MissingNode) {
+            if (jsonNode instanceof MissingNode || jsonNode instanceof NullNode) {
                 return null;
             }
             throw new UnsupportedOperationException(jsonNode.getClass().getName());
