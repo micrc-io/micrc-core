@@ -97,7 +97,7 @@ public interface MicrcJpaRepository<T, I extends IdentityAware> extends Reposito
      * @param id model id
      * @return model
      */
-    @Cacheable(sync = true)
+    @Cacheable(key="#p0.id", sync = true)
     Optional<T> findById(I id);
 
     /**
