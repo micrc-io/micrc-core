@@ -1,5 +1,6 @@
 package io.micrc.core.cache.springboot;
 
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +14,9 @@ import org.springframework.cache.interceptor.KeyGenerator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.data.redis.cache.RedisCacheConfiguration;
+import org.springframework.data.redis.cache.RedisCacheManager;
+import org.springframework.data.redis.cache.RedisCacheManager.RedisCacheManagerBuilder;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.listener.ChannelTopic;
@@ -56,6 +60,16 @@ public class CacheAutoConfiguration {
         CaffeineCacheManager manager = new CaffeineCacheManager();
         manager.setCaffeine(caffeine);
         return manager;
+    }
+
+    @Bean
+    public RedisCacheManager redisCacheManager(RedisConnectionFactory redisConnectionFactory) {
+        return RedisCacheManagerBuilder.fromConnectionFactory(redisConnectionFactory)
+            .cacheDefaults(
+                RedisCacheConfiguration.defaultCacheConfig()
+                    .entryTtl(Duration.ofMinutes(60))
+            )
+            .build();
     }
 
     @Bean
@@ -115,6 +129,11 @@ public class CacheAutoConfiguration {
     @Bean
     public CacheResolver caffeineRepositoryCacheResolver(CaffeineCacheManager caffeineCacheManager) {
         return new RepositoryCacheResolver(caffeineCacheManager);
+    }
+
+    @Bean
+    public CacheResolver redisRepositoryCacheResolver(RedisCacheManager redisCacheManager) {
+        return new RepositoryCacheResolver(redisCacheManager);
     }
 
     @Bean
