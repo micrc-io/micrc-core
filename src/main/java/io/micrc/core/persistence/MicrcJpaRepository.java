@@ -29,8 +29,8 @@ import io.micrc.lib.SnowFlakeIdentity;
  * @date 2022-09-23 14:37
  */
 @CacheConfig(
-    cacheManager = "caffeineCacheManager",
-    cacheResolver = "caffeineRepositoryCacheResolver",
+    cacheManager = "redisCacheManager",
+    cacheResolver = "redisRepositoryCacheResolver",
     keyGenerator = "repositoryQueryKeyGenerator"
 )
 @NoRepositoryBean

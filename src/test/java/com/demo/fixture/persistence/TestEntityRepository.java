@@ -11,8 +11,8 @@ import org.springframework.stereotype.Repository;
 import io.micrc.core.persistence.MicrcJpaRepository;
 
 @CacheConfig(
-    cacheManager = "caffeineCacheManager",
-    cacheResolver = "caffeineRepositoryCacheResolver",
+    cacheManager = "redisCacheManager",
+    cacheResolver = "redisRepositoryCacheResolver",
     keyGenerator = "repositoryQueryKeyGenerator",
     cacheNames = { "aggre-repo" }
 )
