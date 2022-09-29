@@ -149,6 +149,42 @@ databaseChangeLog:
                   remarks: message content
                   constraints:
                     nullable: false
+        - createTable:
+            tableName: message_idempotent_message
+            remarks: the message idempotent repository
+            columns:
+              - column:
+                  name: idempotent_message_id
+                  type: VARCHAR(255)
+                  remarks: the id of idempotent event
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: idempotent_event-pk
+              - column:
+                  name: sequence
+                  type: BIGINT
+                  remarks: the event sequence
+                  constraints:
+                    nullable: false
+              - column:
+                  name: channel
+                  type: VARCHAR(500)
+                  remarks: the event channel
+                  constraints:
+                    nullable: false
+              - column:
+                  name: exchange
+                  type: VARCHAR(500)
+                  remarks: the event exchange
+                  constraints:
+                    nullable: false
+              - column:
+                  name: region
+                  type: VARCHAR(500)
+                  remarks: the event type
+                  constraints:
+                    nullable: false
         - insert:
             columns:
               - column:

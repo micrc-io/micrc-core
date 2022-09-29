@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.github.fge.jsonpatch.JsonPatch;
 import com.schibsted.spt.data.jslt.Expression;
 import com.schibsted.spt.data.jslt.Parser;
-import io.micrc.core.framework.json.JsonUtil;
+import io.micrc.lib.JsonUtil;
 import lombok.SneakyThrows;
 import org.apache.camel.RoutesBuilder;
 import org.apache.camel.builder.RouteBuilder;

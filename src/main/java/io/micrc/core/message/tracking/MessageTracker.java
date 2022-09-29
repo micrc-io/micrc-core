@@ -1,7 +1,8 @@
-package io.micrc.core.message.jpa;
+package io.micrc.core.message.tracking;
 
-import io.micrc.core.framework.json.JsonUtil;
 import io.micrc.core.message.MessageRouteConfiguration.EventsInfo.Event;
+import io.micrc.core.message.store.EventMessage;
+import io.micrc.lib.JsonUtil;
 import lombok.Data;
 import org.apache.camel.Body;
 import org.apache.camel.Consume;

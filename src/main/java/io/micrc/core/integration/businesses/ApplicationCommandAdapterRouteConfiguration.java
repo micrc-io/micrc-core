@@ -2,10 +2,10 @@ package io.micrc.core.integration.businesses;
 
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
-import io.micrc.core.framework.json.JsonUtil;
 import io.micrc.core.rpc.ErrorInfo;
 import io.micrc.core.rpc.Result;
 import io.micrc.lib.ClassCastUtils;
+import io.micrc.lib.JsonUtil;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;

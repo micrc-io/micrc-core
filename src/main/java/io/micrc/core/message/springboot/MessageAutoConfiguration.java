@@ -1,12 +1,15 @@
 package io.micrc.core.message.springboot;
 
 import com.rabbitmq.client.ShutdownSignalException;
-import io.micrc.core.message.MessageCallback;
+import io.micrc.core.message.MessageConsumeRouterExecution;
 import io.micrc.core.message.MessageRouteConfiguration;
-import io.micrc.core.message.jpa.ErrorMessage;
-import io.micrc.core.message.jpa.ErrorMessage.DeadMessageResolver;
-import io.micrc.core.message.jpa.EventMessage;
-import io.micrc.core.message.jpa.MessageTracker;
+import io.micrc.core.message.store.EventMessage;
+import io.micrc.core.message.store.IdempotentMessage;
+import io.micrc.core.message.store.MessagePublisherSchedule;
+import io.micrc.core.message.tracking.ErrorMessage;
+import io.micrc.core.message.tracking.ErrorMessage.DeadMessageResolver;
+import io.micrc.core.message.tracking.MessageCallback;
+import io.micrc.core.message.tracking.MessageTracker;
 import org.apache.camel.component.direct.DirectComponent;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.Connection;
@@ -33,15 +36,17 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 @Configuration
 @Import({
         MessageRouteConfiguration.class,
-
+        MessagePublisherSchedule.class,
         MessageCallback.class,
         MessageTracker.class,
         EventMessage.class,
         ErrorMessage.class,
-        DeadMessageResolver.class
+        IdempotentMessage.class,
+        DeadMessageResolver.class,
+        MessageConsumeRouterExecution.class
 })
-@EntityScan(basePackages = {"io.micrc.core.message.jpa"})
-@EnableJpaRepositories(basePackages = {"io.micrc.core.message.jpa"})
+@EntityScan(basePackages = {"io.micrc.core.message.store", "io.micrc.core.message.tracking"})
+@EnableJpaRepositories(basePackages = {"io.micrc.core.message.store", "io.micrc.core.message.tracking"})
 public class MessageAutoConfiguration implements ApplicationRunner {
 
     public static final String DEAD_LETTER_EXCHANGE_KEY = "x-dead-letter-exchange";

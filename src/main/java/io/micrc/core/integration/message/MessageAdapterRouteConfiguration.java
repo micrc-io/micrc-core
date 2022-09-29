@@ -26,6 +26,7 @@ public class MessageAdapterRouteConfiguration extends MicrcRouteBuilder {
                 .templateParameter("serviceName", null, "the business service name")
                 .templateParameter("commandPath", null, "the command full path")
                 .from("message://{{name}}")
+                .routeId("message://{{name}}")
                 .setHeader("CamelJacksonUnmarshalType").simple("{{commandPath}}")
                 .to("dataformat:jackson:unmarshal?allow-unmarshall-type=true")
                 .to("businesses://{{serviceName}}")

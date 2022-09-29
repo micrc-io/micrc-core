@@ -8,7 +8,7 @@ import io.micrc.core.application.presentations.ApplicationPresentationsServiceRo
 import io.micrc.core.application.presentations.ApplicationPresentationsServiceRouteTemplateParameterSource;
 import io.micrc.core.application.presentations.EnablePresentationsService;
 import io.micrc.core.application.presentations.ParamIntegration;
-import io.micrc.core.framework.json.JsonUtil;
+import io.micrc.lib.JsonUtil;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;

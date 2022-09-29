@@ -2,11 +2,8 @@ package io.micrc.core.message.springboot;
 
 import io.micrc.core.EnableMicrcSupport;
 import io.micrc.core.annotations.application.businesses.DomainEvents;
-import io.micrc.core.annotations.integration.message.MessageAdapter;
-import io.micrc.core.message.MessageRouteConfiguration;
 import io.micrc.core.message.MessageRouteConfiguration.EventsInfo;
 import io.micrc.core.message.MessageRouteConfiguration.EventsInfo.Event;
-import io.micrc.core.message.MessageSubscriberRouteParamSource;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -23,11 +20,9 @@ import org.springframework.core.io.ResourceLoader;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.core.type.StandardAnnotationMetadata;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
-import org.springframework.util.StringUtils;
 
 import java.util.Arrays;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 消息监听适配器扫描，注入路由参数bean，用于每个适配器生成路由
@@ -53,7 +48,6 @@ public class ClassPathMessageScannerRegistrar implements ImportBeanDefinitionReg
         }
 
         EventsInfo eventsInfo = new EventsInfo();
-
         /**
          * 发送器注解扫描
          */
@@ -61,17 +55,7 @@ public class ClassPathMessageScannerRegistrar implements ImportBeanDefinitionReg
         messagePublisherScanner.setResourceLoader(resourceLoader);
         messagePublisherScanner.doScan(basePackages);
 
-        /**
-         * 接收器注解扫描
-         */
-        MessageSubscriberRouteParamSource source = new MessageSubscriberRouteParamSource();
-        MessageSubscriberScanner messageSubscriberScanner = new MessageSubscriberScanner(registry, source);
-        messageSubscriberScanner.setResourceLoader(resourceLoader);
-        messageSubscriberScanner.doScan(basePackages);
         // registering
-        @SuppressWarnings("unchecked")
-        BeanDefinition beanDefinition = BeanDefinitionBuilder.genericBeanDefinition((Class<MessageSubscriberRouteParamSource>) source.getClass(), () -> source).getRawBeanDefinition();
-        registry.registerBeanDefinition(importBeanNameGenerator.generateBeanName(beanDefinition, registry), beanDefinition);
         @SuppressWarnings("unchecked")
         BeanDefinition eventsInfoBeanDefinition = BeanDefinitionBuilder.genericBeanDefinition((Class<EventsInfo>) eventsInfo.getClass(), () -> eventsInfo).getRawBeanDefinition();
         registry.registerBeanDefinition(importBeanNameGenerator.generateBeanName(eventsInfoBeanDefinition, registry), eventsInfoBeanDefinition);
@@ -127,67 +111,5 @@ class MessagePublisherScanner extends ClassPathBeanDefinitionScanner {
     @Override
     protected void registerBeanDefinition(BeanDefinitionHolder definitionHolder, BeanDefinitionRegistry beanDefinitionRegistry) {
         // nothing to do.
-    }
-}
-
-class MessageSubscriberScanner extends ClassPathBeanDefinitionScanner {
-    private static final AtomicInteger INDEX = new AtomicInteger();
-    private final MessageSubscriberRouteParamSource sourceDefinition;
-
-    public MessageSubscriberScanner(BeanDefinitionRegistry registry, MessageSubscriberRouteParamSource source) {
-        super(registry, false);
-        this.sourceDefinition = source;
-    }
-
-    @Override
-    protected boolean isCandidateComponent(AnnotatedBeanDefinition beanDefinition) {
-        AnnotationMetadata metadata = beanDefinition.getMetadata();
-        return metadata.isInterface() && metadata.isIndependent();
-    }
-
-    @SneakyThrows
-    @Override
-    protected Set<BeanDefinitionHolder> doScan(String... basePackages) {
-        this.addIncludeFilter(new AnnotationTypeFilter(MessageAdapter.class));
-        Set<BeanDefinitionHolder> holders = super.doScan(basePackages);
-        for (BeanDefinitionHolder holder : holders) {
-            GenericBeanDefinition beanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
-            beanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
-            MessageAdapter messageAdapterAnnotation = beanDefinition.getBeanClass().getAnnotation(MessageAdapter.class);
-            if (messageAdapterAnnotation.custom()) {
-                continue;
-            }
-            String adapterName = beanDefinition.getBeanClass().getSimpleName();
-            String exchangeName = messageAdapterAnnotation.exchangeName();
-            String eventName = messageAdapterAnnotation.eventName();
-            String logicName = messageAdapterAnnotation.logicName();
-            Boolean ordered = messageAdapterAnnotation.ordered();
-            sourceDefinition.addParameter(
-                    routeId(exchangeName + "-" + eventName + "-" + logicName + "-" + "EventListener"),
-                    MessageRouteConfiguration.MessageDefinition.builder()
-                            .templateId(MessageRouteConfiguration.ROUTE_TMPL_MESSAGE_SUBSCRIBER)
-                            .adapterName(adapterName)
-                            .exchangeName(exchangeName)
-                            .eventName(eventName)
-                            .logicName(logicName)
-                            .ordered(ordered)
-                            .build()
-            );
-        }
-        holders.clear();
-        return holders;
-    }
-
-    @Override
-    protected void registerBeanDefinition(BeanDefinitionHolder definitionHolder, BeanDefinitionRegistry routersInfo) {
-        // nothing to do. leave it out.
-    }
-
-    private String routeId(String id) {
-        String routeId = id;
-        if (!StringUtils.hasText(routeId)) {
-            routeId = String.valueOf(INDEX.getAndIncrement());
-        }
-        return MessageRouteConfiguration.ROUTE_TMPL_MESSAGE_SUBSCRIBER + "-" + routeId;
     }
 }

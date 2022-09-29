@@ -1,4 +1,4 @@
-package io.micrc.core.message;
+package io.micrc.core.message.store;
 
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.apache.camel.EndpointInject;

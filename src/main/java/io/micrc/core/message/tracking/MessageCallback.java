@@ -1,14 +1,14 @@
-package io.micrc.core.message;
+package io.micrc.core.message.tracking;
 
-import io.micrc.core.framework.json.JsonUtil;
-import io.micrc.core.message.jpa.EventMessage;
+import io.micrc.core.message.store.EventMessage;
+import io.micrc.lib.JsonUtil;
 import lombok.SneakyThrows;
+import org.apache.camel.EndpointInject;
 import org.apache.camel.ProducerTemplate;
 import org.springframework.amqp.core.ReturnedMessage;
 import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate.ConfirmCallback;
 import org.springframework.amqp.rabbit.core.RabbitTemplate.ReturnsCallback;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayInputStream;
@@ -17,17 +17,16 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * TODO
+ * 消息回调处理
  *
  * @author tengwang
  * @date 2022/9/27 14:04
  * @since 0.0.1
  */
-
 @Component
 public class MessageCallback implements ConfirmCallback, ReturnsCallback {
 
-    @Autowired
+    @EndpointInject
     private ProducerTemplate template;
 
 
@@ -71,7 +70,7 @@ public class MessageCallback implements ConfirmCallback, ReturnsCallback {
         Map<String, Object> headers = new HashMap<>();
         headers.put("eventMessage", eventMessage);
         headers.put("type", messageType);
-        template.sendBodyAndHeaders("publish://success-sending-resolve", messageDetail, headers);
+        template.sendBodyAndHeaders("publish://error-sending-resolve", messageDetail, headers);
     }
 
     @SneakyThrows
