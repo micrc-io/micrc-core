@@ -30,6 +30,7 @@ import org.springframework.util.StringUtils;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.ParameterizedType;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -121,7 +122,8 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
         for (BeanDefinitionHolder holder : holders) {
             GenericBeanDefinition beanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
             beanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
-            if (beanDefinition.getBeanClass().getAnnotation(BusinessesService.class).custom()) {
+            BusinessesService businessesService = beanDefinition.getBeanClass().getAnnotation(BusinessesService.class);
+            if (businessesService.custom()) {
                 continue;
             }
             Method[] methods = beanDefinition.getBeanClass().getMethods();
@@ -175,6 +177,10 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
                     commandParamIntegrations.add(commandParamIntegration);
                 }
             });
+            // 获取嵌套标识符全类名
+            Class<?> repositoryClass = Class.forName(businessesService.repositoryFullClassName());
+            ParameterizedType genericInterface = (ParameterizedType) (repositoryClass.getGenericInterfaces()[0]);
+            String embeddedIdentityFullClassName = genericInterface.getActualTypeArguments()[1].getTypeName();
 
             String logicIntegrationJson = Base64.getEncoder().encodeToString(JsonUtil.writeValueAsString(logicIntegration).getBytes());
 
@@ -190,6 +196,7 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
                             .aggregationPath(aggregationPath)
                             .logicName(logicName)
                             .logicIntegrationJson(logicIntegrationJson)
+                            .embeddedIdentityFullClassName(embeddedIdentityFullClassName)
                             .commandParamIntegrationsJson(JsonUtil.writeValueAsString(commandParamIntegrations))
                             .build());
         }
