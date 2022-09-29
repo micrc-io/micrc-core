@@ -2,12 +2,12 @@ package io.micrc.core.integration.businesses.springboot;
 
 import io.micrc.core.annotations.integration.command.CommandAdapter;
 import io.micrc.core.annotations.integration.command.Conception;
-import io.micrc.core.framework.json.JsonUtil;
 import io.micrc.core.integration.businesses.ApplicationCommandAdapterRouteConfiguration;
 import io.micrc.core.integration.businesses.ApplicationCommandAdapterRouteTemplateParameterSource;
 import io.micrc.core.integration.businesses.ConceptionParam;
 import io.micrc.core.integration.businesses.EnableCommandAdapter;
 import io.micrc.core.integration.message.MethodAdapterDesignException;
+import io.micrc.lib.JsonUtil;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;

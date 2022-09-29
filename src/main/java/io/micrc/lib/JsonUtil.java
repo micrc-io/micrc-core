@@ -1,4 +1,4 @@
-package io.micrc.core.framework.json;
+package io.micrc.lib;
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.core.JsonProcessingException;

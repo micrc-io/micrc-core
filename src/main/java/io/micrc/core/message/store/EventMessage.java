@@ -1,4 +1,4 @@
-package io.micrc.core.message.jpa;
+package io.micrc.core.message.store;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

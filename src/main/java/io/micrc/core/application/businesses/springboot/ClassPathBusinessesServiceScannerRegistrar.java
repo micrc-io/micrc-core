@@ -7,7 +7,7 @@ import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteCon
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.LogicIntegration;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteTemplateParameterSource;
 import io.micrc.core.application.businesses.EnableBusinessesService;
-import io.micrc.core.framework.json.JsonUtil;
+import io.micrc.lib.JsonUtil;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;

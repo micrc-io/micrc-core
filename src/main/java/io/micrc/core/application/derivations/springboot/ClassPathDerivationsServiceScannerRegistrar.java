@@ -8,7 +8,7 @@ import io.micrc.core.application.derivations.ApplicationDerivationsServiceRouteC
 import io.micrc.core.application.derivations.ApplicationDerivationsServiceRouteTemplateParameterSource;
 import io.micrc.core.application.derivations.EnableDerivationsService;
 import io.micrc.core.application.derivations.ParamIntegration;
-import io.micrc.core.framework.json.JsonUtil;
+import io.micrc.lib.JsonUtil;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -30,13 +30,7 @@ import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 

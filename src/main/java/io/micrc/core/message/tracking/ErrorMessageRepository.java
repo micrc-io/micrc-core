@@ -1,4 +1,4 @@
-package io.micrc.core.message.jpa;
+package io.micrc.core.message.tracking;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -29,5 +29,19 @@ public interface ErrorMessageRepository extends JpaRepository<ErrorMessage, Stri
             @Param(value = "exchange") String exchange,
             @Param(value = "channel") String channel,
             @Param(value = "count") Integer count
+    );
+
+    void deleteByExchangeAndChannelAndSequenceAndRegion(
+            @Param(value = "exchange") String exchange,
+            @Param(value = "channel") String channel,
+            @Param(value = "sequence") Long sequence,
+            @Param(value = "region") String region
+    );
+
+    ErrorMessage findFirstByExchangeAndChannelAndSequenceAndRegion(
+            @Param(value = "exchange") String exchange,
+            @Param(value = "channel") String channel,
+            @Param(value = "sequence") Long sequence,
+            @Param(value = "region") String region
     );
 }
