@@ -41,6 +41,7 @@ public class CacheEnvironmentProcessor implements EnvironmentPostProcessor {
             // embedded redis
             properties.setProperty("embedded.redis.enabled", "true");
             properties.setProperty("embedded.redis.reuseContainer", "true");
+            properties.setProperty("embedded.redis.port", "6370");
             properties.setProperty("embedded.redis.dockerImage", "redis:6.2");
             properties.setProperty("embedded.redis.waitTimeoutInSeconds", "60");
             properties.setProperty("embedded.redis.clustered", "false");
