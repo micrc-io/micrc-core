@@ -7,6 +7,7 @@ import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.CommandParamIntegration;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.LogicIntegration;
+import io.micrc.core.persistence.EmbeddedIdentity;
 import io.micrc.core.rpc.ErrorInfo;
 import io.micrc.core.rpc.LogicRequest;
 import io.micrc.lib.ClassCastUtils;
@@ -72,6 +73,8 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 // FIXME 这里有个BUG要修
                 .setHeader("pointer", constant("{{targetIdPath}}"))
                 .to("json-patch://select")
+                .marshal().json().convertBodyTo(String.class)
+                .unmarshal().json(EmbeddedIdentity.class)
                 .to("repository://{{repositoryName}}?method=findById")
                 .setProperty("source", simple("${in.body.get}"))
                 .bean(TargetSourceClone.class,
