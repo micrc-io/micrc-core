@@ -178,7 +178,7 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
                 }
             });
             // 获取嵌套标识符全类名
-            Class<?> repositoryClass = Class.forName(businessesService.repositoryFullClassName());
+            Class<?> repositoryClass = Class.forName(commandLogic.repositoryFullClassName());
             ParameterizedType genericInterface = (ParameterizedType) (repositoryClass.getGenericInterfaces()[0]);
             String embeddedIdentityFullClassName = genericInterface.getActualTypeArguments()[1].getTypeName();
 
