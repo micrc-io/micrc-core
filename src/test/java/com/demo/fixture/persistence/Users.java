@@ -12,7 +12,7 @@ import lombok.Data;
 @Entity
 public class Users implements Serializable {
     @EmbeddedId
-    private UserId embeddedId;
+    private UserId embeddedIdentity;
     @Column(name = "USERNAME")
     private String username;
 }
