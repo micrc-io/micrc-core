@@ -41,16 +41,21 @@ public class MessageCallback implements ConfirmCallback, ReturnsCallback {
     public void confirm(CorrelationData correlationData, boolean ack, String cause) {
         Map<String, Object> messageDetail = JsonUtil.writeValueAsObject(correlationData.getId(), HashMap.class);
         String messageType = (String) messageDetail.get("type");
-        if(ack){
-            // 异常消息且成功--去删除异常表里的死信消息
-            // 正常消息且成功--不予处理
-            template.sendBodyAndHeader("publish://success-sending-resolve", messageDetail, "type", messageType);
-        }
+        // FixME tengwang ack成功不可作为删除异常表数据的前提条件
+//        if(ack){
+//            // 异常消息且成功--去删除异常表里的死信消息
+//            // 正常消息且成功--不予处理
+//            template.sendBodyAndHeader("publish://success-sending-resolve", messageDetail, "type", messageType);
+//        }
         if(!ack){
             // 异常消息且失败--修改异常表,记录发送次数
             // 正常消息且失败--添加异常消息并记录原因为发送失败
             Map<String, Object> headers = new HashMap<>();
-            EventMessage eventMessage = (EventMessage) toObject(correlationData.getReturned().getMessage().getBody());
+            EventMessage eventMessage = null;
+            if(null != correlationData.getReturned()){
+                // 当交换区不存在的时候,消息体为空
+                eventMessage = (EventMessage) toObject(correlationData.getReturned().getMessage().getBody());
+            }
             headers.put("eventMessage", eventMessage);
             headers.put("type", messageType);
             template.sendBodyAndHeaders("publish://error-sending-resolve", messageDetail, headers);
@@ -70,7 +75,7 @@ public class MessageCallback implements ConfirmCallback, ReturnsCallback {
         Map<String, Object> headers = new HashMap<>();
         headers.put("eventMessage", eventMessage);
         headers.put("type", messageType);
-        template.sendBodyAndHeaders("publish://error-sending-resolve", messageDetail, headers);
+        template.sendBodyAndHeaders("publish://error-return-resolve", messageDetail, headers);
     }
 
     @SneakyThrows

@@ -97,7 +97,9 @@ public class ErrorMessage {
         this.reason = reason;
         this.errorFrequency = this.errorFrequency + 1;
         this.state = state;
-        this.content = eventMessage.getContent();
+        if(null != eventMessage){
+            this.content = eventMessage.getContent();
+        }
     }
 
     @Consume("eventstore://error-message-sending")
@@ -122,9 +124,24 @@ public class ErrorMessage {
         return errorMessage;
     }
 
+    @Consume("eventstore://send-error-return-message-store")
+    public ErrorMessage sendErrorReturnMessageStore(@Body ErrorMessage errorMessage) {
+        errorMessage.setErrorFrequency(errorMessage.getErrorFrequency() + 1);
+        errorMessage.setLastErrorTime(System.currentTimeMillis());
+        errorMessage.setReason("SEND");
+        errorMessage.setState("STOP");
+        return errorMessage;
+    }
+
     @Consume("eventstore://send-normal-error-message-store")
     public ErrorMessage errorNormalMessageStore(@Body Map<String, Object> eventDetail, @Header("eventMessage") EventMessage eventMessage) {
         ErrorMessage errorMessage = new ErrorMessage(eventMessage, eventDetail, "SEND", "NOT_SEND");
+        return errorMessage;
+    }
+
+    @Consume("eventstore://send-normal-return-message-store")
+    public ErrorMessage errorNormalReturnMessageStore(@Body Map<String, Object> eventDetail, @Header("eventMessage") EventMessage eventMessage) {
+        ErrorMessage errorMessage = new ErrorMessage(eventMessage, eventDetail, "SEND", "STOP");
         return errorMessage;
     }
 

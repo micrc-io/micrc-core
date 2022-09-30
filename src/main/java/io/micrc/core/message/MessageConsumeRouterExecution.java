@@ -103,9 +103,12 @@ public class MessageConsumeRouterExecution implements Ordered {
                 }
             }
             // 如果非已重复消息 转发至相应适配器
-            String commandJson = template.requestBody("message://" + messageDetail.get("region") + "Listener", eventMessage, String.class);
+            String commandJson = template.requestBody("message://" + messageDetail.get("region") + "Listener", eventMessage.getContent(), String.class);
             retVal = commandJson;
             String errorCode = (String) JsonUtil.readPath(commandJson, "/error/errorCode");
+            // tengwang - 测试消息用
+//            Object obj = proceedingJoinPoint.proceed(proceedingJoinPoint.getArgs());
+//            String errorCode = (String) JsonUtil.readPath((String) obj, "/error/errorCode");
             if(StringUtils.hasText(errorCode)){
                 // 如果有异常 回滚事务 并应答失败进入死信
                 platformTransactionManager.rollback(transactionStatus);

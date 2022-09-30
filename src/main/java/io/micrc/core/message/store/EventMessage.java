@@ -43,16 +43,25 @@ public class EventMessage implements Serializable {
 
     private String region;
 
-    public EventMessage store(String command, String event) {
+    public static EventMessage store(String command, String event) {
         EventMessage eventMessage = new EventMessage();
         eventMessage.setContent(command);
         eventMessage.setRegion(event);
         return eventMessage;
     }
 
+    public EventMessage(EventMessage eventMessage) {
+        this.messageId = eventMessage.getMessageId();
+        this.createTime = eventMessage.getCreateTime();
+        this.content = eventMessage.getContent();
+        this.sequence = eventMessage.getSequence();
+        this.region = eventMessage.getRegion();
+    }
+
     @Consume("eventstore://message-set-content")
     public EventMessage replaceContent(@Body EventMessage eventMessage, @Header("content") String content) {
-        eventMessage.setContent(content);
-        return eventMessage;
+        EventMessage eventMessageNewInstance = new EventMessage(eventMessage);
+        eventMessageNewInstance.setContent(content);
+        return eventMessageNewInstance;
     }
 }

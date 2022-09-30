@@ -1,6 +1,6 @@
 package io.micrc.core.application.businesses;
 
-import io.micrc.core.annotations.application.businesses.BusinessesServiceTest;
+import io.micrc.core.annotations.application.businesses.BusinessesService;
 import org.apache.camel.EndpointInject;
 import org.apache.camel.ProducerTemplate;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -36,7 +36,7 @@ public class BusinessesServiceRouterExecution implements Ordered {
                     "method of businesses service and annotated with BusinessesService only support single argument. ");
         }
         boolean custom = false;
-        BusinessesServiceTest annotation = interfaces[0].getAnnotation(BusinessesServiceTest.class);
+        BusinessesService annotation = interfaces[0].getAnnotation(BusinessesService.class);
         if (annotation != null) {
             custom = annotation.custom();
         }

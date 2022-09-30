@@ -87,9 +87,9 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
         properties.setProperty("spring.jpa.database-platform", "org.hibernate.dialect.MySQLDialect");
         properties.setProperty("spring.jpa.open-in-view", "false");
         if (profiles.contains("default")) {
-            properties.setProperty("logging.level.org.springframework.orm.jpa", "DEBUG");
-            properties.setProperty("logging.level.org.springframework.transaction", "DEBUG");
-            properties.setProperty("spring.jpa.properties.hibernate.show_sql", "true");
+            properties.setProperty("logging.level.org.springframework.orm.jpa", "ERROR");
+            properties.setProperty("logging.level.org.springframework.transaction", "ERROR");
+            properties.setProperty("spring.jpa.properties.hibernate.show_sql", "false");
             properties.setProperty("spring.jpa.properties.hibernate.format_sql", "true");
         }
     }
