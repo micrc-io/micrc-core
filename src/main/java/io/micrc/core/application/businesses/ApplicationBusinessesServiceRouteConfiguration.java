@@ -7,7 +7,6 @@ import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.CommandParamIntegration;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.LogicIntegration;
-import io.micrc.core.persistence.EmbeddedIdentity;
 import io.micrc.core.rpc.ErrorInfo;
 import io.micrc.core.rpc.LogicRequest;
 import io.micrc.lib.ClassCastUtils;
@@ -65,6 +64,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .templateParameter("aggregationPath", null, "the aggregation full path")
                 .templateParameter("logicName", null, "the logicName")
                 .templateParameter("logicIntegrationJson", null, "the logic integration params")
+                .templateParameter("embeddedIdentityFullClassName", null, "embedded identity full class name")
                 .from("businesses:{{serviceName}}")
                 .transacted()
                 .marshal().json().convertBodyTo(String.class)
@@ -74,7 +74,8 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .setHeader("pointer", constant("{{targetIdPath}}"))
                 .to("json-patch://select")
                 .marshal().json().convertBodyTo(String.class)
-                .unmarshal().json(EmbeddedIdentity.class)
+                .setHeader("CamelJacksonUnmarshalType").simple("{{embeddedIdentityFullClassName}}")
+                .to("dataformat:jackson:unmarshal?allow-unmarshall-type=true")
                 .to("repository://{{repositoryName}}?method=findById")
                 .setProperty("source", simple("${in.body.get}"))
                 .bean(TargetSourceClone.class,
@@ -219,6 +220,11 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
          * 逻辑调用参数定义
          */
         protected String logicIntegrationJson;
+
+        /**
+         * 嵌套标识符类名称
+         */
+        protected String embeddedIdentityFullClassName;
     }
 
     private static String patch(String original, String path, String value) {
