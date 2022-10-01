@@ -62,6 +62,7 @@ public class MessageEnvironmentProcessor implements EnvironmentPostProcessor {
             properties.setProperty("spring.rabbitmq.username", "${embedded.rabbitmq.user}");
             properties.setProperty("spring.rabbitmq.password", "${embedded.rabbitmq.password}");
             properties.setProperty("spring.rabbitmq.virtual-host", "${embedded.rabbitmq.vhost}");
+
             properties.setProperty("micrc.embedded.rabbitmq.httpPort", "${embedded.rabbitmq.httpPort}");
         } else {
             properties.setProperty("embedded.rabbitmq.enabled", "false");
