@@ -47,6 +47,8 @@ public class MicrcEnvironmentProcessor implements EnvironmentPostProcessor {
             log.info("Local Default Environment, Disable Kubernetes Configmap Support. ");
             properties.setProperty("spring.cloud.kubernetes.enabled", "false");
         }
+        envForActuator(profiles, properties);
+        envForGracefulShutdown(properties);
 
         // TODO 处理banner: springboot版本，micrc版本，应用版本；micrc logo，应用logo；当前profile及描述
         PropertiesPropertySource source = new PropertiesPropertySource("micrc", properties);
@@ -71,5 +73,29 @@ public class MicrcEnvironmentProcessor implements EnvironmentPostProcessor {
                     .map(String::trim).collect(Collectors.toSet());
         }
         return Arrays.asList(env.getDefaultProfiles());
+    }
+
+    private void envForActuator(Collection<String> profiles, Properties properties) {
+        properties.setProperty("management.server.port", "1234");
+        properties.setProperty("management.server.address", "127.0.0.1");
+        // 默认关闭所有endpoints，按需开启
+        properties.setProperty("management.endpoints.enabled-by-default", "false");
+        properties.setProperty("management.endpoints.web.exposure.include", "*");
+        // 开发环境打开全部endpoints
+        if (profiles.contains("default") || profiles.contains("local") || profiles.contains("dev")) {
+            properties.setProperty("management.endpoints.enabled-by-default", "true");
+        }
+        // graceful shutdown
+        properties.setProperty("management.endpoint.shutdown.enabled", "true");
+        // liveness and readiness probe
+        properties.setProperty("management.endpoint.health.enabled", "true");
+        properties.setProperty("management.endpoint.health.probes.enabled", "true");
+        properties.setProperty("management.health.livenessState.enabled", "true");
+        properties.setProperty("management.health.readinessState.enabled", "true");
+    }
+
+    private void envForGracefulShutdown(Properties properties) {
+        properties.setProperty("server.shutdown", "graceful");
+        properties.setProperty("spring.lifecycle.timeout-per-shutdown-phase", "30s");
     }
 }
