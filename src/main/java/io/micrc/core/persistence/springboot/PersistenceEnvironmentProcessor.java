@@ -89,7 +89,7 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
         if (profiles.contains("default")) {
             properties.setProperty("logging.level.org.springframework.orm.jpa", "ERROR");
             properties.setProperty("logging.level.org.springframework.transaction", "ERROR");
-            properties.setProperty("spring.jpa.properties.hibernate.show_sql", "true");
+            properties.setProperty("spring.jpa.properties.hibernate.show_sql", "false");
             properties.setProperty("spring.jpa.properties.hibernate.format_sql", "true");
             properties.setProperty("spring.jpa.properties.hibernate.ddl-auto", "validate");
         }

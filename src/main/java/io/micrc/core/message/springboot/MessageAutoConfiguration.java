@@ -11,6 +11,7 @@ import io.micrc.core.message.tracking.ErrorMessage.DeadMessageResolver;
 import io.micrc.core.message.tracking.MessageCallback;
 import io.micrc.core.message.tracking.MessageTracker;
 import org.apache.camel.component.direct.DirectComponent;
+import org.apache.camel.spring.boot.CamelAutoConfiguration;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.Connection;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
@@ -19,11 +20,11 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
-import org.springframework.core.annotation.Order;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 
@@ -34,7 +35,8 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
  * @date 2022-09-06 19:29
  * @since 0.0.1
  */
-@Order(99)
+//@Order(Integer.MAX_VALUE)
+@AutoConfigureAfter(CamelAutoConfiguration.class)
 @Configuration
 @Import({
         MessageRouteConfiguration.class,
