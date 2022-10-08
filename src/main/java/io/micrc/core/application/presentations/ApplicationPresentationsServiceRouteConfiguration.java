@@ -12,11 +12,15 @@ import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangeProperties;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -72,9 +76,7 @@ public class ApplicationPresentationsServiceRouteConfiguration extends MicrcRout
                 // 构造发送
                 .choice()
                 .when(simple("${exchange.properties.get(current).get(type)} == 'QUERY'"))
-                .toD("bean://${exchange.properties.get(current).get(aggregation)}Repository" +
-                        "?method=${exchange.properties.get(current).get(method)}" +
-                        "(${exchange.properties.get(current).get(params)})")
+                .bean(IntegrationParams.class, "executeQuery")
                 .otherwise()
                 .setBody(simple("${exchange.properties.get(current).get(params)}"))
                 .to("req://integration")
@@ -204,7 +206,10 @@ class IntegrationParams {
                 // 如果能够集成,收集信息,然后会自动跳出循环
                 executableIntegrationInfo.put("aggregation", paramIntegration.getAggregation());
                 executableIntegrationInfo.put("method", paramIntegration.getQueryMethod());
-                executableIntegrationInfo.put("params", paramMap.values().stream().map(JsonUtil::writeValueAsString).collect(Collectors.joining(",")));
+                executableIntegrationInfo.put("sorts", paramIntegration.getSortParams());
+                executableIntegrationInfo.put("pageSizePath", paramIntegration.getPageSizePath());
+                executableIntegrationInfo.put("pageNumberPath", paramIntegration.getPageNumberPath());
+                executableIntegrationInfo.put("params", paramMap);
             } else if (ParamIntegration.Type.INTEGRATE.equals(paramIntegration.getType())) {
                 // 集成
                 String protocolContent = fileReader(unIntegrateParams.get(checkNumber).getProtocol());
@@ -241,6 +246,41 @@ class IntegrationParams {
             executableIntegrationInfo.put("type", paramIntegration.getType());
         } while (null == executableIntegrationInfo.get("name"));
         return executableIntegrationInfo;
+    }
+
+    /**
+     * 执行查询
+     *
+     * @return
+     */
+    public static Object executeQuery(Exchange exchange, Map<String, Object> body) {
+        Object pageSize = JsonUtil.readPath((String) exchange.getProperty("param"), (String) body.get("pageSizePath"));
+        Object pageNumber = JsonUtil.readPath((String) exchange.getProperty("param"), (String) body.get("pageNumberPath"));
+        PageRequest pageRequest = null;
+        if (pageSize != null && pageNumber != null) {
+            pageRequest = PageRequest.of(((int) pageNumber) - 1, (int) pageSize);
+            // 追加排序参数
+            Sort sort = Sort.unsorted();
+            Map<String, String> sorts = ClassCastUtils.castHashMap(body.get("sorts"), String.class, String.class);
+            for (Map.Entry<String, String> next : sorts.entrySet()) {
+                sort = sort.and(Sort.by(Sort.Direction.valueOf(next.getValue()), next.getKey()));
+            }
+            pageRequest = pageRequest.withSort(sort);
+        }
+        try {
+            Object repository = exchange.getContext().getRegistry().lookupByName(body.get("aggregation") + "Repository");
+            Method method = Arrays.stream(repository.getClass().getMethods())
+                    .filter(m -> m.getName().equals(body.get("method"))).findFirst().orElseThrow();
+            Class<?>[] parameterTypes = method.getParameterTypes();
+            ArrayList<Object> parameters = new ArrayList<>();
+            if (parameterTypes.length > 0 && "org.springframework.data.domain.Pageable".equals(parameterTypes[0].getName())) {
+                parameters.add(pageRequest);
+            }
+            parameters.addAll(ClassCastUtils.castHashMap(body.get("params"), String.class, Object.class).values());
+            return method.invoke(repository, parameters.toArray());
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**

@@ -4,7 +4,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
-import java.util.HashMap;
+import java.util.Map;
 
 /**
  * 参数集成信息
@@ -47,7 +47,22 @@ public class ParamIntegration {
      *
      * @return
      */
-    private HashMap<String, String> queryParams;
+    private Map<String, String> queryParams;
+
+    /**
+     * 排序参数方式
+     */
+    private Map<String, String> sortParams;
+
+    /**
+     * 分页编码路径
+     */
+    private String pageNumberPath;
+
+    /**
+     * 分页大小路径
+     */
+    private String pageSizePath;
 
     /**
      * 该参数是否已经集成
@@ -71,11 +86,16 @@ public class ParamIntegration {
         this.type = Type.INTEGRATE;
     }
 
-    public ParamIntegration(String concept, String aggregation, String queryMethod, HashMap<String, String> queryParams, int order) {
+    public ParamIntegration(String concept, String aggregation, String queryMethod,
+                            Map<String, String> queryParams, Map<String, String> sortParams,
+                            String pageSizePath, String pageNumberPath, int order) {
         this.concept = concept;
         this.aggregation = aggregation;
         this.queryMethod = queryMethod;
         this.queryParams = queryParams;
+        this.sortParams = sortParams;
+        this.pageSizePath = pageSizePath;
+        this.pageNumberPath = pageNumberPath;
         this.order = order;
         this.type = Type.QUERY;
     }
