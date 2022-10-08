@@ -124,8 +124,8 @@ dependencies {
     // shedlock for schedule distributed lock
     implementation "net.javacrumbs.shedlock:shedlock-spring:${property('shedlock.version')}"
     implementation "net.javacrumbs.shedlock:shedlock-provider-redis-spring:${property('shedlock.version')}"
-    // mock server
-    implementation "com.playtika.testcontainers:embedded-redis:${property('testcontainers.version')}"
+    // mock server - redistack instead of
+    // implementation "com.playtika.testcontainers:embedded-redis:${property('testcontainers.version')}"
 
 }
 

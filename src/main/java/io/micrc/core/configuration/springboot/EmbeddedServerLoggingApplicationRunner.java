@@ -42,8 +42,8 @@ public class EmbeddedServerLoggingApplicationRunner implements ApplicationRunner
         String username = "";
         String password = env.getProperty("spring.redis.password");
         String server = env.getProperty("spring.redis.host") + ":" + env.getProperty("spring.redis.port");
-        // String managerUrl = "http://localhost:" + env.getProperty("spring.redis.port"); // 查找redis web集成spring
+        String managerUrl = "http://localhost:" + env.getProperty("micrc.spring.redis.httpPort");
         log.info("Redis server start on: {}. user/pass: {}/{}", server, username, password);
-        // log.info("Redis manager ui start on: {}. user/pass: {}/{}", managerUrl, username, password); // 查找redis web
+        log.info("Redis manager ui start on: {}. user/pass: {}/{}", managerUrl, username, password);
     }
 }

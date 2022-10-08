@@ -1,6 +1,5 @@
 package io.micrc.core.rpc.springboot;
 
-import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.core.rpc.RpcRestRouteConfiguration;
 import org.apache.camel.RoutesBuilder;
 import org.apache.camel.builder.RouteBuilder;
@@ -77,27 +76,27 @@ public class RpcAutoConfiguration {
         };
     }
 
-    @Bean
-    public RoutesBuilder restDemo() {
-        return new MicrcRouteBuilder() {
-            @Override
-            public void configureRoute() throws Exception {
-                from("direct:test").log("rest test done.").setBody().constant("{}");
-                from("timer:restDemo?delay=10000&repeatCount=1")
-                        .log("starting restDemo...")
-                        // .setBody().constant("test body")
-                        .to("rest:get:/api/test?host=localhost:8080");
-
-                routeTemplate("restTestTemplate")
-                        .templateParameter("verb")
-                        .templateParameter("api-path")
-                        .from("rest:{{verb}}:{{api-path}}")
-                        .to("direct:test");
-
-                templatedRoute("restTestTemplate")
-                        .parameter("verb", "get")
-                        .parameter("api-path", "test");
-            }
-        };
-    }
+//    @Bean
+//    public RoutesBuilder restDemo() {
+//        return new MicrcRouteBuilder() {
+//            @Override
+//            public void configureRoute() throws Exception {
+//                from("direct:test").log("rest test done.").setBody().constant("{}");
+//                from("timer:restDemo?delay=10000&repeatCount=1")
+//                        .log("starting restDemo...")
+//                        // .setBody().constant("test body")
+//                        .to("rest:get:/api/test?host=localhost:8080");
+//
+//                routeTemplate("restTestTemplate")
+//                        .templateParameter("verb")
+//                        .templateParameter("api-path")
+//                        .from("rest:{{verb}}:{{api-path}}")
+//                        .to("direct:test");
+//
+//                templatedRoute("restTestTemplate")
+//                        .parameter("verb", "get")
+//                        .parameter("api-path", "test");
+//            }
+//        };
+//    }
 }
