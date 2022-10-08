@@ -23,6 +23,7 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.annotation.Order;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 
@@ -33,6 +34,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
  * @date 2022-09-06 19:29
  * @since 0.0.1
  */
+@Order(99)
 @Configuration
 @Import({
         MessageRouteConfiguration.class,
