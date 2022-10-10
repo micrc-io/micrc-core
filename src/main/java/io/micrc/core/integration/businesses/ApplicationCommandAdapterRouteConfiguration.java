@@ -91,10 +91,12 @@ class AdapterParamsHandler {
                 ConceptionParam.class);
         Object command = properties.get("command");
         // 处理第一次进来时的情况
-        if (null == conceptions && null == command) {
+        if (null == conceptions) {
             String conceptionsJson = (String) properties.get("conceptionsJson");
             conceptions = JsonUtil.writeValueAsList(conceptionsJson, ConceptionParam.class);
             properties.put("conceptions", conceptions);
+        }
+        if (null == command) {
             Class<?> commandClazz = Class.forName((String) properties.get("commandPath"));
             Object commandInstance = commandClazz.getConstructor().newInstance();
             properties.put("command", commandInstance);

@@ -2,7 +2,6 @@ package io.micrc.core.message.store;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.Consume;
 
 import javax.persistence.Entity;
@@ -17,7 +16,6 @@ import java.util.Map;
  * @date 2022/9/29 11:00
  * @since 0.0.1
  */
-@Slf4j
 @Data
 @Entity
 @NoArgsConstructor

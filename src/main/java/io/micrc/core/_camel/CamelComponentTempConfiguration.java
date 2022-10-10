@@ -54,7 +54,6 @@ public class CamelComponentTempConfiguration {
                                 JsonNode resultNode = expression.apply(JsonUtil.readTree(exchange.getIn().getBody()));
                                 exchange.getIn().setBody(JsonUtil.writeValueAsStringRetainNull(resultNode));
                                 exchange.getIn().removeHeader("mappingFilePath");
-                                break;
                             }
                         })
                         .end();

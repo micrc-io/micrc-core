@@ -1,4 +1,4 @@
-package io.micrc.core.persistence;
+package io.micrc.core.persistence.snowflake;
 
 /**
  * 雪花算法ID生成器

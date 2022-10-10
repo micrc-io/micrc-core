@@ -201,13 +201,11 @@ class RpcCommandScanner extends ClassPathBeanDefinitionScanner {
 class RpcDerivationScanner extends ClassPathBeanDefinitionScanner {
     private static final AtomicInteger INDEX = new AtomicInteger();
     private final RpcRestRouteParamSource sourceDefinition;
-    private final AdaptersInfo adaptersInfo;
 
     public RpcDerivationScanner(BeanDefinitionRegistry registry, RpcRestRouteParamSource source,
                                 AdaptersInfo adaptersInfo) {
         super(registry, false);
         this.sourceDefinition = source;
-        this.adaptersInfo = adaptersInfo;
     }
 
     @Override
@@ -281,13 +279,11 @@ class RpcDerivationScanner extends ClassPathBeanDefinitionScanner {
 class RpcPresentationScanner extends ClassPathBeanDefinitionScanner {
     private static final AtomicInteger INDEX = new AtomicInteger();
     private final RpcRestRouteParamSource sourceDefinition;
-    private final AdaptersInfo adaptersInfo;
 
     public RpcPresentationScanner(BeanDefinitionRegistry registry, RpcRestRouteParamSource source,
                                   AdaptersInfo adaptersInfo) {
         super(registry, false);
         this.sourceDefinition = source;
-        this.adaptersInfo = adaptersInfo;
     }
 
     @Override
