@@ -29,7 +29,7 @@ import com.playtika.test.common.utils.PackageInstaller;
 @ConditionalOnBean(RedistackProperties.class)
 @ConditionalOnExpression("${embedded.containers.enabled:true}")
 @ConditionalOnProperty(name = "embedded.redistack.enabled", matchIfMissing = true)
-@SuppressWarnings("all")
+@SuppressWarnings({ "deprecation", "rawtypes" })
 public class EmbeddedRedistackTestOperationsAutoConfiguration {
 
     @Bean

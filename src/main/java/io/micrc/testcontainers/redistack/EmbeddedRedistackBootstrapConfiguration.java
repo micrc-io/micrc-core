@@ -63,9 +63,9 @@ public class EmbeddedRedistackBootstrapConfiguration {
         return new DefaultRedistackClusterWaitStrategy(properties);
     }
 
-    @SuppressWarnings("all")
+    @SuppressWarnings({ "deprecation", "all" })
     @Bean(name = RedistackProperties.BEAN_NAME_EMBEDDED_REDIS_STACK, destroyMethod = "stop")
-    public GenericContainer redistack(
+    public GenericContainer redistack (
             ConfigurableEnvironment environment,
             @Qualifier(REDISTACK_WAIT_STRATEGY_BEAN_NAME) WaitStrategy redistackStartupCheckStrategy)
             throws IOException {
