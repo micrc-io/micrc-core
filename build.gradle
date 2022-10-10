@@ -24,7 +24,7 @@ ext {
     set('rabbitmq-mock.version', '1.1.1')
     set('mockserver.version', '5.14.0')
     set('embedded-redis.version', '0.7.3')
-    set('testcontainers.version', '2.2.8')
+    set('testcontainers.version', '2.2.9')
     set('jslt.version', '0.1.13')
 }
 
@@ -80,8 +80,8 @@ dependencies {
     implementation "org.springframework.boot:spring-boot-starter-data-jpa"
     // jdbc support for event store, tracker and idempotent store
     implementation "org.apache.camel.springboot:camel-spring-jdbc-starter:${property('camel.version')}"
-    // db for default, local
-    implementation "com.h2database:h2"
+    // db for defaul
+    implementation "com.playtika.testcontainers:embedded-mysql:${property('testcontainers.version')}"
     // db migration
     implementation "org.liquibase:liquibase-core"
 

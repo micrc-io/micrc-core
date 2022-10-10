@@ -1,7 +1,7 @@
 databaseChangeLog:
   - changeSet:
       id: create-table-message-series-0.0.1
-      author: tengwang
+      author: micrc
       preConditions:
         - onFail: MARK_RAN
           not:

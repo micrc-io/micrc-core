@@ -15,7 +15,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: userId
-                  type: VARCHAR(32)
+                  type: BIGINT
                   remarks: id of user
                   constraints:
                     nullable: false

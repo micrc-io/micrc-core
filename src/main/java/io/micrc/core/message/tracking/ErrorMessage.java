@@ -16,6 +16,7 @@ import org.springframework.amqp.rabbit.annotation.QueueBinding;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
+import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
@@ -86,6 +87,7 @@ public class ErrorMessage {
     /**
      * 发送内容
      */
+    @Column(columnDefinition = "TEXT")
     private String content;
 
     @SuppressWarnings("unchecked")

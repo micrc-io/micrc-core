@@ -30,7 +30,7 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
         Optional<String> profileStr = Optional.ofNullable(environment.getProperty("application.profiles"));
         List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
         Properties properties = new Properties();
-        envForH2Embedded(profiles, properties);
+        envForEmbeddedMysql(profiles, properties);
         envForLiquibase(profiles, properties, environment);
         envForJPA(profiles, properties);
 
@@ -38,18 +38,33 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
         environment.getPropertySources().addLast(source);
     }
 
-    private void envForH2Embedded(Collection<String> profiles, Properties properties) {
-        if (profiles.contains("local") || profiles.contains("default")) { // 只有local和default环境使用h2
-            log.info("Start H2 Database For Environment Of 'local' And 'default'");
-            properties.setProperty("spring.datasource.driver-class-name", "org.h2.Driver");
-            properties.setProperty("spring.datasource.url", "jdbc:h2:mem:db;MODE=MYSQL");
-            properties.setProperty("spring.datasource.username", "sa");
-            properties.setProperty("spring.datasource.password", "");
-            properties.setProperty("spring.h2.console.enabled", "true");
-            properties.setProperty("spring.h2.console.path", "/h2-console");
-            properties.setProperty("spring.h2.console.settings.web-allow-others", "true");
-            properties.setProperty("spring.h2.console.settings.trace", "false");
+    private void envForEmbeddedMysql(Collection<String> profiles, Properties properties) {
+        if (!profiles.contains("default")) {
+            properties.setProperty("embedded.mysql.enabled", "false");
         }
+        if (profiles.contains("default")) {
+            log.info("Embedded mysql server configuration for profile: 'default'");
+            properties.setProperty("embedded.mysql.enabled", "true");
+            properties.setProperty("embedded.mysql.reuseContainer", "true");
+            properties.setProperty("embedded.mysql.dockerImage", "mysql:8.0");
+            properties.setProperty("embedded.mysql.waitTimeoutInSeconds", "60");
+            properties.setProperty("embedded.mysql.encoding", "utf8mb4");
+            properties.setProperty("embedded.mysql.collation", "utf8mb4_unicode_ci");
+
+            properties.setProperty("micrc.embedded.mysql.host", "${embedded.mysql.host}");
+            properties.setProperty("micrc.embedded.mysql.port", "${embedded.mysql.port}");
+        }
+        if (profiles.contains("default")) {
+            // redis connection
+            properties.setProperty("spring.datasource.driver-class-name", "com.mysql.cj.jdbc.Driver");
+            properties.setProperty("spring.datasource.url",
+                "jdbc:mysql://${embedded.mysql.host}:${embedded.mysql.port}/${embedded.mysql.schema}");
+            properties.setProperty("spring.datasource.username", "${embedded.mysql.user}");
+            properties.setProperty("spring.datasource.password", "${embedded.mysql.password}");
+        } else {
+            // k8s集群中读取的secret中的host，port和passwd
+        }
+        // TODO tengwang 数据源和连接池通用配置
     }
 
     private void envForLiquibase(Collection<String> profiles, Properties properties, Environment env) {
@@ -84,14 +99,14 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
     }
 
     private void envForJPA(Collection<String> profiles, Properties properties) {
-        properties.setProperty("spring.jpa.database-platform", "org.hibernate.dialect.MySQLDialect");
+        properties.setProperty("spring.jpa.database-platform", "org.hibernate.dialect.MySQL8Dialect");
         properties.setProperty("spring.jpa.open-in-view", "false");
+        properties.setProperty("spring.jpa.hibernate.ddl-auto", "validate");
         if (profiles.contains("default")) {
-            properties.setProperty("logging.level.org.springframework.orm.jpa", "ERROR");
-            properties.setProperty("logging.level.org.springframework.transaction", "ERROR");
-            properties.setProperty("spring.jpa.properties.hibernate.show_sql", "false");
+            properties.setProperty("logging.level.org.springframework.orm.jpa", "INFO");
+            properties.setProperty("logging.level.org.springframework.transaction", "INFO");
+            properties.setProperty("spring.jpa.properties.hibernate.show_sql", "true");
             properties.setProperty("spring.jpa.properties.hibernate.format_sql", "true");
-            properties.setProperty("spring.jpa.properties.hibernate.ddl-auto", "validate");
         }
     }
 }

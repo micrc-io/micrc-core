@@ -37,6 +37,33 @@ public class MessageEnvironmentProcessor implements EnvironmentPostProcessor {
     }
 
     private void envForRabbitMQ(List<String> profiles, Properties properties) {
+        if (!profiles.contains("default")) {
+            properties.setProperty("embedded.rabbitmq.enabled", "false");
+        }
+
+        if (profiles.contains("default")) {
+            log.info("Embedded rabbitmq server configuration for profile: 'default'");
+            // embedded rabbitmq
+            properties.setProperty("embedded.rabbitmq.enabled", "true");
+            properties.setProperty("embedded.rabbitmq.reuseContainer", "true");
+            properties.setProperty("embedded.rabbitmq.password", "rabbitmq");
+            properties.setProperty("embedded.rabbitmq.vhost", "/");
+            properties.setProperty("embedded.rabbitmq.dockerImage", "rabbitmq:3.9-management");
+            properties.setProperty("embedded.rabbitmq.waitTimeoutInSeconds", "60");
+
+            properties.setProperty("micrc.embedded.rabbitmq.httpPort", "${embedded.rabbitmq.httpPort}");
+        }
+        if (profiles.contains("default")) {
+            // default/local rabbitmq config
+            properties.setProperty("spring.rabbitmq.host", "${embedded.rabbitmq.host}");
+            properties.setProperty("spring.rabbitmq.port", "${embedded.rabbitmq.port}");
+            properties.setProperty("spring.rabbitmq.username", "${embedded.rabbitmq.user}");
+            properties.setProperty("spring.rabbitmq.password", "${embedded.rabbitmq.password}");
+        } else {
+            // k8s集群中读取的secret中的host，port和passwd
+        }
+
+        properties.setProperty("spring.rabbitmq.virtual-host", "${embedded.rabbitmq.vhost}");
         properties.setProperty("spring.rabbitmq.template.mandatory", "true");
         properties.setProperty("spring.rabbitmq.publisher-confirm-type", "correlated");
         properties.setProperty("spring.rabbitmq.publisher-returns", "true");
@@ -46,26 +73,5 @@ public class MessageEnvironmentProcessor implements EnvironmentPostProcessor {
         properties.setProperty("spring.rabbitmq.listener.simple.retry.max-attempts", "3");
         properties.setProperty("spring.rabbitmq.listener.simple.retry.max-interval", "15000ms");
         properties.setProperty("spring.rabbitmq.listener.simple.retry.initial-interval", "1000ms");
-
-        if (profiles.contains("default") || profiles.contains("local")) {
-            log.info("Embedded rabbitmq server configuration for profiles: default/local");
-            // embedded rabbitmq
-            properties.setProperty("embedded.rabbitmq.enabled", "true");
-            properties.setProperty("embedded.rabbitmq.reuseContainer", "true");
-            properties.setProperty("embedded.rabbitmq.password", "rabbitmq");
-            properties.setProperty("embedded.rabbitmq.vhost", "/");
-            properties.setProperty("embedded.rabbitmq.dockerImage", "rabbitmq:3.9-management");
-            properties.setProperty("embedded.rabbitmq.waitTimeoutInSeconds", "60");
-            // default/local rabbitmq config
-            properties.setProperty("spring.rabbitmq.host", "${embedded.rabbitmq.host}");
-            properties.setProperty("spring.rabbitmq.port", "${embedded.rabbitmq.port}");
-            properties.setProperty("spring.rabbitmq.username", "${embedded.rabbitmq.user}");
-            properties.setProperty("spring.rabbitmq.password", "${embedded.rabbitmq.password}");
-            properties.setProperty("spring.rabbitmq.virtual-host", "${embedded.rabbitmq.vhost}");
-
-            properties.setProperty("micrc.embedded.rabbitmq.httpPort", "${embedded.rabbitmq.httpPort}");
-        } else {
-            properties.setProperty("embedded.rabbitmq.enabled", "false");
-        }
     }
 }

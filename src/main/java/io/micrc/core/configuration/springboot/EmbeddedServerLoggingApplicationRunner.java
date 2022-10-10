@@ -23,10 +23,20 @@ public class EmbeddedServerLoggingApplicationRunner implements ApplicationRunner
     public void run(ApplicationArguments args) throws Exception {
         Optional<String> profileStr = Optional.ofNullable(env.getProperty("application.profiles"));
         List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
-        if (profiles.contains("default") || profiles.contains("local")) {
+        if (profiles.contains("default")) {
+            loggingEmbeddedMysql();
             loggingEmbeddedRabbitmq();
             loggingEmbeddedRedis();
         }
+    }
+
+    private void loggingEmbeddedMysql() {
+        String server = env.getProperty("micrc.embedded.mysql.host")
+            + ":" + env.getProperty("micrc.embedded.mysql.port");
+        String url = env.getProperty("spring.datasource.url");
+        String username = env.getProperty("spring.datasource.username");
+        String password = env.getProperty("spring.datasource.password");
+        log.info("Mysql server start on: {}. \nurl: {}\nuser/pass: {}/{}", server, url, username, password);
     }
 
     private void loggingEmbeddedRabbitmq() {
@@ -34,8 +44,8 @@ public class EmbeddedServerLoggingApplicationRunner implements ApplicationRunner
         String password = env.getProperty("spring.rabbitmq.password");
         String server = env.getProperty("spring.rabbitmq.host") + ":" + env.getProperty("spring.rabbitmq.port");
         String managerUrl = "http://localhost:" + env.getProperty("micrc.embedded.rabbitmq.httpPort");
-        log.info("RabbitMQ server start on: {}. user/pass: {}/{}", server, username, password);
-        log.info("RabbitMQ manager ui start on: {}. user/pass: {}/{}", managerUrl, username, password);
+        log.info("RabbitMQ server start on: {}. \nuser/pass: {}/{}", server, username, password);
+        log.info("RabbitMQ manager ui start on: {}. \nuser/pass: {}/{}", managerUrl, username, password);
     }
 
     private void loggingEmbeddedRedis() {
@@ -43,7 +53,7 @@ public class EmbeddedServerLoggingApplicationRunner implements ApplicationRunner
         String password = env.getProperty("spring.redis.password");
         String server = env.getProperty("spring.redis.host") + ":" + env.getProperty("spring.redis.port");
         String managerUrl = "http://localhost:" + env.getProperty("micrc.spring.redis.httpPort");
-        log.info("Redis server start on: {}. user/pass: {}/{}", server, username, password);
-        log.info("Redis manager ui start on: {}. user/pass: {}/{}", managerUrl, username, password);
+        log.info("Redis server start on: {}. \nuser/pass: {}/{}", server, username, password);
+        log.info("Redis manager ui start on: {}. \nuser/pass: {}/{}", managerUrl, username, password);
     }
 }

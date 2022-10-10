@@ -42,9 +42,9 @@ public class EmbeddedRedistackTestOperationsAutoConfiguration {
 
     @Bean
     public PackageInstaller redistackPackageInstaller(
-            InstallPackageProperties properties,
+            InstallPackageProperties redistackPackageProperties,
             @Qualifier(RedistackProperties.BEAN_NAME_EMBEDDED_REDIS_STACK) GenericContainer redistack) {
-        return new ApkPackageInstaller(properties, redistack);
+        return new ApkPackageInstaller(redistackPackageProperties, redistack);
     }
 
     @Bean

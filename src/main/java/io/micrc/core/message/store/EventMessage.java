@@ -7,6 +7,7 @@ import org.apache.camel.Body;
 import org.apache.camel.Consume;
 import org.apache.camel.Header;
 
+import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
@@ -36,7 +37,8 @@ public class EventMessage implements Serializable {
      * 消息创建时间
      */
     private Long createTime = System.currentTimeMillis();
-
+    
+    @Column(columnDefinition = "TEXT")
     private String content;
 
     private Long sequence;

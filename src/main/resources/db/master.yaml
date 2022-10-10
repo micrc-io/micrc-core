@@ -3,3 +3,6 @@ databaseChangeLog:
   - include:
       file: db/main${mem}.yaml
       relativeToChangelogFile: false
+  - include:
+      file: schema/message/message-schema.yaml
+      relativeToChangelogFile: false

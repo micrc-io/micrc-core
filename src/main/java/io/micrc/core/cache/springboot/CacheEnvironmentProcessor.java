@@ -36,15 +36,15 @@ public class CacheEnvironmentProcessor implements EnvironmentPostProcessor {
     }
 
     private void bootstrapEmbeddedRedis(List<String> profiles, Properties properties) {
-        if (!profiles.contains("default") && !profiles.contains("local")) {
+        if (!profiles.contains("default")) {
             properties.setProperty("embedded.redistack.enabled", "false");
         }
         // 目前redis-stack不支持cluster，也不使用客户端直连cluster的方式
-        // default和local使用单机redis
+        // default使用单机redis
         // dev，verify，production(ack)集群环境中，额外部署redis-cluster-proxy对集群进行代理，云redis自带代理
         // 客户端连接方式保持一致，均为单机连接方式
-        if (profiles.contains("default") || profiles.contains("local")) {
-            log.info("Start embedded redis for env 'default' or 'local'. ");
+        if (profiles.contains("default")) {
+            log.info("Embedded redis server configuration for profile: 'default'");
             // embedded redis
             properties.setProperty("embedded.redistack.enabled", "true");
             properties.setProperty("embedded.redistack.reuseContainer", "true");

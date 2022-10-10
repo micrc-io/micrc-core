@@ -1,11 +1,9 @@
 package io.micrc.core;
 
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.h2.tools.Server;
 import org.springframework.boot.ApplicationContextFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
@@ -13,8 +11,6 @@ import org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfigurati
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Import;
-
-import lombok.extern.java.Log;
 
 /**
  * micrc core application
@@ -27,7 +23,6 @@ import lombok.extern.java.Log;
  * @since 0.0.1
  * @date 2022-08-25 22:42
  */
-@Log
 public final class MicrcApplication {
     private MicrcApplication() {
     }
@@ -36,6 +31,7 @@ public final class MicrcApplication {
         List<String> argList = new ArrayList<>(Arrays.asList(args));
         if (argList.contains("dbinit")) {
             new SpringApplicationBuilder(LiquibaseInit.class)
+                .properties("spring.profiles.active=dbinit")
                 .contextFactory(ApplicationContextFactory
                     .ofContextClass(AnnotationConfigApplicationContext.class))
                 .profiles("dbinit")
@@ -43,7 +39,6 @@ public final class MicrcApplication {
             return;
         }
         if (argList.contains("local")) {
-            startH2Server();
             argList.add("--spring.profiles.active=local");
             SpringApplication.run(appClazz, argList.toArray(String[]::new));
             return;
@@ -64,19 +59,6 @@ public final class MicrcApplication {
             return;
         }
         SpringApplication.run(appClazz, args);
-    }
-
-    private static void startH2Server() {
-        try {
-            Server h2 = Server.createTcpServer("-tcp", "-tcpAllowOthers").start();
-            if (h2.isRunning(true)) {
-                log.info("H2 database tcp server was started and is running at: " + h2.getURL());
-                return;
-            }
-            throw new IllegalStateException("Could not start H2 server.");
-        } catch (SQLException e) {
-            throw new IllegalStateException("Failed not start H2 server. ", e);
-        }
     }
 }
 
