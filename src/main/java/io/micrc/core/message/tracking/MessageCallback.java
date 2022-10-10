@@ -1,6 +1,7 @@
 package io.micrc.core.message.tracking;
 
 import io.micrc.core.message.store.EventMessage;
+import io.micrc.lib.ClassCastUtils;
 import io.micrc.lib.JsonUtil;
 import lombok.SneakyThrows;
 import org.apache.camel.EndpointInject;
@@ -39,7 +40,8 @@ public class MessageCallback implements ConfirmCallback, ReturnsCallback {
      */
     @Override
     public void confirm(CorrelationData correlationData, boolean ack, String cause) {
-        Map<String, Object> messageDetail = JsonUtil.writeValueAsObject(correlationData.getId(), HashMap.class);
+        Object object = JsonUtil.writeValueAsObject(correlationData.getId(), Object.class);
+        Map<String, Object> messageDetail = ClassCastUtils.castHashMap(object, String.class, Object.class);
         String messageType = (String) messageDetail.get("type");
         // FixME tengwang ack成功不可作为删除异常表数据的前提条件
 //        if(ack){
@@ -69,7 +71,8 @@ public class MessageCallback implements ConfirmCallback, ReturnsCallback {
      */
     @Override
     public void returnedMessage(ReturnedMessage returned) {
-        Map<String, Object> messageDetail = JsonUtil.writeValueAsObject(returned.getMessage().getMessageProperties().getHeader("spring_returned_message_correlation").toString(), HashMap.class);
+        Object object = JsonUtil.writeValueAsObject(returned.getMessage().getMessageProperties().getHeader("spring_returned_message_correlation").toString(), Object.class);
+        Map<String, Object> messageDetail = ClassCastUtils.castHashMap(object, String.class, Object.class);
         String messageType = (String) messageDetail.get("type");
         EventMessage eventMessage = (EventMessage) toObject(returned.getMessage().getBody());
         Map<String, Object> headers = new HashMap<>();

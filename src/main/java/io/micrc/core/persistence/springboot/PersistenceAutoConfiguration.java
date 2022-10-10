@@ -1,7 +1,7 @@
 package io.micrc.core.persistence.springboot;
 
-import io.micrc.core.persistence.MachineNumberAliveSchedule;
-import io.micrc.core.persistence.SnowFlakeIdentity;
+import io.micrc.core.persistence.snowflake.MachineNumberAliveSchedule;
+import io.micrc.core.persistence.snowflake.SnowFlakeIdentity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

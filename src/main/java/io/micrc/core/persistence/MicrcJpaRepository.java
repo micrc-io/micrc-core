@@ -3,6 +3,7 @@ package io.micrc.core.persistence;
 import java.util.List;
 import java.util.Optional;
 
+import io.micrc.core.persistence.snowflake.SnowFlakeIdentity;
 import org.springframework.cache.annotation.CacheConfig;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
@@ -70,7 +71,7 @@ public interface MicrcJpaRepository<T, I extends IdentityAware> extends Reposito
      */
     default I id(Class<I> idClass) throws Exception {
         I idObj = idClass.getConstructor().newInstance();
-        idObj.setIdentity(Long.MAX_VALUE);
+        idObj.setIdentity(SnowFlakeIdentity.nextId());
         return idObj;
     }
 

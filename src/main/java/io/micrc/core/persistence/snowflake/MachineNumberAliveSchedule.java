@@ -1,4 +1,4 @@
-package io.micrc.core.persistence;
+package io.micrc.core.persistence.snowflake;
 
 import io.micrc.core.persistence.springboot.PersistenceAutoConfiguration;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;

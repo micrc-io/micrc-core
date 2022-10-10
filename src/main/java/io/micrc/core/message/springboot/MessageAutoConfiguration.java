@@ -14,7 +14,6 @@ import org.apache.camel.component.direct.DirectComponent;
 import org.apache.camel.spring.boot.CamelAutoConfiguration;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.Connection;
-import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,9 +61,6 @@ public class MessageAutoConfiguration implements ApplicationRunner {
     public static final String DEAD_LETTER_QUEUE_NAME = "error";
 
     public static final String DEAD_LETTER_ROUTING_KEY = "error";
-
-    @Autowired
-    private ConnectionFactory connectionFactory;
 
     @Autowired
     private MessageCallback messageCallback;

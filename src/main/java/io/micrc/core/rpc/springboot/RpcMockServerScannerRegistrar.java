@@ -9,7 +9,6 @@ import io.micrc.core.rpc.IntegrationsInfo;
 import io.micrc.core.rpc.IntegrationsInfo.Integration;
 import io.micrc.lib.JsonUtil;
 import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
 import org.mockserver.integration.ClientAndServer;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -23,7 +22,6 @@ import org.springframework.context.annotation.ClassPathBeanDefinitionScanner;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
 import org.springframework.core.annotation.AnnotationAttributes;
 import org.springframework.core.env.Environment;
-import org.springframework.core.io.ResourceLoader;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.core.type.StandardAnnotationMetadata;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
@@ -49,8 +47,6 @@ import java.util.stream.Collectors;
 public class RpcMockServerScannerRegistrar implements ImportBeanDefinitionRegistrar, EnvironmentAware {
 
     private Environment env;
-
-    private ResourceLoader resourceLoader;
 
     @Override
     public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata,
@@ -92,16 +88,12 @@ public class RpcMockServerScannerRegistrar implements ImportBeanDefinitionRegist
                 integrationsInfoBeanDefinition);
     }
 
-    @Slf4j
     private static class RPCRequestScanner extends ClassPathBeanDefinitionScanner {
-
-        private final ClientAndServer server;
 
         private final IntegrationsInfo integrationsInfo;
 
         public RPCRequestScanner(BeanDefinitionRegistry registry, ClientAndServer server, IntegrationsInfo integrationsInfo) {
             super(registry);
-            this.server = server;
             this.integrationsInfo = integrationsInfo;
         }
 
@@ -165,9 +157,6 @@ public class RpcMockServerScannerRegistrar implements ImportBeanDefinitionRegist
         private Integration analysisOpenApiProtocol(String protocolFilePath) {
             String protocolContent = this.fileReader(protocolFilePath);
             JsonNode protocolNode = JsonUtil.readTree(protocolContent);
-            JsonNode mappingNode = protocolNode
-                    .at("/paths").elements().next().elements().next()
-                    .at("/requestBody/content").elements().next();
             // 收集host
             JsonNode hostNode = protocolNode
                     .at("/servers").get(0)

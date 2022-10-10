@@ -3,6 +3,7 @@ package io.micrc.core.message.tracking;
 import com.rabbitmq.client.Channel;
 import io.micrc.core.message.springboot.MessageAutoConfiguration;
 import io.micrc.core.message.store.EventMessage;
+import io.micrc.lib.ClassCastUtils;
 import io.micrc.lib.JsonUtil;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -19,7 +20,6 @@ import org.springframework.stereotype.Component;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.RejectedExecutionException;
 
@@ -88,7 +88,6 @@ public class ErrorMessage {
      */
     private String content;
 
-    @SuppressWarnings("unchecked")
     public ErrorMessage(EventMessage eventMessage, Map<String, Object> eventDetail, String reason, String state) {
         this.sequence = Long.valueOf(eventDetail.get("sequence").toString());
         this.channel = (String) eventDetail.get("channel");
@@ -110,7 +109,8 @@ public class ErrorMessage {
 
     @Consume("eventstore://dead-message-store")
     public ErrorMessage deadMessageStore(@Body EventMessage eventMessage, @Header("eventDetail") String eventDetailJson) {
-        Map<String, Object> eventDetail = JsonUtil.writeValueAsObject(eventDetailJson, HashMap.class);
+        Object object = JsonUtil.writeValueAsObject(eventDetailJson, Object.class);
+        Map<String, Object> eventDetail = ClassCastUtils.castHashMap(object, String.class, Object.class);
         ErrorMessage errorMessage = new ErrorMessage(eventMessage, eventDetail, "DEAD_MESSAGE", "STOP");
         return errorMessage;
     }

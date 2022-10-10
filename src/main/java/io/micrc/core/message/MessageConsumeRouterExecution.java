@@ -3,6 +3,7 @@ package io.micrc.core.message;
 import com.rabbitmq.client.Channel;
 import io.micrc.core.annotations.integration.message.MessageAdapter;
 import io.micrc.core.message.store.EventMessage;
+import io.micrc.lib.ClassCastUtils;
 import io.micrc.lib.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.EndpointInject;
@@ -20,14 +21,12 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.util.StringUtils;
 
-import java.util.HashMap;
 import java.util.Map;
 
 @Aspect
 @Slf4j
 @Configuration
 public class MessageConsumeRouterExecution implements Ordered {
-    private static Map<String, Object> routeHeaders = Map.of("WrappedRouter", true);
 
     @EndpointInject
     private ProducerTemplate template;
@@ -69,11 +68,15 @@ public class MessageConsumeRouterExecution implements Ordered {
                 message = (Message) arg;
             }
         }
+        if (null == eventMessage || null == channel || null == message) {
+            return null;
+        }
         Object retVal = null;
         // 事务处理器,手动开启事务
         TransactionStatus transactionStatus = platformTransactionManager.getTransaction(transactionDefinition);
         // 处理幂等 如果未消费,则
-        Map<String, Object> messageDetail = JsonUtil.writeValueAsObject(message.getMessageProperties().getHeader("spring_returned_message_correlation").toString(), HashMap.class);
+        Object object = JsonUtil.writeValueAsObject(message.getMessageProperties().getHeader("spring_returned_message_correlation").toString(), Object.class);
+        Map<String, Object> messageDetail = ClassCastUtils.castHashMap(object, String.class, Object.class);
         Boolean consumed = null;
         try {
             consumed = template.requestBody("subscribe://idempotent-check", messageDetail, Boolean.class);
