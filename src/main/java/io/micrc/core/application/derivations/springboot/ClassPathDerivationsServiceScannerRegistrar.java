@@ -169,24 +169,19 @@ class ApplicationDerivationsServiceScanner extends ClassPathBeanDefinitionScanne
         List<ParamIntegration> paramIntegrations = new ArrayList<>();
         // 查询逻辑解析
         Arrays.stream(queryLogics).forEach(logic -> {
-            HashMap<String, String> map = new HashMap<>();
+            Map<String, String> paramPath = new HashMap<>();
             // 解析查询参数
             StringBuilder queryParam = new StringBuilder();
             Arrays.stream(logic.params()).forEach(param -> {
                 queryParam.append("And").append(param.belongConcept()).append(upperStringFirst(param.name()));
-                map.put(param.name(), param.path());
+                paramPath.put(param.name(), param.path());
             });
             String methodName = queryParam.length() > 0 ? "findBy" + queryParam.substring(3) : "findAll";
             // 解析排序参数
-            StringBuilder sortParam = new StringBuilder();
-            Arrays.stream(logic.sorts()).forEach(param -> {
-                sortParam.append("And").append(param.belongConcept()).append(upperStringFirst(param.name()))
-                        .append(upperStringFirst(param.type().name().toLowerCase(Locale.ROOT)));
-            });
-            if (sortParam.length() > 0) {
-                methodName = methodName + "OrderBy" + sortParam.substring(3);
-            }
-            paramIntegrations.add(new ParamIntegration(logic.name(), lowerStringFirst(logic.aggregation()), methodName, map, logic.order()));
+            Map<String, String> sortParam = Arrays.stream(logic.sorts())
+                    .collect(Collectors.toMap(i -> String.join(".", i.belongConcept(), i.name()), i -> i.type().name()));
+            paramIntegrations.add(new ParamIntegration(logic.name(), lowerStringFirst(logic.aggregation()), methodName,
+                    paramPath, sortParam, logic.pageSizePath(), logic.pageNumberPath(), logic.order()));
         });
         // 运算解析
         Arrays.stream(operations).forEach(operation -> {

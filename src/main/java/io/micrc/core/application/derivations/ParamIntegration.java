@@ -5,6 +5,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.util.HashMap;
+import java.util.Map;
 
 /**
  * 参数集成信息
@@ -42,7 +43,22 @@ public class ParamIntegration {
      *
      * @return
      */
-    private HashMap<String, String> params;
+    private Map<String, String> queryParams;
+
+    /**
+     * 排序参数方式
+     */
+    private Map<String, String> sortParams;
+
+    /**
+     * 分页编码路径
+     */
+    private String pageNumberPath;
+
+    /**
+     * 分页大小路径
+     */
+    private String pageSizePath;
 
     /**
      * 逻辑名称，执行指定DMN
@@ -64,21 +80,26 @@ public class ParamIntegration {
      */
     private Type type;
 
-    public ParamIntegration(String concept, HashMap<String, String> params, String logicName, int order) {
+    public ParamIntegration(String concept, HashMap<String, String> queryParams, String logicName, int order) {
         this.concept = concept;
-        this.params = params;
+        this.queryParams = queryParams;
         this.order = order;
         this.logicName = logicName;
         this.type = Type.OPERATE;
     }
 
-    public ParamIntegration(String concept, String aggregation, String queryMethod, HashMap<String, String> queryParams, int order) {
+    public ParamIntegration(String concept, String aggregation, String queryMethod,
+                            Map<String, String> queryParams, Map<String, String> sortParams,
+                            String pageSizePath, String pageNumberPath, int order) {
         this.concept = concept;
         this.aggregation = aggregation;
         this.queryMethod = queryMethod;
-        this.params = queryParams;
+        this.queryParams = queryParams;
+        this.sortParams = sortParams;
+        this.pageSizePath = pageSizePath;
+        this.pageNumberPath = pageNumberPath;
         this.order = order;
-        this.type = Type.QUERY;
+        this.type = ParamIntegration.Type.QUERY;
     }
 
     /**
