@@ -11,11 +11,11 @@ import org.springframework.util.StringUtils;
 import java.util.*;
 
 /**
- * persistence env processor. h2, jpa and liquibase config
+ * persistence env processor. mysql, jpa and liquibase config
  *
  * @author weiguan
- * @since 0.0.1
  * @date 2022-09-01 15:36
+ * @since 0.0.1
  */
 public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor {
 
@@ -55,21 +55,39 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
             properties.setProperty("micrc.embedded.mysql.host", "${embedded.mysql.host}");
             properties.setProperty("micrc.embedded.mysql.port", "${embedded.mysql.port}");
         }
+        //
         if (profiles.contains("default")) {
             // default mysql connection
             properties.setProperty("spring.datasource.url",
-                "jdbc:mysql://${embedded.mysql.host}:${embedded.mysql.port}/${embedded.mysql.schema}");
+                    "jdbc:mysql://${embedded.mysql.host}:${embedded.mysql.port}/${embedded.mysql.schema}" +
+                            "?useunicode=true&characterencoding=utf8&servertimezone=utc");
             properties.setProperty("spring.datasource.username", "${embedded.mysql.user}");
             properties.setProperty("spring.datasource.password", "${embedded.mysql.password}");
         } else {
-            // k8s集群中按约定名称读取的secret中约定的url, username, password属性
+            // k8s集群中按约定名称读取的secret中的host, port, user, pass属性
             properties.setProperty("spring.datasource.url",
                 "jdbc:mysql://${database.host}:${database.port}/${spring.application.name}");
             properties.setProperty("spring.datasource.username", "${database.user}");
             properties.setProperty("spring.datasource.password", "${database.pass}");
         }
-        // TODO tengwang 数据源和连接池通用配置
         properties.setProperty("spring.datasource.driver-class-name", "com.mysql.cj.jdbc.Driver");
+        // 数据源和连接池通用配置 https://github.com/brettwooldridge/HikariCP
+        properties.setProperty("spring.datasource.type", "com.zaxxer.hikari.HikariDataSource");
+        // 最小空闲连接数量
+        properties.setProperty("spring.datasource.hikari.minimum-idle", "10");
+        // 空闲连接存活最大时间，默认600000（10分钟）
+        properties.setProperty("spring.datasource.hikari.idle-timeout", "18000");
+        // 连接池最大连接数，默认是10
+        properties.setProperty("spring.datasource.hikari.maximum-pool-size", "1000");
+        // 此属性控制从池返回的连接的默认自动提交行为,默认值：true
+        properties.setProperty("spring.datasource.hikari.auto-commit", "true");
+        // 连接池名称
+        properties.setProperty("spring.datasource.hikari.pool-name", "OfficialWebsiteHikariCP");
+        // 此属性控制池中连接的最长生命周期，值0表示无限生命周期，默认1800000即30分钟
+        properties.setProperty("spring.datasource.hikari.max-lifetime", "1800000");
+        // 数据库连接超时时间,默认30秒，即30000
+        properties.setProperty("spring.datasource.hikari.connection-timeout", "300000");
+        properties.setProperty("spring.datasource.hikari.connection-test-query", "SELECT 1");
     }
 
     private void envForLiquibase(Collection<String> profiles, Properties properties, Environment env) {
@@ -80,8 +98,8 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
         String appVersion = env.getProperty("application.version");
         if (!StringUtils.hasText(appVersion)) {
             throw new IllegalStateException(
-                "Unable find application version. "
-                + "application.version=${version} must exists in micrc.properties on classpath");
+                    "Unable find application version. "
+                            + "application.version=${version} must exists in micrc.properties on classpath");
         }
         // 用于master include内存库的changelog的main文件
         String mem = "";
