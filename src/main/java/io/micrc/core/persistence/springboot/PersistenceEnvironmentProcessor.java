@@ -79,7 +79,7 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
         properties.setProperty("spring.datasource.hikari.maximum-pool-size", "1000");
         // 此属性控制从池返回的连接的默认自动提交行为,默认值：true
         properties.setProperty("spring.datasource.hikari.auto-commit", "true");
-        // 连接池母子
+        // 连接池名称
         properties.setProperty("spring.datasource.hikari.pool-name", "OfficialWebsiteHikariCP");
         // 此属性控制池中连接的最长生命周期，值0表示无限生命周期，默认1800000即30分钟
         properties.setProperty("spring.datasource.hikari.max-lifetime", "1800000");
