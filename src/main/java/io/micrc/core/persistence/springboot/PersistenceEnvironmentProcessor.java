@@ -44,6 +44,7 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
         }
         if (profiles.contains("default")) {
             log.info("Embedded mysql server configuration for profile: 'default'");
+            // embedded mysql
             properties.setProperty("embedded.mysql.enabled", "true");
             properties.setProperty("embedded.mysql.reuseContainer", "true");
             properties.setProperty("embedded.mysql.dockerImage", "mysql:8.0");
@@ -55,16 +56,20 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
             properties.setProperty("micrc.embedded.mysql.port", "${embedded.mysql.port}");
         }
         if (profiles.contains("default")) {
-            // redis connection
-            properties.setProperty("spring.datasource.driver-class-name", "com.mysql.cj.jdbc.Driver");
+            // default mysql connection
             properties.setProperty("spring.datasource.url",
                 "jdbc:mysql://${embedded.mysql.host}:${embedded.mysql.port}/${embedded.mysql.schema}");
             properties.setProperty("spring.datasource.username", "${embedded.mysql.user}");
             properties.setProperty("spring.datasource.password", "${embedded.mysql.password}");
         } else {
-            // k8s集群中读取的secret中的host，port和passwd
+            // k8s集群中按约定名称读取的secret中约定的url, username, password属性
+            properties.setProperty("spring.datasource.url",
+                "jdbc:mysql://${database.host}:${database.port}/${spring.application.name}");
+            properties.setProperty("spring.datasource.username", "${database.user}");
+            properties.setProperty("spring.datasource.password", "${database.pass}");
         }
         // TODO tengwang 数据源和连接池通用配置
+        properties.setProperty("spring.datasource.driver-class-name", "com.mysql.cj.jdbc.Driver");
     }
 
     private void envForLiquibase(Collection<String> profiles, Properties properties, Environment env) {

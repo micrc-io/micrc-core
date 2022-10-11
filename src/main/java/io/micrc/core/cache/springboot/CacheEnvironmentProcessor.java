@@ -56,12 +56,15 @@ public class CacheEnvironmentProcessor implements EnvironmentPostProcessor {
             properties.setProperty("micrc.spring.redis.httpPort", "${embedded.redistack.httpPort}");
         }
         if (profiles.contains("default")) {
-            // redis connection
+            // default redis connection
             properties.setProperty("spring.redis.host", "${embedded.redistack.host}");
             properties.setProperty("spring.redis.port", "${embedded.redistack.port}");
             properties.setProperty("spring.redis.password", "${embedded.redistack.password}");
         } else {
             // k8s集群中读取的configmap中的host，port和passwd
+            properties.setProperty("spring.redis.host", "${cache.host}");
+            properties.setProperty("spring.redis.port", "${cache.port}");
+            properties.setProperty("spring.redis.password", "${cache.password}");
         }
         // 任何环境使用统一的连接配置
         properties.setProperty("spring.redis.timeout", "3000");

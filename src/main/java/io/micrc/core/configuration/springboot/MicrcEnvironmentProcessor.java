@@ -43,20 +43,39 @@ public class MicrcEnvironmentProcessor implements EnvironmentPostProcessor {
         properties.setProperty("application.profiles",
             StringUtils.arrayToCommaDelimitedString(profiles.toArray(new String[]{})));
         log.info("Micrc Application Profiles: " + profiles);
-        if (profiles.contains("default")) {
-            log.info("Local Default Environment, Disable Kubernetes Configmap Support. ");
-            properties.setProperty("spring.cloud.kubernetes.enabled", "false");
-        }
         if (!profiles.contains("default")) {
             log.info("Non Local Default Environment, Disable Test Container Support. ");
             properties.setProperty("embedded.containers.enabled", "false");
         }
+        envForKubernetes(profiles, properties);
         envForActuator(profiles, properties);
         envForGracefulShutdown(properties);
 
         // TODO 处理banner: springboot版本，micrc版本，应用版本；micrc logo，应用logo；当前profile及描述
         PropertiesPropertySource source = new PropertiesPropertySource("micrc", properties);
         environment.getPropertySources().addLast(source);
+    }
+
+    private void envForKubernetes(Collection<String> profiles, Properties properties) {
+        properties.setProperty("spring.cloud.kubernetes.discovery.enabled", "false");
+        properties.setProperty("spring.cloud.kubernetes.leader.enabled", "false");
+        properties.setProperty("spring.cloud.kubernetes.loadbalancer.enabled", "false");
+        properties.setProperty("spring.cloud.kubernetes.reload.enabled", "true");
+        // default环境关闭所有
+        if (profiles.contains("default")) {
+            properties.setProperty("spring.cloud.kubernetes.enabled", "false");
+        }
+        if (!profiles.contains("default")) {
+            log.info("Kubernetes Environment, Enable Kubernetes Configmap And Secret Support. ");
+            properties.setProperty("spring.cloud.kubernetes.config.enabled", "true");
+            properties.setProperty("spring.cloud.kubernetes.config.fail-fast", "true");
+            properties.setProperty("spring.cloud.kubernetes.config.include-profile-specific-sources", "false");
+            properties.setProperty("spring.cloud.kubernetes.config.name",
+                properties.getProperty("spring.application.name"));
+            properties.setProperty("spring.cloud.kubernetes.secrets.enabled", "true");
+            properties.setProperty("spring.cloud.kubernetes.secrets.fail-fast", "true");
+            properties.setProperty("spring.cloud.kubernetes.secrets.paths", "/etc/secrets");
+        }
     }
 
     private Properties loadMicrcProperties() {
