@@ -60,10 +60,10 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
             properties.setProperty("spring.datasource.driver-class-name", "com.mysql.cj.jdbc.Driver");
             properties.setProperty("spring.datasource.url",
                     "jdbc:mysql://${embedded.mysql.host}:${embedded.mysql.port}/${embedded.mysql.schema}" +
-                            "?characterEncoding=UTF-8&useunicode=true&characterencoding=utf8&servertimezone=utc");
+                            "?useunicode=true&characterencoding=utf8&servertimezone=utc");
             // hikari 的url叫做jdbc-url
             // properties.setProperty("spring.datasource.jdbc-url", "jdbc:mysql://${embedded.mysql.host}:${embedded.mysql.port}/${embedded.mysql.schema}" +
-                    // "?characterEncoding=UTF-8&useunicode=true&characterencoding=utf8&servertimezone=utc");
+                    // "?&useunicode=true&characterencoding=utf8&servertimezone=utc");
             properties.setProperty("spring.datasource.username", "${embedded.mysql.user}");
             properties.setProperty("spring.datasource.password", "${embedded.mysql.password}");
         } else {
