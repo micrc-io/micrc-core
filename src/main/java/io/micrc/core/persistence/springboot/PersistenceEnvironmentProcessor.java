@@ -47,7 +47,7 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
             // embedded mysql
             properties.setProperty("embedded.mysql.enabled", "true");
             properties.setProperty("embedded.mysql.reuseContainer", "true");
-            properties.setProperty("embedded.mysql.dockerImage", "mysql:8.0");
+            properties.setProperty("embedded.mysql.dockerImage", "mysql:8.0.30");
             properties.setProperty("embedded.mysql.waitTimeoutInSeconds", "60");
             properties.setProperty("embedded.mysql.encoding", "utf8mb4");
             properties.setProperty("embedded.mysql.collation", "utf8mb4_unicode_ci");

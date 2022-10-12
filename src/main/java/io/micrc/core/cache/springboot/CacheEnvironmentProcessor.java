@@ -64,7 +64,7 @@ public class CacheEnvironmentProcessor implements EnvironmentPostProcessor {
             // k8s集群中读取的configmap中的host，port和passwd
             properties.setProperty("spring.redis.host", "${cache.host}");
             properties.setProperty("spring.redis.port", "${cache.port}");
-            properties.setProperty("spring.redis.password", "${cache.password}");
+            properties.setProperty("spring.redis.password", "${cache.pass}");
         }
         // 任何环境使用统一的连接配置
         properties.setProperty("spring.redis.timeout", "3000");

@@ -59,15 +59,15 @@ public class MessageEnvironmentProcessor implements EnvironmentPostProcessor {
             properties.setProperty("spring.rabbitmq.port", "${embedded.rabbitmq.port}");
             properties.setProperty("spring.rabbitmq.username", "${embedded.rabbitmq.user}");
             properties.setProperty("spring.rabbitmq.password", "${embedded.rabbitmq.password}");
+            properties.setProperty("spring.rabbitmq.virtual-host", "${embedded.rabbitmq.vhost}");
         } else {
             // k8s集群中读取的secret中的host，port和passwd
             properties.setProperty("spring.rabbitmq.host", "${broker.host}");
             properties.setProperty("spring.rabbitmq.port", "${broker.port}");
             properties.setProperty("spring.rabbitmq.username", "${broker.user}");
-            properties.setProperty("spring.rabbitmq.password", "${broker.password}");
+            properties.setProperty("spring.rabbitmq.password", "${broker.pass}");
         }
 
-        properties.setProperty("spring.rabbitmq.virtual-host", "${embedded.rabbitmq.vhost}");
         properties.setProperty("spring.rabbitmq.template.mandatory", "true");
         properties.setProperty("spring.rabbitmq.publisher-confirm-type", "correlated");
         properties.setProperty("spring.rabbitmq.publisher-returns", "true");

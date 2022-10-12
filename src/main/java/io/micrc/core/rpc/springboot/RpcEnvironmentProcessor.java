@@ -46,7 +46,7 @@ public class RpcEnvironmentProcessor implements EnvironmentPostProcessor {
         properties.setProperty("camel.servlet.mapping.contextPath", REST_CONTEXT_PATH_PATTERN);
         log.info("Rest Endpoint On Port: 8080 With Context Path: " + REST_CONTEXT_PATH);
         if (!profiles.contains("default") && !profiles.contains("local")) {
-            log.info("Not default Or local Environment, Disable Swagger-UI. ");
+            log.info("Not default or local Environment, Disable Swagger-UI. ");
             properties.setProperty("springdoc.api-docs.enabled", "false");
         }
         if (profiles.contains("default") || profiles.contains("local")) {

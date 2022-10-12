@@ -99,8 +99,7 @@ public class MicrcEnvironmentProcessor implements EnvironmentPostProcessor {
     }
 
     private void envForActuator(Collection<String> profiles, Properties properties) {
-        properties.setProperty("management.server.port", "1234");
-        properties.setProperty("management.server.address", "127.0.0.1");
+        properties.setProperty("management.server.port", "18080");
         // 默认关闭所有endpoints，按需开启
         properties.setProperty("management.endpoints.enabled-by-default", "false");
         properties.setProperty("management.endpoints.web.exposure.include", "*");
