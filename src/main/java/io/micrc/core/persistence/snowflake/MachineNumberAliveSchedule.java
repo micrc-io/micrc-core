@@ -16,8 +16,10 @@ public class MachineNumberAliveSchedule {
     @Scheduled(fixedDelay = 2 * 60 * 1000)
     @SchedulerLock(name = "MachineNumberAliveSchedule")
     public void alive() {
-        String key = PersistenceAutoConfiguration.MACHINE_NUMBER_KEY_SUFFIX + SnowFlakeIdentity.machineNumber;
-        stringRedisTemplate.opsForValue().setIfPresent(key, "1", 5, TimeUnit.MINUTES);
+        if (SnowFlakeIdentity.machineNumber >= 0) {
+            String key = PersistenceAutoConfiguration.MACHINE_NUMBER_KEY_PREFIX + SnowFlakeIdentity.machineNumber;
+            stringRedisTemplate.opsForValue().setIfPresent(key, "1", 5, TimeUnit.MINUTES);
+        }
     }
 
 }

@@ -71,7 +71,7 @@ public interface MicrcJpaRepository<T, I extends IdentityAware> extends Reposito
      */
     default I id(Class<I> idClass) throws Exception {
         I idObj = idClass.getConstructor().newInstance();
-        idObj.setIdentity(SnowFlakeIdentity.nextId());
+        idObj.setIdentity(SnowFlakeIdentity.getInstance().nextId());
         return idObj;
     }
 

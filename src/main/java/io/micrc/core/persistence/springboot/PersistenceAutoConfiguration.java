@@ -3,7 +3,8 @@ package io.micrc.core.persistence.springboot;
 import io.micrc.core.persistence.snowflake.MachineNumberAliveSchedule;
 import io.micrc.core.persistence.snowflake.SnowFlakeIdentity;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -21,21 +22,25 @@ import java.util.concurrent.TimeUnit;
 @Import({
         MachineNumberAliveSchedule.class
 })
-public class PersistenceAutoConfiguration {
+public class PersistenceAutoConfiguration implements ApplicationRunner {
 
     /**
      * 机器码键前缀
      */
-    public static final String MACHINE_NUMBER_KEY_SUFFIX = "MACHINE:NUMBER:";
+    public static final String MACHINE_NUMBER_KEY_PREFIX = "MACHINE:NUMBER:";
 
     @Autowired
     StringRedisTemplate stringRedisTemplate;
 
-    @Bean
-    public SnowFlakeIdentity snowFlakeIdentity() {
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        allotMachineNumber();
+    }
+
+    private void allotMachineNumber() {
         Integer number = null;
         for (int i = 0; i <= SnowFlakeIdentity.MAX_MACHINE_NUMBER; i++) {
-            String key = MACHINE_NUMBER_KEY_SUFFIX + i;
+            String key = MACHINE_NUMBER_KEY_PREFIX + i;
             String value = stringRedisTemplate.opsForValue().get(key);
             if (value != null) {
                 continue;
@@ -50,6 +55,5 @@ public class PersistenceAutoConfiguration {
             throw new IllegalStateException("There is no machine number can used.");
         }
         SnowFlakeIdentity.machineNumber = number;
-        return new SnowFlakeIdentity();
     }
 }
