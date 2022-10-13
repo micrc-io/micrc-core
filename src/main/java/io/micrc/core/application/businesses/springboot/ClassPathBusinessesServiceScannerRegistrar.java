@@ -33,6 +33,7 @@ import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 /**
@@ -140,6 +141,10 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
             if (targetFields.size() != 1) {
                 throw new RuntimeException("the " + parameters[0].getType() + " don`t have only one target field, please check this command....");
             }
+            // 获取批量事件标识字段名称和名称
+            AtomicReference<String> batchPropertyPath = new AtomicReference<>();
+            Arrays.stream(commandFields).filter(field -> null != field.getAnnotation(BatchProperty.class)).findFirst()
+                    .ifPresentOrElse(batchProperty -> batchPropertyPath.set("/" + batchProperty.getName()), () -> batchPropertyPath.set(""));
             // 获取ApplicationService注解参数
             String serviceName = beanDefinition.getBeanClass().getSimpleName();
             String logicName = parameters[0].getType().getSimpleName().substring(0, parameters[0].getType().getSimpleName().length() - 7);
@@ -188,6 +193,7 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
                     routeId(serviceName),
                     ApplicationBusinessesServiceDefinition.builder()
                             .templateId(ApplicationBusinessesServiceRouteConfiguration.ROUTE_TMPL_BUSINESSES_SERVICE)
+                            .batchPropertyPath(batchPropertyPath.get())
                             .serviceName(serviceName)
                             .logicName(logicName)
                             .targetIdPath(targetIdPath)

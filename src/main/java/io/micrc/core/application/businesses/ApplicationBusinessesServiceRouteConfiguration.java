@@ -17,6 +17,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangeProperties;
+import org.apache.camel.support.ExpressionAdapter;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -103,7 +104,22 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 // TODO 仓库集成抽进repository路由内部 END
                 // 3 消息存储
                 .setBody(exchangeProperty("commandJson"))
-                .to("eventstore://store")
+                .setProperty("batchPropertyPath", simple("{{batchPropertyPath}}"))
+                .choice()
+                .when(constant("").isEqualTo(simple("${exchange.properties.get(batchPropertyPath)}")))
+                    .to("eventstore://store")
+                .otherwise()
+                    .setHeader("pointer", constant("/event/eventBatchData"))
+                    .to("json-patch://select")
+                    .split(new SplitList()).parallelProcessing()
+                        .bean(JsonUtil.class, "writeValueAsString")
+                        .setHeader("path", simple("${exchange.properties.get(batchPropertyPath)}"))
+                        .setHeader("value", body())
+                        .setBody(exchangeProperty("commandJson"))
+                        .to("json-patch://add")
+                        .to("eventstore://store")
+                    .end()
+                .end()
                 .setBody(exchangeProperty("commandJson"))
                 .end();
 
@@ -171,6 +187,22 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
     }
 
     /**
+     * 对象列表拆分器 -- TODO 通用 -- 抽走
+     */
+    public class SplitList extends ExpressionAdapter {
+        @Override
+        public Object evaluate(Exchange exchange) {
+            @SuppressWarnings("unchecked")
+            List<Object> objects = (List<Object>) exchange.getIn().getBody();
+            if (null != objects) {
+                return objects.iterator();
+            } else {
+                return null;
+            }
+        }
+    }
+
+    /**
      * 应用业务服务路由参数Bean
      *
      * @author weiguan
@@ -185,6 +217,11 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
          * 业务服务 - 内部获取
          */
         protected String serviceName;
+
+        /**
+         * 批量属性路径，需要批量发送事件时存在
+         */
+        protected String batchPropertyPath;
 
         /**
          * 执行逻辑名(截取Command的一部分) - 内部获取

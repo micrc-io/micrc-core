@@ -75,7 +75,7 @@ public class ApplicationPresentationsServiceRouteConfiguration extends MicrcRout
                 .setProperty("current", body())
                 // 构造发送
                 .choice()
-                .when(simple("${exchange.properties.get(current).get(type)} == 'QUERY'"))
+                .when(constant("QUERY").isEqualTo(simple("${exchange.properties.get(current).get(type)}")))
                 .bean(IntegrationParams.class, "executeQuery")
                 .otherwise()
                 .setBody(simple("${exchange.properties.get(current).get(params)}"))
