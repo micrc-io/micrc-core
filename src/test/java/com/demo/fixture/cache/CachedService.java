@@ -1,13 +1,13 @@
 package com.demo.fixture.cache;
 
+import io.micrc.core.annotations.application.businesses.BusinessesService;
 import org.apache.camel.builder.RouteBuilder;
 import org.springframework.stereotype.Component;
 
 import io.micrc.core.annotations.application.businesses.BusinessesExecution;
-import io.micrc.core.annotations.application.businesses.BusinessesServiceTest;
 import io.micrc.core.application.businesses.ApplicationBusinessesService;
 
-@BusinessesServiceTest
+@BusinessesService
 public interface CachedService extends ApplicationBusinessesService<CachedService.Command> {
     void execute(Command command);
 

@@ -157,7 +157,6 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
                 throw new RuntimeException("the " + parameters[0].getType().getSimpleName() + "not have CommandLogic annotation, please check this command");
             }
 
-            String targetIdPath = commandLogic.targetIdPath();
             LogicMapping[] logicMappings = commandLogic.toLogicMappings();
             TargetMapping[] targetMappings = commandLogic.toTargetMappings();
 
@@ -196,7 +195,6 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
                             .batchPropertyPath(batchPropertyPath.get())
                             .serviceName(serviceName)
                             .logicName(logicName)
-                            .targetIdPath(targetIdPath)
                             .aggregationName(aggregationName)
                             .repositoryName(repositoryName)
                             .aggregationPath(aggregationPath)

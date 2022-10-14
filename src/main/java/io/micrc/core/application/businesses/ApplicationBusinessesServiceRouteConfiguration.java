@@ -58,7 +58,6 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
         routeTemplate(ROUTE_TMPL_BUSINESSES_SERVICE)
                 .templateParameter("serviceName", null, "the business service name")
                 .templateParameter("logicName", null, "the logicName")
-                .templateParameter("targetIdPath", null, "the targetIdPath")
                 .templateParameter("commandParamIntegrationsJson", null, "the command integration params")
                 .templateParameter("aggregationName", null, "the aggregation name")
                 .templateParameter("repositoryName", null, "the repositoryName name")
@@ -68,24 +67,22 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .templateParameter("embeddedIdentityFullClassName", null, "embedded identity full class name")
                 .from("businesses:{{serviceName}}")
                 .transacted()
+                // 0 暂存入参
                 .marshal().json().convertBodyTo(String.class)
-                // 0.1 集成准备, 准备Source
                 .setProperty("commandJson", body())
-                // FIXME 这里有个BUG要修
-                .setHeader("pointer", constant("{{targetIdPath}}"))
-                .to("json-patch://select")
-                .marshal().json().convertBodyTo(String.class)
-                .setHeader("CamelJacksonUnmarshalType").simple("{{embeddedIdentityFullClassName}}")
-                .to("dataformat:jackson:unmarshal?allow-unmarshall-type=true")
-                .to("repository://{{repositoryName}}?method=findById")
-                .setProperty("source", simple("${in.body.get}"))
-                .bean(TargetSourceClone.class,
-                        "clone(${exchange.properties.get(source)}, ${exchange.properties.get(commandJson)})")
-                .setProperty("commandJson", body())
-                // FIXME end
                 // 1 分发集成
                 .setProperty("commandParamIntegrationsJson", simple("{{commandParamIntegrationsJson}}"))
                 .dynamicRouter(method(IntegrationCommandParams.class, "integrate"))
+                // 2 复制source到target
+                .setBody(exchangeProperty("commandJson"))
+                .setHeader("pointer", constant("/source"))
+                .to("json-patch://select")
+                .bean(JsonUtil.class, "writeValueAsString")
+                .setHeader("path", constant("/target"))
+                .setHeader("value", body())
+                .setBody(exchangeProperty("commandJson"))
+                .to("json-patch://patch")
+                .setProperty("commandJson", body())
                 // 2 执行逻辑
                 .setProperty("logicName", simple("{{logicName}}"))
                 .setProperty("logicIntegrationJson")
@@ -227,11 +224,6 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
          * 执行逻辑名(截取Command的一部分) - 内部获取
          */
         protected String logicName;
-
-        /**
-         * target仓库集成时Id位置 - 外部输入
-         */
-        protected String targetIdPath;
 
         /**
          * 聚合名称 - 内部获取
