@@ -159,10 +159,6 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
 
             LogicMapping[] logicMappings = commandLogic.toLogicMappings();
             TargetMapping[] targetMappings = commandLogic.toTargetMappings();
-
-            if (null == targetMappings || targetMappings.length == 0) {
-                throw new RuntimeException("the " + parameters[0].getType().getSimpleName() + "not have TargetMapping, please check this command");
-            }
             Map<String, String> outMappingMap = new HashMap<>();
             Arrays.asList(logicMappings).forEach(logicMapping -> outMappingMap.put(logicMapping.name(), logicMapping.mapping()));
             Map<String, String> enterMappingMap = new HashMap<>();
@@ -180,7 +176,14 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
                     if ("/".equals(objectTreePath)) {
                         objectTreePath = objectTreePath + field.getName();
                     }
-                    CommandParamIntegration commandParamIntegration = CommandParamIntegration.builder().paramName(field.getName()).objectTreePath(objectTreePath).protocol(deriveIntegration.protocolPath()).build();
+                    // 参数映射
+                    Map<String, String> paramMappings = Arrays.stream(deriveIntegration.integrationMapping()).collect(Collectors.toMap(IntegrationMapping::name, IntegrationMapping::mapping));
+                    CommandParamIntegration commandParamIntegration = CommandParamIntegration.builder()
+                            .paramName(field.getName())
+                            .objectTreePath(objectTreePath)
+                            .paramMappings(paramMappings)
+                            .protocol(deriveIntegration.protocolPath())
+                            .build();
                     commandParamIntegrations.add(commandParamIntegration);
                 }
             });

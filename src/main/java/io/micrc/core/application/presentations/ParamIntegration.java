@@ -79,10 +79,11 @@ public class ParamIntegration {
      */
     private Type type;
 
-    public ParamIntegration(String concept, String protocol, int order) {
+    public ParamIntegration(String concept, String protocol, int order, Map<String, String> paramMappings) {
         this.concept = concept;
         this.protocol = protocol;
         this.order = order;
+        this.queryParams = paramMappings;
         this.type = Type.INTEGRATE;
     }
 

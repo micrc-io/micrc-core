@@ -27,8 +27,10 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -285,6 +287,11 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
         private String objectTreePath;
 
         /**
+         * 参数映射
+         */
+        private Map<String, String> paramMappings;
+
+        /**
          * openApi集成协议 - 注解输入
          */
         private String protocol;
@@ -479,24 +486,19 @@ class IntegrationCommandParams {
                 throw new RuntimeException(
                         "the integration file have error, command need integrate, but the param can not use... ");
             }
-            String protocolContent = fileReader(unIntegrateParams.get(key).getProtocol());
-            JsonNode protocolNode = JsonUtil.readTree(protocolContent);
-            JsonNode mappingNode = protocolNode
-                    .at("/paths").elements().next().elements().next()
-                    .at("/requestBody/content").elements().next()
-                    .at("/x-integrate-mapping");
-            Map<String, Object> integrateMappings = ClassCastUtils.castHashMap(
-                    JsonUtil.writeValueAsObject(mappingNode.toString(),
-                            HashMap.class),
-                    String.class, Object.class);
-            // 要求当前集成的所有映射均能够获取到其参数
-            Boolean canExecute = integrateMappings.keySet().stream().allMatch(mappingKey -> {
-                return null != JsonUtil.readTree(commandJson).at((String) integrateMappings.get(mappingKey));
+            CommandParamIntegration commandParamIntegration = unIntegrateParams.get(key);
+            LinkedHashMap<String, Object> paramMap = new LinkedHashMap<>();
+
+            // 获取当前查询的每个参数
+            commandParamIntegration.getParamMappings().forEach((name, path) -> {
+                paramMap.put(name, JsonUtil.readPath(commandJson, path));
             });
-            // 如果当前循环的这个集成不能执行,则跳过该集成检查下一个
-            if (!canExecute) {
+            // 检查当前查询是否可执行
+            if (paramMap.values().stream().anyMatch(Objects::isNull)) {
                 continue;
             }
+            String protocolContent = fileReader(commandParamIntegration.getProtocol());
+            JsonNode protocolNode = JsonUtil.readTree(protocolContent);
             // 如果能够集成,收集信息,然后会自动跳出循环
             executableIntegrationInfo.put("paramName", unIntegrateParams.get(key).getParamName());
             executableIntegrationInfo.put("protocol", unIntegrateParams.get(key).getProtocol());
@@ -510,12 +512,7 @@ class IntegrationCommandParams {
                     .at("/paths").elements().next().elements().next()
                     .at("/operationId");
             executableIntegrationInfo.put("operationId", operationNode.textValue());
-            HashMap<String, String> integrateParams = new HashMap<>();
-            integrateMappings.keySet().forEach(mappingKey -> {
-                integrateParams.put(mappingKey,
-                        JsonUtil.readTree(commandJson).at((String) integrateMappings.get(mappingKey)).toString());
-            });
-            executableIntegrationInfo.put("integrateParams", integrateParams);
+            executableIntegrationInfo.put("integrateParams", paramMap);
             break;
         }
         return executableIntegrationInfo;

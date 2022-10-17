@@ -194,15 +194,16 @@ class IntegrationParams {
             }
             ParamIntegration paramIntegration = JsonUtil.writeObjectAsObject(unIntegrateParams.get(checkNumber), ParamIntegration.class);
             LinkedHashMap<String, Object> paramMap = new LinkedHashMap<>();
+            // 获取当前查询的每个参数
+            paramIntegration.getQueryParams().forEach((name, path) -> {
+                paramMap.put(name, JsonUtil.readPath(param, path));
+            });
+            // 检查当前查询是否可执行
+            if (paramMap.values().stream().anyMatch(Objects::isNull)) {
+                continue;
+            }
+            System.out.println(paramMap);
             if (ParamIntegration.Type.QUERY.equals(paramIntegration.getType())) {
-                // 获取当前查询的每个参数
-                paramIntegration.getQueryParams().forEach((name, path) -> {
-                    paramMap.put(name, JsonUtil.readPath(param, path));
-                });
-                // 检查当前查询是否可执行
-                if (paramMap.values().stream().anyMatch(Objects::isNull)) {
-                    continue;
-                }
                 // 如果能够集成,收集信息,然后会自动跳出循环
                 executableIntegrationInfo.put("aggregation", paramIntegration.getAggregation());
                 executableIntegrationInfo.put("method", paramIntegration.getQueryMethod());
@@ -214,19 +215,6 @@ class IntegrationParams {
                 // 集成
                 String protocolContent = fileReader(unIntegrateParams.get(checkNumber).getProtocol());
                 JsonNode protocolNode = JsonUtil.readTree(protocolContent);
-                JsonNode mappingNode = protocolNode
-                        .at("/paths").elements().next().elements().next()
-                        .at("/requestBody/content").elements().next()
-                        .at("/x-integrate-mapping");
-                Object mappingObject = JsonUtil.writeValueAsObject(mappingNode.toString(), Object.class);
-                Map<String, Object> integrateMappings = ClassCastUtils.castHashMap(mappingObject, String.class, Object.class);
-                integrateMappings.keySet().forEach(key -> {
-                    paramMap.put(key, JsonUtil.readPath(param, (String) integrateMappings.get(key)));
-                });
-                // 检查当前查询是否可执行
-                if (paramMap.values().stream().anyMatch(Objects::isNull)) {
-                    continue;
-                }
                 // 如果能够集成,收集信息,然后会自动跳出循环
                 executableIntegrationInfo.put("protocol", paramIntegration.getProtocol());
                 // 收集host
