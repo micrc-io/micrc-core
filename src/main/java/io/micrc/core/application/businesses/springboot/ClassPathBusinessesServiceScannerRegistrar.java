@@ -169,6 +169,20 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
             LogicIntegration logicIntegration = LogicIntegration.builder().enterMappings(enterMappingMap).outMappings(outMappingMap).build();
             // 获取Command身上的参数的服务集成注解
             List<CommandParamIntegration> commandParamIntegrations = new ArrayList<>();
+            // 仓库集成
+            String targetIdPath = commandLogic.targetIdPath();
+            if (!"".equals(targetIdPath)) {
+                HashMap<String, String> map = new HashMap<>();
+                map.put("id", targetIdPath);
+                CommandParamIntegration commandParamIntegration = CommandParamIntegration.builder()
+                        .paramName("source")
+                        .objectTreePath("/source")
+                        .paramMappings(map)
+                        .protocol("")
+                        .build();
+                commandParamIntegrations.add(commandParamIntegration);
+            }
+            // 其他集成
             Arrays.stream(commandFields).forEach(field -> {
                 DeriveIntegration deriveIntegration = field.getAnnotation(DeriveIntegration.class);
                 if (null != deriveIntegration) {

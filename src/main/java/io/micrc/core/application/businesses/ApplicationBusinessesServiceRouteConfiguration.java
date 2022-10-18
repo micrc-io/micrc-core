@@ -31,6 +31,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -73,6 +74,8 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .marshal().json().convertBodyTo(String.class)
                 .setProperty("commandJson", body())
                 // 1 分发集成
+                .setProperty("repositoryName", simple("{{repositoryName}}"))
+                .setProperty("embeddedIdentityFullClassName", simple("{{embeddedIdentityFullClassName}}"))
                 .setProperty("commandParamIntegrationsJson", simple("{{commandParamIntegrationsJson}}"))
                 .dynamicRouter(method(IntegrationCommandParams.class, "integrate"))
                 // 2 复制source到target
@@ -99,7 +102,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .setHeader("CamelJacksonUnmarshalType").simple("{{aggregationPath}}")
                 .to("dataformat:jackson:unmarshal?allow-unmarshall-type=true")
                 .removeHeader("pointer")
-                .to("repository://{{repositoryName}}?method=save")
+                .toD("bean://${exchange.properties.get(repositoryName)}?method=save")
                 // TODO 仓库集成抽进repository路由内部 END
                 // 3 消息存储
                 .setBody(exchangeProperty("commandJson"))
@@ -127,36 +130,19 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .bean(IntegrationCommandParams.class,
                         "executableIntegrationInfo(${exchange.properties.get(unIntegrateParams)}, ${exchange.properties.get(commandJson)})")
                 .setProperty("currentIntegrateParam", body())
-                .setBody(simple("${in.body.get(integrateParams)}"))
-                .setHeader("protocolFilePath", simple("${exchange.properties.get(currentIntegrateParam).get(protocol)}"))
-                .to("req://integration")
-                .process(exchange -> {
-                    String body = (String) exchange.getIn().getBody();
-                    JsonNode jsonNode = JsonUtil.readTree(body);
-                    String resultCode = jsonNode.at("/code").textValue();
-                    if ("200".equals(resultCode)) {
-                        Map<String, Object> currentIntegrateParam = ClassCastUtils.castHashMap(
-                                exchange.getProperty("currentIntegrateParam", Map.class), String.class, Object.class);
-                        Map<String, CommandParamIntegration> unIntegrateParams = ClassCastUtils.castHashMap(
-                                exchange.getProperty("unIntegrateParams", Map.class), String.class,
-                                CommandParamIntegration.class);
-                        JsonNode dataNode = jsonNode.at("/data");
-                        if (null == dataNode) {
-                            throw new RuntimeException("the param "
-                                    + unIntegrateParams.get(currentIntegrateParam.get("paramName"))
-                                    + " integrate return value is null, but the integrate result can`t be null, so you should check...");
-                        }
-                        String data = dataNode.toString();
-                        String commandJson = patch((String) exchange.getProperties().get("commandJson"),
-                                unIntegrateParams.get(currentIntegrateParam.get("paramName")).getObjectTreePath(),
-                                data);
-                        exchange.getProperties().put("commandJson", commandJson);
-                        // 标识该参数已成功
-                        unIntegrateParams.remove(currentIntegrateParam.get("paramName"));
-                        exchange.getProperties().put("currentIntegrateParam", currentIntegrateParam);
-                        exchange.getProperties().put("unIntegrateParams", unIntegrateParams);
-                    }
-                })
+                .choice()
+                .when(constant("").isEqualTo(simple("${exchange.properties.get(currentIntegrateParam).get(protocol)}")))
+                    .setBody(simple("${in.body.get(integrateParams).get(id)}"))
+                    .marshal().json().convertBodyTo(String.class)
+                    .setHeader("CamelJacksonUnmarshalType").simple("${exchange.properties.get(embeddedIdentityFullClassName)}")
+                    .to("dataformat:jackson:unmarshal?allow-unmarshall-type=true")
+                    .toD("bean://${exchange.properties.get(repositoryName)}?method=findById")
+                .otherwise()
+                    .setBody(simple("${in.body.get(integrateParams)}"))
+                    .setHeader("protocolFilePath", simple("${exchange.properties.get(currentIntegrateParam).get(protocol)}"))
+                    .to("req://integration")
+                .end()
+                .bean(IntegrationCommandParams.class, "processResult")
                 .end();
 
         from("logic://logic-execute")
@@ -471,6 +457,47 @@ class IntegrationCommandParams {
     }
 
     /**
+     * 处理当前集成结果
+     *
+     * @param exchange
+     */
+    public static void processResult(Exchange exchange) throws Exception {
+        Map<String, Object> properties = exchange.getProperties();
+        Object body = exchange.getIn().getBody();
+        if (body instanceof byte[]) {
+            body = new String((byte[]) body);
+        }
+        String commandJson = (String) properties.get("commandJson");
+        Map<String, Object> current = ClassCastUtils.castHashMap(properties.get("currentIntegrateParam"), String.class, Object.class);
+        Map<String, CommandParamIntegration> unIntegrateParams = ClassCastUtils.castHashMap(exchange.getProperty("unIntegrateParams", Map.class), String.class, CommandParamIntegration.class);
+        String name = (String) current.get("paramName");
+        String protocol = (String) current.get("protocol");
+        if ("".equals(protocol)) {
+            body = ((Optional<?>) body).orElseThrow();
+        } else {
+            body = JsonUtil.readPath((String) body, "/data");
+        }
+        commandJson = patch(commandJson, unIntegrateParams.get(name).getObjectTreePath(), JsonUtil.writeValueAsString(body));
+        exchange.getProperties().put("commandJson", commandJson);
+        unIntegrateParams.remove(name);
+        exchange.getProperties().put("currentIntegrateParam", current);
+        exchange.getProperties().put("unIntegrateParams", unIntegrateParams);
+    }
+
+    private static String patch(String original, String path, String value) {
+        String patchCommand = "[{ \"op\": \"replace\", \"path\": \"{{path}}\", \"value\": {{value}} }]";
+
+        try {
+            String pathReplaced = patchCommand.replace("{{path}}", path);
+            String valueReplaced = pathReplaced.replace("{{value}}", value);
+            JsonPatch patch = JsonPatch.fromJson(JsonUtil.readTree(valueReplaced));
+            return JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(original)));
+        } catch (IOException | JsonPatchException e) {
+            throw new RuntimeException("patch fail... please check object...");
+        }
+    }
+
+    /**
      * 得到一个可执行的集成的集成信息
      *
      * @param unIntegrateParams
@@ -497,21 +524,23 @@ class IntegrationCommandParams {
             if (paramMap.values().stream().anyMatch(Objects::isNull)) {
                 continue;
             }
-            String protocolContent = fileReader(commandParamIntegration.getProtocol());
-            JsonNode protocolNode = JsonUtil.readTree(protocolContent);
+            if (!"".equals(commandParamIntegration.getProtocol())) {
+                String protocolContent = fileReader(commandParamIntegration.getProtocol());
+                JsonNode protocolNode = JsonUtil.readTree(protocolContent);
+                // 收集host
+                JsonNode urlNode = protocolNode
+                        .at("/servers").get(0)
+                        .at("/url");
+                executableIntegrationInfo.put("host", urlNode.textValue());
+                // 收集operationId
+                JsonNode operationNode = protocolNode
+                        .at("/paths").elements().next().elements().next()
+                        .at("/operationId");
+                executableIntegrationInfo.put("operationId", operationNode.textValue());
+            }
             // 如果能够集成,收集信息,然后会自动跳出循环
-            executableIntegrationInfo.put("paramName", unIntegrateParams.get(key).getParamName());
-            executableIntegrationInfo.put("protocol", unIntegrateParams.get(key).getProtocol());
-            // 收集host
-            JsonNode urlNode = protocolNode
-                    .at("/servers").get(0)
-                    .at("/url");
-            executableIntegrationInfo.put("host", urlNode.textValue());
-            // 收集operationId
-            JsonNode operationNode = protocolNode
-                    .at("/paths").elements().next().elements().next()
-                    .at("/operationId");
-            executableIntegrationInfo.put("operationId", operationNode.textValue());
+            executableIntegrationInfo.put("paramName", commandParamIntegration.getParamName());
+            executableIntegrationInfo.put("protocol", commandParamIntegration.getProtocol());
             executableIntegrationInfo.put("integrateParams", paramMap);
             break;
         }
