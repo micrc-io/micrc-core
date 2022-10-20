@@ -491,7 +491,11 @@ class LogicInParamsResolve {
                 List<String> other = matchGetOtherPath(split, timePathList.get(i));
                 logicValue = replaceTime(logicValue, other, Long.class);
             }
-            commandJson = patch(commandJson, path, logicValue);
+            try {
+                commandJson = patch(commandJson, path, logicValue);
+            } catch (Exception e) {
+                commandJson = add(commandJson, path, logicValue);
+            }
         }
         return commandJson;
     }
@@ -518,6 +522,18 @@ class LogicInParamsResolve {
     private String patch(String original, String path, String value) {
         String patchCommand = "[{ \"op\": \"replace\", \"path\": \"{{path}}\", \"value\": {{value}} }]";
 
+        try {
+            String pathReplaced = patchCommand.replace("{{path}}", path);
+            String valueReplaced = pathReplaced.replace("{{value}}", value);
+            JsonPatch patch = JsonPatch.fromJson(JsonUtil.readTree(valueReplaced));
+            return JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(original)));
+        } catch (IOException | JsonPatchException e) {
+            throw new RuntimeException("patch fail... please check object...");
+        }
+    }
+
+    private static String add(String original, String path, String value) {
+        String patchCommand = "[{ \"op\": \"add\", \"path\": \"{{path}}\", \"value\": {{value}} }]";
         try {
             String pathReplaced = patchCommand.replace("{{path}}", path);
             String valueReplaced = pathReplaced.replace("{{value}}", value);
