@@ -351,31 +351,21 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
  */
 class LogicInParamsResolve {
 
-    public static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss.SSS";
-
     private static DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX");
 
+    private static DateTimeFormatter lowerDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSXXX");
+
     public String toLogicParams(LogicIntegration logicIntegration, String commandJson, String timePathsJson) {
-        List<String[]> timePathSplitList = JsonUtil.writeValueAsList(timePathsJson, String.class)
+        List<String[]> timePathList = JsonUtil.writeValueAsList(timePathsJson, String.class)
                 .stream().map(i -> i.split("/")).collect(Collectors.toList());
         Map<String, Object> logicParams = new HashMap<>();
         logicIntegration.getOutMappings().forEach((key, path) -> {
             // 原始结果
             String outMapping = JsonUtil.readTree(commandJson).at(path).toString();
-
             String[] split = path.split("/");
-            List<String[]> lengthEnoughList = timePathSplitList.stream().filter(tps -> tps.length >= split.length)
-                    .collect(Collectors.toList());
-            for (int i = 0; i < lengthEnoughList.size(); i++) {
-                List<String> other = matchGetOtherPath(split, lengthEnoughList, i);
-                if (other == null) {
-                    continue;
-                }
-                if (other.isEmpty()) {
-                    outMapping = JsonUtil.writeValueAsString(transTime2String(outMapping));
-                } else {
-                    outMapping = replaceTime(outMapping, other, String.class);
-                }
+            for (int i = 0; i < timePathList.size(); i++) {
+                List<String> other = matchGetOtherPath(split, timePathList.get(i));
+                outMapping = replaceTime(outMapping, other, String.class);
             }
             Object value = JsonUtil.writeValueAsObject(outMapping, Object.class);
             if (null == value) {
@@ -383,9 +373,7 @@ class LogicInParamsResolve {
             }
             logicParams.put(key, value);
         });
-        String param = JsonUtil.writeValueAsStringRetainNull(logicParams);
-        System.out.println("请求参数：" + param);
-        return param;
+        return JsonUtil.writeValueAsStringRetainNull(logicParams);
     }
 
     /**
@@ -397,6 +385,9 @@ class LogicInParamsResolve {
      * @return
      */
     private String replaceTime(String outMapping, List<String> other, Class<?> timeClass) {
+        if (null == other) {
+            return outMapping;
+        }
         StringBuilder builder = new StringBuilder();
         Iterator<String> iterator = other.iterator();
         boolean isList = false;
@@ -411,9 +402,7 @@ class LogicInParamsResolve {
             }
             builder.append("/").append(next);
         }
-
         String current = JsonUtil.writeValueAsString(JsonUtil.readPath(outMapping, builder.toString()));
-
         if (isList) {
             List<Object> list = JsonUtil.writeValueAsList(current, Object.class);
             list = list.stream().map(o -> {
@@ -422,7 +411,7 @@ class LogicInParamsResolve {
                 }
                 return o;
             }).collect(Collectors.toList());
-            outMapping = patch(outMapping, builder.toString(), JsonUtil.writeValueAsString(list));
+            return patch(outMapping, builder.toString(), JsonUtil.writeValueAsString(list));
         } else if (isMap) {
             Map<String, Object> map = ClassCastUtils.castHashMap(JsonUtil.writeValueAsObject(current, Object.class), String.class, Object.class);
             map.forEach((k, v) -> {
@@ -430,7 +419,7 @@ class LogicInParamsResolve {
                     map.put(k, JsonUtil.writeValueAsObject(replaceTime(JsonUtil.writeValueAsString(v), other, timeClass), Object.class));
                 }
             });
-            outMapping = patch(outMapping, builder.toString(), JsonUtil.writeValueAsString(map));
+            return patch(outMapping, builder.toString(), JsonUtil.writeValueAsString(map));
         } else {
             Object time = JsonUtil.readPath(outMapping, builder.toString());
             String timeResult = null;
@@ -438,27 +427,35 @@ class LogicInParamsResolve {
             if (timeClass.equals(String.class)) {
                 timeResult = JsonUtil.writeValueAsString(transTime2String(time));
             } else {
-                timeResult = transTime2Long(time.toString()).toString();
+                timeResult = transTime2Long(time);
             }
-            outMapping = patch(outMapping, builder.toString(), timeResult);
+            return patch(outMapping, builder.toString(), timeResult);
         }
-        return outMapping;
     }
 
     private static String transTime2String(Object o) {
+        if (null == o) {
+            return null;
+        }
         Instant instant = Instant.ofEpochMilli(Long.parseLong(o.toString()));
         ZonedDateTime zonedDateTime = ZonedDateTime.ofInstant(instant, ZoneId.of("UTC"));
         return zonedDateTime.format(dateTimeFormatter);
     }
 
-    private static Long transTime2Long(String o) {
-        ZonedDateTime zonedDateTime = ZonedDateTime.parse(o, dateTimeFormatter);
+    private static String transTime2Long(Object o) {
+        if (null == o) {
+            return null;
+        }
+        String milli = o.toString().split("\\.")[1].split("Z")[0].split("\\+")[0].split("-")[0];
+        // 毫秒位数大于5位用SSSSSS匹配，否则为4位用SSSSS匹配
+        DateTimeFormatter formatter = milli.length() >= 5 ? dateTimeFormatter : lowerDateTimeFormatter;
+        ZonedDateTime zonedDateTime = ZonedDateTime.parse(o.toString(), formatter);
         Instant instant = zonedDateTime.toInstant();
-        return instant.toEpochMilli();
+        return String.valueOf(instant.toEpochMilli());
     }
 
     public String toTargetParams(Map<String, Object> logicResult, String commandJson, String logicIntegrationJson, String timePathsJson) {
-        List<String[]> timePathSplitList = JsonUtil.writeValueAsList(timePathsJson, String.class)
+        List<String[]> timePathList = JsonUtil.writeValueAsList(timePathsJson, String.class)
                 .stream().map(i -> i.split("/")).collect(Collectors.toList());
         LogicIntegration logicIntegration = JsonUtil.writeValueAsObject(logicIntegrationJson, LogicIntegration.class);
         for (String key : logicResult.keySet()) {
@@ -478,51 +475,33 @@ class LogicInParamsResolve {
                 continue;
             }
             String logicValue = JsonUtil.writeValueAsStringRetainNull(logicResult.get(key));
-
             String[] split = path.split("/");
-            List<String[]> lengthEnoughList = timePathSplitList.stream().filter(tps -> tps.length >= split.length)
-                    .collect(Collectors.toList());
-            for (int i = 0; i < lengthEnoughList.size(); i++) {
-                List<String> other = matchGetOtherPath(split, lengthEnoughList, i);
-                if (other == null) {
-                    continue;
-                }
-                if (other.isEmpty()) {
-                    logicValue = JsonUtil.writeValueAsString(transTime2Long(logicValue));
-                } else {
-                    long l = System.currentTimeMillis();
-                    logicValue = replaceTime(logicValue, other, Long.class);
-                    System.out.println("用时: " + (System.currentTimeMillis() - l));
-                }
+            for (int i = 0; i < timePathList.size(); i++) {
+                List<String> other = matchGetOtherPath(split, timePathList.get(i));
+                logicValue = replaceTime(logicValue, other, Long.class);
             }
             commandJson = patch(commandJson, path, logicValue);
         }
-        System.out.println("响应参数：" + commandJson);
         return commandJson;
     }
 
     /**
      * 匹配路径并获取到剩余的内部路径
      *
-     * @param split
-     * @param lengthEnoughList
-     * @param i
+     * @param path
+     * @param timePath
      * @return
      */
-    private List<String> matchGetOtherPath(String[] split, List<String[]> lengthEnoughList, int i) {
-        String[] tps = lengthEnoughList.get(i);
-        boolean match = true;
-        for (int j = 0; j < split.length; j++) {
-            if (!tps[j].equals(split[j])) {
-                match = false;
-                break;
-            }
-        }
-        if (!match) {
+    private List<String> matchGetOtherPath(String[] path, String[] timePath) {
+        if (timePath.length < path.length) {
             return null;
         }
-        List<String> other = new ArrayList<>(Arrays.asList(tps).subList(split.length, tps.length));
-        return other;
+        for (int j = 0; j < path.length; j++) {
+            if (!timePath[j].equals(path[j])) {
+                return null;
+            }
+        }
+        return new ArrayList<>(Arrays.asList(timePath).subList(path.length, timePath.length));
     }
 
     private String patch(String original, String path, String value) {
