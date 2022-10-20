@@ -413,7 +413,11 @@ class LogicInParamsResolve {
             }
             builder.append("/").append(next);
         }
-        String current = JsonUtil.writeValueAsString(JsonUtil.readPath(outMapping, builder.toString()));
+        Object currentObject = JsonUtil.readPath(outMapping, builder.toString());
+        if (null == currentObject) {
+            return outMapping;
+        }
+        String current = JsonUtil.writeValueAsString(currentObject);
         if (isList) {
             List<Object> list = JsonUtil.writeValueAsList(current, Object.class);
             list = list.stream().map(o -> {
