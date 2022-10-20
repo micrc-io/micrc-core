@@ -73,10 +73,12 @@ public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteB
                 .choice()
                 .when(constant("QUERY").isEqualTo(simple("${exchange.properties.get(current).get(type)}")))
                 .bean(IntegrationParams.class, "executeQuery")
+                .endChoice()
                 .otherwise()
                 .setBody(simple("${exchange.properties.get(current).get(params)}"))
                 .setHeader("logic", simple("${exchange.properties.get(current).get(logic)}"))
                 .bean(LogicRequest.class, "request")
+                .endChoice()
                 .end()
                   // 处理返回
                 .bean(IntegrationParams.class, "processResult");

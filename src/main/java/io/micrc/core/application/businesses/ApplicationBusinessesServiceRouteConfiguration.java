@@ -23,15 +23,11 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -68,6 +64,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .templateParameter("logicName", null, "the logicName")
                 .templateParameter("logicIntegrationJson", null, "the logic integration params")
                 .templateParameter("embeddedIdentityFullClassName", null, "embedded identity full class name")
+                .templateParameter("timePathsJson", null, "time path list json")
                 .from("businesses:{{serviceName}}")
                 .transacted()
                 // 0 暂存入参
@@ -90,8 +87,8 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .setProperty("commandJson", body())
                 // 2 执行逻辑
                 .setProperty("logicName", simple("{{logicName}}"))
-                .setProperty("logicIntegrationJson")
-                .groovy("new String(java.util.Base64.getDecoder().decode('{{logicIntegrationJson}}'))")
+                .setProperty("timePathsJson", simple("{{timePathsJson}}"))
+                .setProperty("logicIntegrationJson").groovy("new String(java.util.Base64.getDecoder().decode('{{logicIntegrationJson}}'))")
                 .setBody(exchangeProperty("commandJson"))
                 .to("logic://logic-execute")
                 // TODO 仓库集成抽进repository路由内部
@@ -106,10 +103,18 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 // TODO 仓库集成抽进repository路由内部 END
                 // 3 消息存储
                 .setBody(exchangeProperty("commandJson"))
+                .setHeader("pointer", constant("/event/eventName"))
+                .to("json-patch://select")
+                .setProperty("eventName", body())
+                .setBody(exchangeProperty("commandJson"))
                 .setProperty("batchPropertyPath", simple("{{batchPropertyPath}}"))
                 .choice()
+                .when(simple("${exchange.properties.get(eventName)}").isNull())
+                    // nothing to do
+                .endChoice()
                 .when(constant("").isEqualTo(simple("${exchange.properties.get(batchPropertyPath)}")))
                     .to("eventstore://store")
+                .endChoice()
                 .otherwise()
                     .setHeader("pointer", constant("/event/eventBatchData"))
                     .to("json-patch://select")
@@ -121,6 +126,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                         .to("json-patch://add")
                         .to("eventstore://store")
                     .end()
+                .endChoice()
                 .end()
                 .setBody(exchangeProperty("commandJson"))
                 .end();
@@ -137,10 +143,12 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                     .setHeader("CamelJacksonUnmarshalType").simple("${exchange.properties.get(embeddedIdentityFullClassName)}")
                     .to("dataformat:jackson:unmarshal?allow-unmarshall-type=true")
                     .toD("bean://${exchange.properties.get(repositoryName)}?method=findById")
+                .endChoice()
                 .otherwise()
                     .setBody(simple("${in.body.get(integrateParams)}"))
                     .setHeader("protocolFilePath", simple("${exchange.properties.get(currentIntegrateParam).get(protocol)}"))
                     .to("req://integration")
+                .endChoice()
                 .end()
                 .bean(IntegrationCommandParams.class, "processResult")
                 .end();
@@ -155,12 +163,12 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 // 2.2 执行逻辑
                 .setBody(exchangeProperty("logicIntegrationJson"))
                 .unmarshal().json(LogicIntegration.class)
-                .bean(LogicInParamsResolve.class, "toLogicParams(${body}, ${exchange.properties.get(commandJson)})")
+                .bean(LogicInParamsResolve.class, "toLogicParams(${body}, ${exchange.properties.get(commandJson)}, ${exchange.properties.get(timePathsJson)})")
                 .setHeader("logic", simple("${exchange.properties.get(logicName)}/logic"))
                 .bean(LogicRequest.class, "request")
                 .unmarshal().json(HashMap.class)
                 .bean(LogicInParamsResolve.class,
-                        "toTargetParams(${body}, ${exchange.properties.get(commandJson)}, ${exchange.properties.get(logicIntegrationJson)})")
+                        "toTargetParams(${body}, ${exchange.properties.get(commandJson)}, ${exchange.properties.get(logicIntegrationJson)}, ${exchange.properties.get(timePathsJson)})")
                 .setProperty("commandJson", body())
                 // 2.3 执行后置校验
                 .setHeader("logic", simple("${exchange.properties.get(logicName)}/after"))
@@ -242,6 +250,11 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
          * 嵌套标识符类名称
          */
         protected String embeddedIdentityFullClassName;
+
+        /**
+         * 所有时间路径
+         */
+        protected String timePathsJson;
     }
 
     private static String patch(String original, String path, String value) {
@@ -349,24 +362,112 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
  */
 class LogicInParamsResolve {
 
-    public static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss.SSS";
+    private static DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX");
 
-    public String toLogicParams(LogicIntegration logicIntegration, String commandJson) {
+    private static DateTimeFormatter lowerDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSXXX");
+
+    public String toLogicParams(LogicIntegration logicIntegration, String commandJson, String timePathsJson) {
+        List<String[]> timePathList = JsonUtil.writeValueAsList(timePathsJson, String.class)
+                .stream().map(i -> i.split("/")).collect(Collectors.toList());
         Map<String, Object> logicParams = new HashMap<>();
-        logicIntegration.getOutMappings().keySet().stream().forEach(key -> {
-            String outMapping = JsonUtil.readTree(commandJson).at(logicIntegration.getOutMappings().get(key))
-                    .toString();
+        logicIntegration.getOutMappings().forEach((key, path) -> {
+            // 原始结果
+            String outMapping = JsonUtil.readTree(commandJson).at(path).toString();
+            String[] split = path.split("/");
+            for (int i = 0; i < timePathList.size(); i++) {
+                List<String> other = matchGetOtherPath(split, timePathList.get(i));
+                outMapping = replaceTime(outMapping, other, String.class);
+            }
             Object value = JsonUtil.writeValueAsObject(outMapping, Object.class);
             if (null == value) {
-                throw new RuntimeException(logicIntegration.getOutMappings().get(key)
-                        + " - the params can`t get value, please check the annotation.like integration annotation error or toLogicMappings annotation have error ");
+                throw new RuntimeException(path + " - the params can`t get value, please check the annotation.like integration annotation error or toLogicMappings annotation have error ");
             }
             logicParams.put(key, value);
         });
         return JsonUtil.writeValueAsStringRetainNull(logicParams);
     }
 
-    public String toTargetParams(Map<String, Object> logicResult, String commandJson, String logicIntegrationJson) {
+    /**
+     * 替换所有符合时间路径的节点
+     *
+     * @param outMapping
+     * @param other
+     * @param timeClass
+     * @return
+     */
+    private String replaceTime(String outMapping, List<String> other, Class<?> timeClass) {
+        if (null == other) {
+            return outMapping;
+        }
+        StringBuilder builder = new StringBuilder();
+        Iterator<String> iterator = other.iterator();
+        boolean isList = false;
+        boolean isMap = false;
+        while (iterator.hasNext()) {
+            String next = iterator.next();
+            iterator.remove();
+            isList = "#".equals(next);
+            isMap = "*".equals(next);
+            if (isList || isMap) {
+                break;
+            }
+            builder.append("/").append(next);
+        }
+        String current = JsonUtil.writeValueAsString(JsonUtil.readPath(outMapping, builder.toString()));
+        if (isList) {
+            List<Object> list = JsonUtil.writeValueAsList(current, Object.class);
+            list = list.stream().map(o -> {
+                if (!other.isEmpty()) {
+                    return JsonUtil.writeValueAsObject(replaceTime(JsonUtil.writeValueAsString(o), other, timeClass), Object.class);
+                }
+                return o;
+            }).collect(Collectors.toList());
+            return patch(outMapping, builder.toString(), JsonUtil.writeValueAsString(list));
+        } else if (isMap) {
+            Map<String, Object> map = ClassCastUtils.castHashMap(JsonUtil.writeValueAsObject(current, Object.class), String.class, Object.class);
+            map.forEach((k, v) -> {
+                if (!other.isEmpty()) {
+                    map.put(k, JsonUtil.writeValueAsObject(replaceTime(JsonUtil.writeValueAsString(v), other, timeClass), Object.class));
+                }
+            });
+            return patch(outMapping, builder.toString(), JsonUtil.writeValueAsString(map));
+        } else {
+            Object time = JsonUtil.readPath(outMapping, builder.toString());
+            String timeResult = null;
+            // 判断目标时间格式
+            if (timeClass.equals(String.class)) {
+                timeResult = JsonUtil.writeValueAsString(transTime2String(time));
+            } else {
+                timeResult = transTime2Long(time);
+            }
+            return patch(outMapping, builder.toString(), timeResult);
+        }
+    }
+
+    private static String transTime2String(Object o) {
+        if (null == o) {
+            return null;
+        }
+        Instant instant = Instant.ofEpochMilli(Long.parseLong(o.toString()));
+        ZonedDateTime zonedDateTime = ZonedDateTime.ofInstant(instant, ZoneId.of("UTC"));
+        return zonedDateTime.format(dateTimeFormatter);
+    }
+
+    private static String transTime2Long(Object o) {
+        if (null == o) {
+            return null;
+        }
+        String milli = o.toString().split("\\.")[1].split("Z")[0].split("\\+")[0].split("-")[0];
+        // 毫秒位数大于5位用SSSSSS匹配，否则为4位用SSSSS匹配
+        DateTimeFormatter formatter = milli.length() >= 5 ? dateTimeFormatter : lowerDateTimeFormatter;
+        ZonedDateTime zonedDateTime = ZonedDateTime.parse(o.toString(), formatter);
+        Instant instant = zonedDateTime.toInstant();
+        return String.valueOf(instant.toEpochMilli());
+    }
+
+    public String toTargetParams(Map<String, Object> logicResult, String commandJson, String logicIntegrationJson, String timePathsJson) {
+        List<String[]> timePathList = JsonUtil.writeValueAsList(timePathsJson, String.class)
+                .stream().map(i -> i.split("/")).collect(Collectors.toList());
         LogicIntegration logicIntegration = JsonUtil.writeValueAsObject(logicIntegrationJson, LogicIntegration.class);
         for (String key : logicResult.keySet()) {
             Object value = logicResult.get(key);
@@ -375,15 +476,43 @@ class LogicInParamsResolve {
                 Map<String, Object> valueMap = ClassCastUtils.castHashMap(value, String.class, Object.class);
                 logicResult.put(key, valueMap);
                 valueMap.keySet().forEach(innerKey -> {
-                    valueMap.put(innerKey, formatTimeValue(valueMap.get(innerKey)));
+                    valueMap.put(innerKey, valueMap.get(innerKey));
                 });
             }
             // TODO 当值序列化后为List的时候
-            logicResult.put(key, formatTimeValue(logicResult.get(key)));
-            commandJson = patch(commandJson, logicIntegration.getEnterMappings().get(key),
-                    JsonUtil.writeValueAsStringRetainNull(logicResult.get(key)));
+            logicResult.put(key, logicResult.get(key));
+            String path = logicIntegration.getEnterMappings().get(key);
+            if (null == path) {
+                continue;
+            }
+            String logicValue = JsonUtil.writeValueAsStringRetainNull(logicResult.get(key));
+            String[] split = path.split("/");
+            for (int i = 0; i < timePathList.size(); i++) {
+                List<String> other = matchGetOtherPath(split, timePathList.get(i));
+                logicValue = replaceTime(logicValue, other, Long.class);
+            }
+            commandJson = patch(commandJson, path, logicValue);
         }
         return commandJson;
+    }
+
+    /**
+     * 匹配路径并获取到剩余的内部路径
+     *
+     * @param path
+     * @param timePath
+     * @return
+     */
+    private List<String> matchGetOtherPath(String[] path, String[] timePath) {
+        if (timePath.length < path.length) {
+            return null;
+        }
+        for (int j = 0; j < path.length; j++) {
+            if (!timePath[j].equals(path[j])) {
+                return null;
+            }
+        }
+        return new ArrayList<>(Arrays.asList(timePath).subList(path.length, timePath.length));
     }
 
     private String patch(String original, String path, String value) {
@@ -396,33 +525,6 @@ class LogicInParamsResolve {
             return JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(original)));
         } catch (IOException | JsonPatchException e) {
             throw new RuntimeException("patch fail... please check object...");
-        }
-    }
-
-    private Object formatTimeValue(Object value) {
-        if (value instanceof String && value.toString().contains("-") && value.toString().contains("T")
-                && value.toString().contains(".") && value.toString().contains("+") && value.toString().contains(":")) {
-            try {
-                value = this.parseDate2Timestamp((String) value);
-            } catch (ParseException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        return value;
-    }
-
-    private long parseDate2Timestamp(String date) throws ParseException {
-        return this.toDate(date, DATE_FORMAT).getTime();
-    }
-
-    private Date toDate(String date, String format) {
-        if ("".equals(format) || format == null) {
-            format = DATE_FORMAT;
-        }
-        try {
-            return new SimpleDateFormat(format).parse(date);
-        } catch (ParseException e) {
-            return new Date();
         }
     }
 }

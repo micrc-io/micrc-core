@@ -1,5 +1,6 @@
 package io.micrc.core.application.businesses.springboot;
 
+import io.micrc.core.annotations.application.MicrcTime;
 import io.micrc.core.annotations.application.businesses.*;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.ApplicationBusinessesServiceDefinition;
@@ -31,6 +32,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -157,6 +159,10 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
                 throw new RuntimeException("the " + parameters[0].getType().getSimpleName() + "not have CommandLogic annotation, please check this command");
             }
 
+            // 查找所有标记MicrcTime的路径
+            ArrayList<String> timePaths = new ArrayList<>();
+            findMicrcTimeField(commandFields, timePaths, new StringBuilder());
+            // 处理DMN出入参数映射
             LogicMapping[] logicMappings = commandLogic.toLogicMappings();
             TargetMapping[] targetMappings = commandLogic.toTargetMappings();
             Map<String, String> outMappingMap = new HashMap<>();
@@ -222,10 +228,47 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
                             .logicIntegrationJson(logicIntegrationJson)
                             .embeddedIdentityFullClassName(embeddedIdentityFullClassName)
                             .commandParamIntegrationsJson(JsonUtil.writeValueAsString(commandParamIntegrations))
+                            .timePathsJson(JsonUtil.writeValueAsString(timePaths))
                             .build());
         }
         holders.clear();
         return holders;
+    }
+
+    private void findMicrcTimeField(Field[] commandFields, ArrayList<String> paths, StringBuilder lastPath) {
+        // 获取MicrcTime标记时间
+        for (Field field : commandFields) {
+            StringBuilder path = new StringBuilder(lastPath.toString());
+            MicrcTime micrcTime = field.getAnnotation(MicrcTime.class);
+            if (null != micrcTime) {
+                paths.add(path.append("/").append(field.getName()).toString());
+                continue;
+            }
+            Class<?> type = field.getType();
+            if (type.isPrimitive() || type.isEnum()) {
+                continue;
+            }
+            path.append("/").append(field.getName());
+            if (type.getName().contains("com.xian.colibri") && !type.getTypeName().contains("[]")) {
+                Field[] declaredFields = type.getDeclaredFields();
+                findMicrcTimeField(declaredFields, paths, path);
+            } else if (type.getTypeName().contains("[]")) {
+                Field[] declaredFields = type.getComponentType().getDeclaredFields();
+                findMicrcTimeField(declaredFields, paths, path.append("/").append("#"));
+            } else if ("java.util.List".equals(type.getName()) || "java.util.Set".equals(type.getName())
+                    || Arrays.stream(type.getInterfaces()).anyMatch(i -> "java.util.List".equals(i.getName()) || "java.util.Set".equals(i.getName()))) {
+                ParameterizedType genericType = (ParameterizedType) field.getGenericType();
+                Type actualTypeArgument = genericType.getActualTypeArguments()[0];
+                Field[] declaredFields = ((Class<?>) actualTypeArgument).getDeclaredFields();
+                findMicrcTimeField(declaredFields, paths, path.append("/").append("#"));
+            } else if ("java.util.Map".equals(type.getName())
+                    || Arrays.stream(type.getInterfaces()).anyMatch(i -> "java.util.Map".equals(i.getName()))) {
+                ParameterizedType genericType = (ParameterizedType) field.getGenericType();
+                Type actualTypeArgument = genericType.getActualTypeArguments()[1];
+                Field[] declaredFields = ((Class<?>) actualTypeArgument).getDeclaredFields();
+                findMicrcTimeField(declaredFields, paths, path.append("/").append("*"));
+            }
+        }
     }
 
     @Override
