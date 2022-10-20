@@ -1,9 +1,5 @@
 package io.micrc.core;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 import org.springframework.boot.ApplicationContextFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
@@ -11,6 +7,11 @@ import org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfigurati
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Import;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.TimeZone;
 
 /**
  * micrc core application
@@ -28,6 +29,8 @@ public final class MicrcApplication {
     }
 
     public static void run(Class<?> appClazz, String[] args) {
+        // 设置统一时区
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
         List<String> argList = new ArrayList<>(Arrays.asList(args));
         if (argList.contains("dbinit")) {
             new SpringApplicationBuilder(LiquibaseInit.class)
