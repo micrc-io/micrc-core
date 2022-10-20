@@ -103,10 +103,18 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 // TODO 仓库集成抽进repository路由内部 END
                 // 3 消息存储
                 .setBody(exchangeProperty("commandJson"))
+                .setHeader("pointer", constant("/event/eventName"))
+                .to("json-patch://select")
+                .setProperty("eventName", body())
+                .setBody(exchangeProperty("commandJson"))
                 .setProperty("batchPropertyPath", simple("{{batchPropertyPath}}"))
                 .choice()
+                .when(simple("${exchange.properties.get(eventName)}").isNull())
+                    // nothing to do
+                .endChoice()
                 .when(constant("").isEqualTo(simple("${exchange.properties.get(batchPropertyPath)}")))
                     .to("eventstore://store")
+                .endChoice()
                 .otherwise()
                     .setHeader("pointer", constant("/event/eventBatchData"))
                     .to("json-patch://select")
@@ -118,6 +126,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                         .to("json-patch://add")
                         .to("eventstore://store")
                     .end()
+                .endChoice()
                 .end()
                 .setBody(exchangeProperty("commandJson"))
                 .end();
@@ -134,10 +143,12 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                     .setHeader("CamelJacksonUnmarshalType").simple("${exchange.properties.get(embeddedIdentityFullClassName)}")
                     .to("dataformat:jackson:unmarshal?allow-unmarshall-type=true")
                     .toD("bean://${exchange.properties.get(repositoryName)}?method=findById")
+                .endChoice()
                 .otherwise()
                     .setBody(simple("${in.body.get(integrateParams)}"))
                     .setHeader("protocolFilePath", simple("${exchange.properties.get(currentIntegrateParam).get(protocol)}"))
                     .to("req://integration")
+                .endChoice()
                 .end()
                 .bean(IntegrationCommandParams.class, "processResult")
                 .end();

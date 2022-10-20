@@ -77,9 +77,11 @@ public class ApplicationPresentationsServiceRouteConfiguration extends MicrcRout
                 .choice()
                 .when(constant("QUERY").isEqualTo(simple("${exchange.properties.get(current).get(type)}")))
                 .bean(IntegrationParams.class, "executeQuery")
+                .endChoice()
                 .otherwise()
                 .setBody(simple("${exchange.properties.get(current).get(params)}"))
                 .to("req://integration")
+                .endChoice()
                 .end()
                   // 处理返回
                 .bean(IntegrationParams.class, "processResult");
