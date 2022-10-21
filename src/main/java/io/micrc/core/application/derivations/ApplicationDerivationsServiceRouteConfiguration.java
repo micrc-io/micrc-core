@@ -7,6 +7,7 @@ import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.core.rpc.LogicRequest;
 import io.micrc.lib.ClassCastUtils;
 import io.micrc.lib.JsonUtil;
+import io.micrc.lib.TimeReplaceUtil;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
@@ -51,11 +52,20 @@ public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteB
                 .templateParameter("serviceName", null, "the derivations service name")
                 .templateParameter("paramIntegrationsJson", null, "the command integration params")
                 .templateParameter("assembler", null, "assembler")
+                .templateParameter("timePathsJson", null, "time path list json")
                 // 指定service名称为入口端点
                 .from("derivations:{{serviceName}}")
                 .setProperty("paramIntegrationsJson", simple("{{paramIntegrationsJson}}"))
                 .setProperty("param", simple("${in.body}")) // 存储入参到交换区，动态处理及结果汇编需要
+                // 处理时间路径
+                .setBody(simple("{{timePathsJson}}"))
+                .process(exchange -> {
+                    exchange.getIn().setBody(JsonUtil.writeValueAsList(exchange.getIn().getBody(String.class), String.class)
+                            .stream().map(i -> i.split("/")).collect(Collectors.toList()));
+                })
+                .setProperty("timePaths", body())
                 // 动态路由解析
+                .setBody(simple("${exchange.properties.get(param)}"))
                 .dynamicRouter(method(IntegrationParams.class, "dynamicIntegrate"))
                 // 汇编结果处理
                 .setBody(simple("${exchange.properties.get(param)}"))
@@ -67,7 +77,7 @@ public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteB
 
         from("direct://derivations-integration")
                 // 得到需要集成的集成参数，todo,封装进动态路由
-                .bean(IntegrationParams.class, "findExecutable(${exchange.properties.get(unIntegrateParams)}, ${exchange.properties.get(param)})")
+                .bean(IntegrationParams.class, "findExecutable(${exchange.properties.get(unIntegrateParams)}, ${exchange.properties.get(param)}, ${exchange.properties.get(timePaths)})")
                 .setProperty("current", body())
                 // 构造发送
                 .choice()
@@ -110,6 +120,11 @@ public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteB
          * 需集成参数属性定义
          */
         protected String paramIntegrationsJson;
+
+        /**
+         * 时间路径JSON
+         */
+        protected String timePathsJson;
     }
 }
 
@@ -154,6 +169,7 @@ class IntegrationParams {
             body = new String((byte[]) body);
         }
         String param = (String) properties.get("param");
+        List<String[]> timePathList = ClassCastUtils.castArrayList(properties.get("timePaths"), String[].class);
         Map<String, Object> current = ClassCastUtils.castHashMap(properties.get("current"), String.class, Object.class);
         String name = (String) current.get("name");
         ParamIntegration.Type currentIntegrateType = (ParamIntegration.Type) current.get("type");
@@ -169,7 +185,12 @@ class IntegrationParams {
                 .findFirst().orElseThrow();
         // 标识该参数已成功
         find.setIntegrationComplete(true);
-        param = add(param, "/" + find.getConcept(), JsonUtil.writeValueAsString(body));
+        String path = "/" + find.getConcept();
+        String value = JsonUtil.writeValueAsString(body);
+        if (ParamIntegration.Type.OPERATE.equals(currentIntegrateType)) {
+            value = TimeReplaceUtil.matchTimePathAndReplaceTime(timePathList, path, value, Long.class);
+        }
+        param = add(param, path, value);
         exchange.getProperties().put("param", param);
         exchange.getProperties().put("paramIntegrations", paramIntegrations);
     }
@@ -181,8 +202,7 @@ class IntegrationParams {
      * @param param
      * @return
      */
-    public static Map<String, Object> findExecutable(List<ParamIntegration> unIntegrateParams, String param) {
-
+    public static Map<String, Object> findExecutable(List<ParamIntegration> unIntegrateParams, String param, List<String[]> timePathList) {
         Map<String, Object> executableIntegrationInfo = new HashMap<>();
         int checkNumber = -1;
         do {
@@ -195,7 +215,14 @@ class IntegrationParams {
             LinkedHashMap<String, Object> paramMap = new LinkedHashMap<>();
             // 获取当前查询的每个参数
             paramIntegration.getQueryParams().forEach((name, path) -> {
-                paramMap.put(name, JsonUtil.readPath(param, path));
+                Object value = JsonUtil.readPath(param, path);
+                // 需要执行DMN的时候，时间格式需要转换
+                if (ParamIntegration.Type.OPERATE.equals(paramIntegration.getType())) {
+                    String valueString = JsonUtil.writeValueAsString(value);
+                    valueString = TimeReplaceUtil.matchTimePathAndReplaceTime(timePathList, path, valueString, String.class);
+                    value = JsonUtil.writeValueAsObject(valueString, Object.class);
+                }
+                paramMap.put(name, value);
             });
             // 检查当前查询是否可执行
             if (paramMap.values().stream().anyMatch(Objects::isNull)) {

@@ -82,9 +82,16 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .setBody(exchangeProperty("commandJson"))
                 .to("json-patch://patch")
                 .setProperty("commandJson", body())
+                // 处理时间路径
+                .setBody(simple("{{timePathsJson}}"))
+                .process(exchange -> {
+                    exchange.getIn().setBody(JsonUtil.writeValueAsList(exchange.getIn().getBody(String.class), String.class)
+                            .stream().map(i -> i.split("/")).collect(Collectors.toList()));
+
+                })
+                .setProperty("timePaths", body())
                 // 2 执行逻辑
                 .setProperty("logicName", simple("{{logicName}}"))
-                .setProperty("timePathsJson", simple("{{timePathsJson}}"))
                 .setProperty("logicIntegrationJson").groovy("new String(java.util.Base64.getDecoder().decode('{{logicIntegrationJson}}'))")
                 .setBody(exchangeProperty("commandJson"))
                 .to("logic://logic-execute")
@@ -160,12 +167,12 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 // 2.2 执行逻辑
                 .setBody(exchangeProperty("logicIntegrationJson"))
                 .unmarshal().json(LogicIntegration.class)
-                .bean(LogicInParamsResolve.class, "toLogicParams(${body}, ${exchange.properties.get(commandJson)}, ${exchange.properties.get(timePathsJson)})")
+                .bean(LogicInParamsResolve.class, "toLogicParams(${body}, ${exchange.properties.get(commandJson)}, ${exchange.properties.get(timePaths)})")
                 .setHeader("logic", simple("${exchange.properties.get(logicName)}/logic"))
                 .bean(LogicRequest.class, "request")
                 .unmarshal().json(HashMap.class)
                 .bean(LogicInParamsResolve.class,
-                        "toTargetParams(${body}, ${exchange.properties.get(commandJson)}, ${exchange.properties.get(logicIntegrationJson)}, ${exchange.properties.get(timePathsJson)})")
+                        "toTargetParams(${body}, ${exchange.properties.get(commandJson)}, ${exchange.properties.get(logicIntegrationJson)}, ${exchange.properties.get(timePaths)})")
                 .setProperty("commandJson", body())
                 // 2.3 执行后置校验
                 .setHeader("logic", simple("${exchange.properties.get(logicName)}/after"))
@@ -359,9 +366,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
  */
 class LogicInParamsResolve {
 
-    public String toLogicParams(LogicIntegration logicIntegration, String commandJson, String timePathsJson) {
-        List<String[]> timePathList = JsonUtil.writeValueAsList(timePathsJson, String.class)
-                .stream().map(i -> i.split("/")).collect(Collectors.toList());
+    public String toLogicParams(LogicIntegration logicIntegration, String commandJson, List<String[]> timePathList) {
         Map<String, Object> logicParams = new HashMap<>();
         logicIntegration.getOutMappings().forEach((key, path) -> {
             // 原始结果
@@ -376,9 +381,7 @@ class LogicInParamsResolve {
         return JsonUtil.writeValueAsStringRetainNull(logicParams);
     }
 
-    public String toTargetParams(Map<String, Object> logicResult, String commandJson, String logicIntegrationJson, String timePathsJson) {
-        List<String[]> timePathList = JsonUtil.writeValueAsList(timePathsJson, String.class)
-                .stream().map(i -> i.split("/")).collect(Collectors.toList());
+    public String toTargetParams(Map<String, Object> logicResult, String commandJson, String logicIntegrationJson, List<String[]> timePathList) {
         LogicIntegration logicIntegration = JsonUtil.writeValueAsObject(logicIntegrationJson, LogicIntegration.class);
         for (String key : logicResult.keySet()) {
             Object value = logicResult.get(key);
