@@ -1,5 +1,6 @@
 package io.micrc.core.application.derivations.springboot;
 
+import io.micrc.core.annotations.application.TimeParam;
 import io.micrc.core.annotations.application.derivations.DerivationsService;
 import io.micrc.core.annotations.application.derivations.Operation;
 import io.micrc.core.annotations.application.derivations.QueryLogic;
@@ -139,6 +140,12 @@ class ApplicationDerivationsServiceScanner extends ClassPathBeanDefinitionScanne
             }
             // 解析参数所有集成
             List<ParamIntegration> paramIntegrations = getParamIntegrations(derivationsService.queryLogics(), derivationsService.operations());
+            // 获取明确的时间路径，并查找所有标记MicrcTime的路径
+            ArrayList<String> timePaths = new ArrayList<>();
+            TimeParam timeParam = beanDefinition.getBeanClass().getAnnotation(TimeParam.class);
+            if (null != timeParam) {
+                timePaths.addAll(Arrays.asList(timeParam.paths()));
+            }
             // 检查衍生服务注解至少需要包含一次集成/查询
             if (paramIntegrations.isEmpty()) {
                 throw new IllegalStateException("the " + beanDefinition.getBeanClass().getName() + " annotation should be at least one integration or query");
@@ -152,6 +159,7 @@ class ApplicationDerivationsServiceScanner extends ClassPathBeanDefinitionScanne
                             .serviceName(serviceName)
                             .paramIntegrationsJson(JsonUtil.writeValueAsString(paramIntegrations))
                             .assembler(derivationsService.assembler())
+                            .timePathsJson(JsonUtil.writeValueAsString(timePaths))
                             .build());
         }
         holders.clear();
