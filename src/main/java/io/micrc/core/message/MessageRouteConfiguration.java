@@ -37,11 +37,12 @@ public class MessageRouteConfiguration extends RouteBuilder {
                 .routeId("eventstore://store")
                 .setHeader("pointer", constant("/event/eventName"))
                 .to("json-patch://select")
-                .choice()
-                .when(body().isNotNull())
-                    .bean(EventMessage.class, "store(${exchange.properties.get(commandJson)}, ${in.body})")
-                    .bean(EventMessageRepository.class, "save")
-                .endChoice()
+                    .choice()
+                        .when(body().isNotNull())
+                            .bean(EventMessage.class, "store(${exchange.properties.get(commandJson)}, ${in.body})")
+                            .bean(EventMessageRepository.class, "save")
+                        .endChoice()
+                    .end()
                 .end();
         // 调度发送主路由
         from("eventstore://sender")
