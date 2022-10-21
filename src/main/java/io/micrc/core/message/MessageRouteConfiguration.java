@@ -35,10 +35,13 @@ public class MessageRouteConfiguration extends RouteBuilder {
         // 通用消息存储路由
         from("eventstore://store")
                 .routeId("eventstore://store")
-                .setHeader("pointer", constant("/event"))
+                .setHeader("pointer", constant("/event/eventName"))
                 .to("json-patch://select")
-                .bean(EventMessage.class, "store(${exchange.properties.get(commandJson)}, ${in.body})")
-                .bean(EventMessageRepository.class, "save")
+                .choice()
+                .when(body().isNotNull())
+                    .bean(EventMessage.class, "store(${exchange.properties.get(commandJson)}, ${in.body})")
+                    .bean(EventMessageRepository.class, "save")
+                .endChoice()
                 .end();
         // 调度发送主路由
         from("eventstore://sender")
