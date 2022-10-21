@@ -233,6 +233,7 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
                             .embeddedIdentityFullClassName(embeddedIdentityFullClassName)
                             .commandParamIntegrationsJson(JsonUtil.writeValueAsString(commandParamIntegrations))
                             .timePathsJson(JsonUtil.writeValueAsString(timePaths))
+                            .targetIdPath(targetIdPath)
                             .build());
         }
         holders.clear();

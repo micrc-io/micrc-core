@@ -7,6 +7,7 @@ import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.CommandParamIntegration;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.LogicIntegration;
+import io.micrc.core.persistence.snowflake.SnowFlakeIdentity;
 import io.micrc.core.rpc.ErrorInfo;
 import io.micrc.core.rpc.LogicRequest;
 import io.micrc.lib.ClassCastUtils;
@@ -62,6 +63,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .templateParameter("logicIntegrationJson", null, "the logic integration params")
                 .templateParameter("embeddedIdentityFullClassName", null, "embedded identity full class name")
                 .templateParameter("timePathsJson", null, "time path list json")
+                .templateParameter("targetIdPath", null, "target id path")
                 .from("businesses:{{serviceName}}")
                 .transacted()
                 // 0 暂存入参
@@ -72,6 +74,18 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .setProperty("embeddedIdentityFullClassName", simple("{{embeddedIdentityFullClassName}}"))
                 .setProperty("commandParamIntegrationsJson", simple("{{commandParamIntegrationsJson}}"))
                 .dynamicRouter(method(IntegrationCommandParams.class, "integrate"))
+                // 是否需要赋值ID
+                .setProperty("targetIdPath", simple("{{targetIdPath}}"))
+                .choice()
+                .when(constant("").isEqualTo(simple("${exchange.properties.get(targetIdPath)}")))
+                    .bean(SnowFlakeIdentity.class, "getInstance")
+                    .bean(SnowFlakeIdentity.class, "nextId")
+                    .setHeader("path", constant("/source/embeddedIdentity/id"))
+                    .setHeader("value", body())
+                    .setBody(exchangeProperty("commandJson"))
+                    .to("json-patch://add")
+                    .setProperty("commandJson", body())
+                .end()
                 // 2 复制source到target
                 .setBody(exchangeProperty("commandJson"))
                 .setHeader("pointer", constant("/source"))
@@ -259,6 +273,11 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
          * 所有时间路径
          */
         protected String timePathsJson;
+
+        /**
+         * 获取ID值的路径
+         */
+        protected String targetIdPath;
     }
 
     private static String patch(String original, String path, String value) {
