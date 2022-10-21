@@ -1,6 +1,7 @@
 package io.micrc.core.application.businesses.springboot;
 
 import io.micrc.core.annotations.application.MicrcTime;
+import io.micrc.core.annotations.application.TimeParam;
 import io.micrc.core.annotations.application.businesses.*;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.ApplicationBusinessesServiceDefinition;
@@ -158,9 +159,12 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
             if (null == commandLogic) {
                 throw new RuntimeException("the " + parameters[0].getType().getSimpleName() + "not have CommandLogic annotation, please check this command");
             }
-
-            // 查找所有标记MicrcTime的路径
+            // 获取明确的时间路径，并查找所有标记MicrcTime的路径
             ArrayList<String> timePaths = new ArrayList<>();
+            TimeParam timeParam = beanDefinition.getBeanClass().getAnnotation(TimeParam.class);
+            if (null != timeParam) {
+                timePaths.addAll(Arrays.asList(timeParam.paths()));
+            }
             findMicrcTimeField(commandFields, timePaths, new StringBuilder());
             // 处理DMN出入参数映射
             LogicMapping[] logicMappings = commandLogic.toLogicMappings();
