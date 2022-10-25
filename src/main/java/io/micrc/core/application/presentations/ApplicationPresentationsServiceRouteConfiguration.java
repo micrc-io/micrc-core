@@ -204,7 +204,6 @@ class IntegrationParams {
             if (paramMap.values().stream().anyMatch(Objects::isNull)) {
                 continue;
             }
-            System.out.println(paramMap);
             if (ParamIntegration.Type.QUERY.equals(paramIntegration.getType())) {
                 // 如果能够集成,收集信息,然后会自动跳出循环
                 executableIntegrationInfo.put("aggregation", paramIntegration.getAggregation());

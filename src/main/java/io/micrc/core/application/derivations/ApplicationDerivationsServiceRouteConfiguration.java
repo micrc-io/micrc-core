@@ -15,7 +15,18 @@ import org.apache.camel.Exchange;
 import org.apache.camel.ExchangeProperties;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.xml.sax.SAXException;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpressionException;
+import javax.xml.xpath.XPathFactory;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -82,12 +93,18 @@ public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteB
                 // 构造发送
                 .choice()
                 .when(constant("QUERY").isEqualTo(simple("${exchange.properties.get(current).get(type)}")))
-                .bean(IntegrationParams.class, "executeQuery")
+                    .bean(IntegrationParams.class, "executeQuery")
+                .endChoice()
+                .when(constant("EXECUTE").isEqualTo(simple("${exchange.properties.get(current).get(type)}")))
+                    .setHeader("from", simple("${exchange.properties.get(current).get(routeName)}"))
+                    .setHeader("route", simple("${exchange.properties.get(current).get(routeContent)}"))
+                    .setBody(simple("${exchange.properties.get(current).get(params)}"))
+                    .toD("camel-route://execute")
                 .endChoice()
                 .otherwise()
-                .setBody(simple("${exchange.properties.get(current).get(params)}"))
-                .setHeader("logic", simple("${exchange.properties.get(current).get(logic)}"))
-                .bean(LogicRequest.class, "request")
+                    .setBody(simple("${exchange.properties.get(current).get(params)}"))
+                    .setHeader("logic", simple("${exchange.properties.get(current).get(logic)}"))
+                    .bean(LogicRequest.class, "request")
                 .endChoice()
                 .end()
                   // 处理返回
@@ -175,7 +192,7 @@ class IntegrationParams {
         ParamIntegration.Type currentIntegrateType = (ParamIntegration.Type) current.get("type");
         if (ParamIntegration.Type.QUERY.equals(currentIntegrateType) && body instanceof Optional) {
             body = ((Optional<?>) body).orElseThrow();
-        } else if (ParamIntegration.Type.OPERATE.equals(currentIntegrateType)) {
+        } else if (ParamIntegration.Type.OPERATE.equals(currentIntegrateType) || ParamIntegration.Type.EXECUTE.equals(currentIntegrateType)) {
             body = JsonUtil.readPath((String) body, "");
         }
         List<ParamIntegration> paramIntegrations = ClassCastUtils.castArrayList(exchange.getProperties().get("paramIntegrations"), ParamIntegration.class);
@@ -202,7 +219,8 @@ class IntegrationParams {
      * @param param
      * @return
      */
-    public static Map<String, Object> findExecutable(List<ParamIntegration> unIntegrateParams, String param, List<String[]> timePathList) {
+    public static Map<String, Object> findExecutable(List<ParamIntegration> unIntegrateParams, String param, List<String[]> timePathList)
+            throws XPathExpressionException, IOException, SAXException, ParserConfigurationException {
         Map<String, Object> executableIntegrationInfo = new HashMap<>();
         int checkNumber = -1;
         do {
@@ -237,6 +255,20 @@ class IntegrationParams {
                 executableIntegrationInfo.put("params", paramMap);
             } else if (ParamIntegration.Type.OPERATE.equals(paramIntegration.getType())) {
                 executableIntegrationInfo.put("logic", paramIntegration.getLogicName());
+                executableIntegrationInfo.put("params", JsonUtil.writeValueAsString(paramMap));
+            } else if (ParamIntegration.Type.EXECUTE.equals(paramIntegration.getType())) {
+                Object content = JsonUtil.readPath(param, paramIntegration.getLogicName());
+                if (null == content) {
+                    continue;
+                }
+                DocumentBuilder db = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+                XPath xPath = XPathFactory.newInstance().newXPath();
+                Document document = db.parse(new ByteArrayInputStream(content.toString().getBytes()));
+                String routeId = ((Node) xPath.evaluate("/routes/route[1]/@id", document, XPathConstants.NODE)).getTextContent();
+                executableIntegrationInfo.put("routeId", routeId);
+                String routeName = ((Node) xPath.evaluate("/routes/route[1]/from/@uri", document, XPathConstants.NODE)).getTextContent();
+                executableIntegrationInfo.put("routeName", routeName);
+                executableIntegrationInfo.put("routeContent", content.toString());
                 executableIntegrationInfo.put("params", JsonUtil.writeValueAsString(paramMap));
             }
             executableIntegrationInfo.put("name", paramIntegration.getConcept());
