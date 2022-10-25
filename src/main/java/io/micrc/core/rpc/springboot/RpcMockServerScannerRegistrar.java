@@ -9,7 +9,6 @@ import io.micrc.core.rpc.IntegrationsInfo;
 import io.micrc.core.rpc.IntegrationsInfo.Integration;
 import io.micrc.lib.JsonUtil;
 import lombok.SneakyThrows;
-import org.mockserver.integration.ClientAndServer;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinitionHolder;
@@ -69,16 +68,8 @@ public class RpcMockServerScannerRegistrar implements ImportBeanDefinitionRegist
             return;
         }
 
-        ClientAndServer server = ClientAndServer.startClientAndServer(1080); // 启动mock server
         IntegrationsInfo integrationsInfo = new IntegrationsInfo();
-        new RPCRequestScanner(registry, server, integrationsInfo).doScan(basePackages);
-        // 以mockServer为beanName，将server注册进去
-        @SuppressWarnings("unchecked")
-        BeanDefinition clientAndServerBeanDefinition = BeanDefinitionBuilder
-                .genericBeanDefinition((Class<ClientAndServer>) server.getClass(), () -> server)
-                .getRawBeanDefinition();
-        registry.registerBeanDefinition(importBeanNameGenerator.generateBeanName(clientAndServerBeanDefinition, registry),
-                clientAndServerBeanDefinition);
+        new RPCRequestScanner(registry, integrationsInfo).doScan(basePackages);
         // 注册全局集成信息
         @SuppressWarnings("unchecked")
         BeanDefinition integrationsInfoBeanDefinition = BeanDefinitionBuilder
@@ -92,7 +83,7 @@ public class RpcMockServerScannerRegistrar implements ImportBeanDefinitionRegist
 
         private final IntegrationsInfo integrationsInfo;
 
-        public RPCRequestScanner(BeanDefinitionRegistry registry, ClientAndServer server, IntegrationsInfo integrationsInfo) {
+        public RPCRequestScanner(BeanDefinitionRegistry registry, IntegrationsInfo integrationsInfo) {
             super(registry);
             this.integrationsInfo = integrationsInfo;
         }
@@ -140,10 +131,6 @@ public class RpcMockServerScannerRegistrar implements ImportBeanDefinitionRegist
                     });
                 }
             }
-            // MonkServer注册协议
-//            integrationsInfo.getAll().stream().forEach(integration -> {
-//                server.upsert(OpenAPIExpectation.openAPIExpectation(integration.getProtocolFilePath()));
-//            });
             holders.clear();
             return holders;
         }
