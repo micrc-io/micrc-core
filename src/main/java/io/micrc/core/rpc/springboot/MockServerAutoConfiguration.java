@@ -21,7 +21,7 @@ public class MockServerAutoConfiguration  {
     @Bean
     public ClientAndServer clientAndServer() {
         ClientAndServer server = ClientAndServer.startClientAndServer(1080);
-//        integrationsInfo.getAll().forEach(integration -> server.upsert(OpenAPIExpectation.openAPIExpectation(integration.getProtocolFilePath())));
+        integrationsInfo.getAll().forEach(integration -> server.upsert(OpenAPIExpectation.openAPIExpectation(integration.getProtocolFilePath())));
         return server;
     }
 }
