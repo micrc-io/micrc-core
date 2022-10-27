@@ -12,16 +12,19 @@ import org.springframework.context.annotation.Profile;
  * Mock Server
  */
 @Configuration
-public class MockServerAutoConfiguration  {
+public class RpcMockServerAutoConfiguration {
 
     @Autowired
     private IntegrationsInfo integrationsInfo;
 
-    @Profile({"local", "default"})
+    @Profile({"default", "local"})
     @Bean
     public ClientAndServer clientAndServer() {
         ClientAndServer server = ClientAndServer.startClientAndServer(1080);
-        integrationsInfo.getAll().forEach(integration -> server.upsert(OpenAPIExpectation.openAPIExpectation(integration.getProtocolFilePath())));
+        integrationsInfo.getAll().forEach(integration -> {
+            OpenAPIExpectation openAPIExpectation = OpenAPIExpectation.openAPIExpectation(integration.getProtocolFilePath());
+            server.upsert(openAPIExpectation);
+        });
         return server;
     }
 }
