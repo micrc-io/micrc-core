@@ -9,6 +9,7 @@ import io.micrc.core.message.springboot.ClassPathMessageScannerRegistrar;
 import io.micrc.core.message.springboot.MessageAutoConfiguration;
 import io.micrc.core.persistence.springboot.PersistenceAutoConfiguration;
 import io.micrc.core.rpc.springboot.ClassPathRestEndpointScannerRegistrar;
+import io.micrc.core.rpc.springboot.RpcMockServerAutoConfiguration;
 import io.micrc.core.rpc.springboot.RpcAutoConfiguration;
 import io.micrc.core.rpc.springboot.RpcMockServerScannerRegistrar;
 import io.micrc.core.schedule.springboot.ScheduleAutoConfiguration;
@@ -43,6 +44,7 @@ import java.lang.annotation.*;
     RpcAutoConfiguration.class,
     ClassPathRestEndpointScannerRegistrar.class,
     RpcMockServerScannerRegistrar.class,
+    RpcMockServerAutoConfiguration.class,
     MessageAutoConfiguration.class,
     ClassPathMessageScannerRegistrar.class,
     ScheduleAutoConfiguration.class,

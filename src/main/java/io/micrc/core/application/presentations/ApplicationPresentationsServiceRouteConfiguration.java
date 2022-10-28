@@ -10,6 +10,7 @@ import io.micrc.lib.JsonUtil;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangeProperties;
 import org.springframework.data.domain.PageRequest;
@@ -119,6 +120,7 @@ public class ApplicationPresentationsServiceRouteConfiguration extends MicrcRout
 /**
  * 集成参数
  */
+@Slf4j
 class IntegrationParams {
 
     /**
@@ -139,6 +141,7 @@ class IntegrationParams {
         List<ParamIntegration> unIntegrateParams = paramIntegrations.stream()
                 .filter(i -> !i.getIntegrationComplete()).collect(Collectors.toList());
         properties.put("unIntegrateParams", unIntegrateParams);
+        log.info("展示未集成：{}", unIntegrateParams.stream().map(ParamIntegration::getConcept).collect(Collectors.joining(",")));
         if (unIntegrateParams.size() == 0) {
             return null;
         }
@@ -165,6 +168,7 @@ class IntegrationParams {
         } else if (ParamIntegration.Type.INTEGRATE.equals(currentIntegrateType)) {
             body = JsonUtil.readPath((String) body, "/data");
         }
+        log.info("展示已集成：{}，结果：{}", name, JsonUtil.writeValueAsString(body));
         List<ParamIntegration> paramIntegrations = ClassCastUtils.castArrayList(exchange.getProperties().get("paramIntegrations"), ParamIntegration.class);
         // 将上次执行的结果放回至原有属性集成参数之中
         ParamIntegration find = paramIntegrations.stream()
@@ -204,7 +208,6 @@ class IntegrationParams {
             if (paramMap.values().stream().anyMatch(Objects::isNull)) {
                 continue;
             }
-            System.out.println(paramMap);
             if (ParamIntegration.Type.QUERY.equals(paramIntegration.getType())) {
                 // 如果能够集成,收集信息,然后会自动跳出循环
                 executableIntegrationInfo.put("aggregation", paramIntegration.getAggregation());
@@ -235,6 +238,7 @@ class IntegrationParams {
             executableIntegrationInfo.put("name", paramIntegration.getConcept());
             executableIntegrationInfo.put("type", paramIntegration.getType());
         } while (null == executableIntegrationInfo.get("name"));
+        log.info("展示可集成：{}，参数：{}", executableIntegrationInfo.get("name"), executableIntegrationInfo.get("params"));
         return executableIntegrationInfo;
     }
 

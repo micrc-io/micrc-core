@@ -2,6 +2,7 @@ package io.micrc.core.application.derivations.springboot;
 
 import io.micrc.core.annotations.application.TimeParam;
 import io.micrc.core.annotations.application.derivations.DerivationsService;
+import io.micrc.core.annotations.application.derivations.Execution;
 import io.micrc.core.annotations.application.derivations.Operation;
 import io.micrc.core.annotations.application.derivations.QueryLogic;
 import io.micrc.core.application.derivations.ApplicationDerivationsServiceRouteConfiguration;
@@ -139,7 +140,7 @@ class ApplicationDerivationsServiceScanner extends ClassPathBeanDefinitionScanne
                 continue;
             }
             // 解析参数所有集成
-            List<ParamIntegration> paramIntegrations = getParamIntegrations(derivationsService.queryLogics(), derivationsService.operations());
+            List<ParamIntegration> paramIntegrations = getParamIntegrations(derivationsService.queryLogics(), derivationsService.operations(), derivationsService.executions());
             // 获取明确的时间路径，并查找所有标记MicrcTime的路径
             ArrayList<String> timePaths = new ArrayList<>();
             TimeParam timeParam = beanDefinition.getBeanClass().getAnnotation(TimeParam.class);
@@ -171,9 +172,10 @@ class ApplicationDerivationsServiceScanner extends ClassPathBeanDefinitionScanne
      *
      * @param queryLogics
      * @param operations
+     * @param executions
      * @return
      */
-    private List<ParamIntegration> getParamIntegrations(QueryLogic[] queryLogics, Operation[] operations) {
+    private List<ParamIntegration> getParamIntegrations(QueryLogic[] queryLogics, Operation[] operations, Execution[] executions) {
         List<ParamIntegration> paramIntegrations = new ArrayList<>();
         // 查询逻辑解析
         Arrays.stream(queryLogics).forEach(logic -> {
@@ -198,6 +200,14 @@ class ApplicationDerivationsServiceScanner extends ClassPathBeanDefinitionScanne
                 map.put(param.name(), param.path());
             });
             paramIntegrations.add(new ParamIntegration(operation.name(), map, operation.logicName(), operation.order()));
+        });
+        // 执行解析
+        Arrays.stream(executions).forEach(execution -> {
+            HashMap<String, String> map = new HashMap<>();
+            Arrays.stream(execution.executeParams()).forEach(param -> {
+                map.put(param.name(), param.path());
+            });
+            paramIntegrations.add(new ParamIntegration(execution.name(), map, execution.order(), execution.routePath()));
         });
         // 按照优先级排序
         paramIntegrations.sort(Comparator.comparing(ParamIntegration::getOrder));

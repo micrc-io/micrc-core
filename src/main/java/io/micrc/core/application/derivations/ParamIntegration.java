@@ -80,6 +80,14 @@ public class ParamIntegration {
      */
     private Type type;
 
+    public ParamIntegration(String concept, HashMap<String, String> queryParams, int order, String routePath) {
+        this.concept = concept;
+        this.queryParams = queryParams;
+        this.order = order;
+        this.logicName = routePath;
+        this.type = Type.EXECUTE;
+    }
+
     public ParamIntegration(String concept, HashMap<String, String> queryParams, String logicName, int order) {
         this.concept = concept;
         this.queryParams = queryParams;
@@ -99,14 +107,24 @@ public class ParamIntegration {
         this.pageSizePath = pageSizePath;
         this.pageNumberPath = pageNumberPath;
         this.order = order;
-        this.type = ParamIntegration.Type.QUERY;
+        this.type = Type.QUERY;
     }
 
     /**
      * 类型
      */
     public enum Type {
+        /**
+         * 查库
+         */
         QUERY,
+        /**
+         * 运行DMN
+         */
         OPERATE,
+        /**
+         * 执行脚本
+         */
+        EXECUTE,
     }
 }
