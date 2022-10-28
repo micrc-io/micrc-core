@@ -87,7 +87,7 @@ public class ErrorMessage {
     /**
      * 发送内容
      */
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "LONGTEXT")
     private String content;
 
     public ErrorMessage(EventMessage eventMessage, Map<String, Object> eventDetail, String reason, String state) {

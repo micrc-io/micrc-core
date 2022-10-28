@@ -1,12 +1,8 @@
 package io.micrc.core.persistence;
 
-import java.util.List;
-import java.util.Optional;
-
 import io.micrc.core.persistence.snowflake.SnowFlakeIdentity;
 import org.springframework.cache.annotation.CacheConfig;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Example;
@@ -14,6 +10,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.NoRepositoryBean;
 import org.springframework.data.repository.Repository;
+
+import java.util.List;
+import java.util.Optional;
 
 /**
  * 资源库基础接口，所有资源库接口应该继承这个接口作为jpa仓库
@@ -116,11 +115,9 @@ public interface MicrcJpaRepository<T, I extends IdentityAware> extends Reposito
      * @return saved model
      */
     @Caching(
-        put = {
-            @CachePut(keyGenerator = "entityIdKeyGenerator")
-        },
         evict = {
             // TODO 专用generator，参数id为空时，代表新实体，此时才需要驱逐count缓存，其他为更新，返回空字符串为key，不驱逐
+            @CacheEvict(keyGenerator = "entityIdKeyGenerator"),
             @CacheEvict(key = "'count'"),
             @CacheEvict(allEntries = true)
         }
@@ -157,10 +154,8 @@ public interface MicrcJpaRepository<T, I extends IdentityAware> extends Reposito
      * @return saved model
      */
     @Caching(
-        put = {
-            @CachePut(keyGenerator = "entityIdKeyGenerator")
-        },
         evict = {
+            @CacheEvict(keyGenerator = "entityIdKeyGenerator"),
             @CacheEvict(key = "'count'"),
             @CacheEvict(allEntries = true)
         }

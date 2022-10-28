@@ -37,6 +37,7 @@ public class RpcRestRouteConfiguration extends MicrcRouteBuilder {
                 .bean(IntegrationsInfo.class, "get(${header.protocolFilePath})")
                 .setHeader("integrationInfo", body())
                 .setBody(header("requestBody"))
+                .removeHeader("requestBody")
                 .toD("rest-openapi://${header.integrationInfo.getProtocolFilePath()}#${header.integrationInfo.getOperationId()}?host=${header.integrationInfo.getHost()}")
                 .convertBodyTo(String.class)
                 .end();

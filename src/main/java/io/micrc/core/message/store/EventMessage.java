@@ -38,7 +38,7 @@ public class EventMessage implements Serializable {
      */
     private Long createTime = System.currentTimeMillis();
     
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "LONGTEXT")
     private String content;
 
     private Long sequence;

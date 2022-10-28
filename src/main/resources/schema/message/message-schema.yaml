@@ -22,13 +22,13 @@ databaseChangeLog:
                     primaryKeyName: message-pk
               - column:
                   name: create_time
-                  type: BIGINT
+                  type: BIGINT(11)
                   remarks: message create time
                   constraints:
                     nullable: false
               - column:
                   name: content
-                  type: text
+                  type: LONGTEXT
                   remarks: message content
                   constraints:
                     nullable: false
@@ -40,7 +40,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: sequence
-                  type: BIGINT
+                  type: BIGINT(11)
                   remarks: the message sequence
                   autoIncrement: true
                   constraints:
@@ -78,7 +78,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: sequence
-                  type: BIGINT
+                  type: BIGINT(11)
                   remarks: the event type
                   constraints:
                     nullable: false
@@ -96,7 +96,7 @@ databaseChangeLog:
                     primaryKeyName: error_event-pk
               - column:
                   name: sequence
-                  type: BIGINT
+                  type: BIGINT(11)
                   remarks: the event sequence
                   constraints:
                     nullable: false
@@ -126,13 +126,13 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: last_error_time
-                  type: BIGINT
+                  type: BIGINT(11)
                   remarks: the last error time
                   constraints:
                     nullable: false
               - column:
                   name: error_frequency
-                  type: INT
+                  type: INT(11)
                   remarks: the error message error frequency
                   constraints:
                     nullable: false
@@ -144,7 +144,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: content
-                  type: text
+                  type: LONGTEXT
                   remarks: message content
                   constraints:
                     nullable: false
@@ -162,7 +162,7 @@ databaseChangeLog:
                     primaryKeyName: idempotent_event-pk
               - column:
                   name: sequence
-                  type: BIGINT
+                  type: BIGINT(11)
                   remarks: the event sequence
                   constraints:
                     nullable: false
@@ -185,6 +185,6 @@ databaseChangeLog:
                   constraints:
                     nullable: false
         - addAutoIncrement:
-            columnDataType: BIGINT
+            columnDataType: BIGINT(11)
             columnName: sequence
             tableName: message_message_store

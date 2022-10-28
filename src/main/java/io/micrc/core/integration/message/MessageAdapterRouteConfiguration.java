@@ -2,6 +2,8 @@ package io.micrc.core.integration.message;
 
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
+import io.micrc.core.rpc.ErrorInfo;
+import io.micrc.core.rpc.Result;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
@@ -30,7 +32,20 @@ public class MessageAdapterRouteConfiguration extends MicrcRouteBuilder {
                 .setHeader("CamelJacksonUnmarshalType").simple("{{commandPath}}")
                 .to("dataformat:jackson:unmarshal?allow-unmarshall-type=true")
                 .to("businesses://{{serviceName}}")
+                .to("direct://messageAdapterResult")
                 .end();
+
+        // 命令适配器结果处理
+        from("direct://messageAdapterResult")
+                .unmarshal().json(Object.class)
+                .setProperty("command", body())
+                .marshal().json().convertBodyTo(String.class)
+                .setHeader("pointer", simple("/error"))
+                .to("json-patch://select")
+                .marshal().json().convertBodyTo(String.class)
+                .unmarshal().json(ErrorInfo.class)
+                // TODO 设置command对Data的映射,使用protocol读取其x-result-mapping.暂时使用command替代
+                .bean(Result.class, "result(${body}, ${exchange.properties.get(command)})");
     }
 
     /**

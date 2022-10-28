@@ -3,6 +3,7 @@ package io.micrc.core.message;
 import com.rabbitmq.client.Channel;
 import io.micrc.core.annotations.integration.message.MessageAdapter;
 import io.micrc.core.message.store.EventMessage;
+import io.micrc.core.rpc.Result;
 import io.micrc.lib.ClassCastUtils;
 import io.micrc.lib.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -106,15 +107,20 @@ public class MessageConsumeRouterExecution implements Ordered {
                 }
             }
             // 如果非已重复消息 转发至相应适配器
-            String commandJson = template.requestBody("message://" + messageDetail.get("region") + "Listener", eventMessage.getContent(), String.class);
-            retVal = commandJson;
-            String errorCode = (String) JsonUtil.readPath(commandJson, "/error/errorCode");
-            if(StringUtils.hasText(errorCode)){
+            Object resultObj = template.requestBody("message://" + messageDetail.get("region") + "Listener", eventMessage.getContent());
+            Result result = null;
+            if(resultObj instanceof String){
+                result = JsonUtil.writeValueAsObjectRetainNull((String) resultObj, Result.class);
+            }
+            if(resultObj instanceof Result){
+                result = (Result) resultObj;
+            }
+            if(StringUtils.hasText(result.getCode()) && !"200".equals(result.getCode())){
                 // 如果有异常 回滚事务 并应答失败进入死信
                 platformTransactionManager.rollback(transactionStatus);
                 channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, false);
             }
-            if(!StringUtils.hasText(errorCode)) {
+            if("200".equals(result.getCode())) {
                 // 如果执行正常则提交事务并应答成功
                 platformTransactionManager.commit(transactionStatus);
                 channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
