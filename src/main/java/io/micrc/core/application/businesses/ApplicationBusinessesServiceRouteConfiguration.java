@@ -17,6 +17,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangeProperties;
 import org.apache.camel.support.ExpressionAdapter;
@@ -455,6 +456,7 @@ class LogicInParamsResolve {
     }
 }
 
+@Slf4j
 class IntegrationCommandParams {
 
     public static String integrate(@ExchangeProperties Map<String, Object> properties) {
@@ -473,6 +475,7 @@ class IntegrationCommandParams {
         Map<String, Object> unIntegrateParams = ClassCastUtils.castHashMap(
                 properties.get("unIntegrateParams"), String.class, Object.class);
         properties.put("unIntegrateParams", unIntegrateParams);
+        log.info("业务未集成：{}", String.join(",", unIntegrateParams.keySet()));
         if (unIntegrateParams.size() == 0) {
             // 清除中间变量
             properties.remove("currentIntegrateParam");
@@ -505,6 +508,7 @@ class IntegrationCommandParams {
         } else {
             body = JsonUtil.readPath((String) body, "/data");
         }
+        log.info("业务已集成：{}，结果：{}", name, JsonUtil.writeValueAsString(body));
         commandJson = patch(commandJson, unIntegrateParams.get(name).getObjectTreePath(), JsonUtil.writeValueAsString(body));
         exchange.getProperties().put("commandJson", commandJson);
         unIntegrateParams.remove(name);
@@ -572,6 +576,7 @@ class IntegrationCommandParams {
             executableIntegrationInfo.put("integrateParams", paramMap);
             break;
         }
+        log.info("业务可集成：{}，参数：{}", executableIntegrationInfo.get("paramName"), executableIntegrationInfo.get("integrateParams"));
         return executableIntegrationInfo;
     }
 
