@@ -77,11 +77,12 @@ public class ApplicationPresentationsServiceRouteConfiguration extends MicrcRout
                 // 构造发送
                 .choice()
                 .when(constant("QUERY").isEqualTo(simple("${exchange.properties.get(current).get(type)}")))
-                .bean(IntegrationParams.class, "executeQuery")
+                    .bean(IntegrationParams.class, "executeQuery")
                 .endChoice()
                 .otherwise()
-                .setBody(simple("${exchange.properties.get(current).get(params)}"))
-                .to("req://integration")
+                    .setBody(simple("${exchange.properties.get(current).get(params)}"))
+                    .setProperty("protocolFilePath", simple("${exchange.properties.get(current).get(protocol)}"))
+                    .to("req://integration")
                 .endChoice()
                 .end()
                   // 处理返回
@@ -215,7 +216,6 @@ class IntegrationParams {
                 executableIntegrationInfo.put("sorts", paramIntegration.getSortParams());
                 executableIntegrationInfo.put("pageSizePath", paramIntegration.getPageSizePath());
                 executableIntegrationInfo.put("pageNumberPath", paramIntegration.getPageNumberPath());
-                executableIntegrationInfo.put("params", paramMap);
             } else if (ParamIntegration.Type.INTEGRATE.equals(paramIntegration.getType())) {
                 // 集成
                 String protocolContent = fileReader(unIntegrateParams.get(checkNumber).getProtocol());
@@ -233,8 +233,8 @@ class IntegrationParams {
                         .at("/operationId");
                 executableIntegrationInfo.put("operationId", operationNode.textValue());
 
-                executableIntegrationInfo.put("params", JsonUtil.writeValueAsString(paramMap));
             }
+            executableIntegrationInfo.put("params", paramMap);
             executableIntegrationInfo.put("name", paramIntegration.getConcept());
             executableIntegrationInfo.put("type", paramIntegration.getType());
         } while (null == executableIntegrationInfo.get("name"));

@@ -165,7 +165,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .endChoice()
                 .otherwise()
                     .setBody(simple("${in.body.get(integrateParams)}"))
-                    .setHeader("protocolFilePath", simple("${exchange.properties.get(currentIntegrateParam).get(protocol)}"))
+                    .setProperty("protocolFilePath", simple("${exchange.properties.get(currentIntegrateParam).get(protocol)}"))
                     .to("req://integration")
                 .endChoice()
                 .end()
