@@ -116,7 +116,7 @@ dependencies {
     // mock rabbitmq msg
     implementation "com.playtika.testcontainers:embedded-rabbitmq:${property('testcontainers.version')}"
     // mock memory db
-    implementation "com.playtika.testcontainers:embedded-redis:${property('testcontainers.version')}"
+    // implementation "com.playtika.testcontainers:embedded-redis:${property('testcontainers.version')}"
 
     // caffeine, redis for cache and schedule
     implementation "org.springframework.boot:spring-boot-starter-cache"
