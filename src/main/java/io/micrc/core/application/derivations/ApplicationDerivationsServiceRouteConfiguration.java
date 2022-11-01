@@ -291,29 +291,32 @@ class IntegrationParams {
     public static Object executeQuery(Exchange exchange, Map<String, Object> body) {
         Object pageSize = JsonUtil.readPath((String) exchange.getProperty("param"), (String) body.get("pageSizePath"));
         Object pageNumber = JsonUtil.readPath((String) exchange.getProperty("param"), (String) body.get("pageNumberPath"));
-        PageRequest pageRequest = null;
-        if (pageSize != null && pageNumber != null) {
-            pageRequest = PageRequest.of(((int) pageNumber) - 1, (int) pageSize);
-            // 追加排序参数
-            Sort sort = Sort.unsorted();
-            Map<String, String> sorts = ClassCastUtils.castHashMap(body.get("sorts"), String.class, String.class);
-            for (Map.Entry<String, String> next : sorts.entrySet()) {
-                sort = sort.and(Sort.by(Sort.Direction.valueOf(next.getValue()), next.getKey()));
-            }
-            pageRequest = pageRequest.withSort(sort);
+        PageRequest pageRequest = PageRequest.of((null == pageNumber ? 1 : (int) pageNumber) - 1, null == pageSize ? 10 : (int) pageSize);
+        // 追加排序参数
+        Sort sort = Sort.unsorted();
+        Map<String, String> sorts = ClassCastUtils.castHashMap(body.get("sorts"), String.class, String.class);
+        for (Map.Entry<String, String> next : sorts.entrySet()) {
+            sort = sort.and(Sort.by(Sort.Direction.valueOf(next.getValue()), next.getKey()));
         }
+        pageRequest = pageRequest.withSort(sort);
         try {
             Object repository = exchange.getContext().getRegistry().lookupByName(body.get("aggregation") + "Repository");
             Method method = Arrays.stream(repository.getClass().getMethods())
                     .filter(m -> m.getName().equals(body.get("method"))).findFirst().orElseThrow();
-            Class<?>[] parameterTypes = method.getParameterTypes();
+            Iterator<Class<?>> parameterTypes = Arrays.stream(method.getParameterTypes()).iterator();
+            Iterator<Object> parameterValues = (ClassCastUtils.castHashMap(body.get("params"), String.class, Object.class)).values().iterator();
+            // 解析查询参数
             ArrayList<Object> parameters = new ArrayList<>();
-            if (parameterTypes.length > 0 && "org.springframework.data.domain.Pageable".equals(parameterTypes[0].getName())) {
-                parameters.add(pageRequest);
+            while (parameterTypes.hasNext()) {
+                String typeName = parameterTypes.next().getName();
+                if ("org.springframework.data.domain.Pageable".equals(typeName)) {
+                    parameters.add(pageRequest);
+                    continue;
+                }
+                parameters.add(JsonUtil.writeObjectAsObject(parameterValues.next(), Class.forName(typeName)));
             }
-            parameters.addAll(ClassCastUtils.castHashMap(body.get("params"), String.class, Object.class).values());
             return method.invoke(repository, parameters.toArray());
-        } catch (IllegalAccessException | InvocationTargetException e) {
+        } catch (IllegalAccessException | InvocationTargetException | ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
     }

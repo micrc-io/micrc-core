@@ -174,13 +174,13 @@ class ApplicationPresentationsServiceScanner extends ClassPathBeanDefinitionScan
             // 解析查询参数
             StringBuilder queryParam = new StringBuilder();
             Arrays.stream(logic.params()).forEach(param -> {
-                queryParam.append("And").append(param.belongConcept()).append(upperStringFirst(param.name()));
-                paramPath.put(param.name(), param.path());
+                queryParam.append("And").append(param.belongConcept());
+                paramPath.put(param.belongConcept(), param.path());
             });
-            String methodName = queryParam.length() > 0 ? "findBy" + queryParam.substring(3) : "findAll";
+            String methodName = queryParam.length() > 0 ? "findBy" + queryParam.substring(3) : "findBy";
             // 解析排序参数
             Map<String, String> sortParam = Arrays.stream(logic.sorts())
-                    .collect(Collectors.toMap(i -> String.join(".", i.belongConcept(), i.name()), i -> i.type().name()));
+                    .collect(Collectors.toMap(i -> lowerStringFirst(i.belongConcept()), i -> i.type().name()));
             paramIntegrations.add(new ParamIntegration(logic.name(), lowerStringFirst(logic.aggregation()), methodName,
                     paramPath, sortParam, logic.pageSizePath(), logic.pageNumberPath(), logic.order()));
         });
@@ -206,21 +206,6 @@ class ApplicationPresentationsServiceScanner extends ClassPathBeanDefinitionScan
             routeId = String.valueOf(INDEX.getAndIncrement());
         }
         return ApplicationPresentationsServiceRouteConfiguration.ROUTE_TMPL_PRESENTATIONS_SERVICE + "-" + routeId;
-    }
-
-    /**
-     * 首字母大写
-     *
-     * @param str
-     * @return
-     */
-    private static String upperStringFirst(String str) {
-        if (str == null || str.length() == 0) {
-            return str;
-        }
-        char[] strChars = str.toCharArray();
-        strChars[0] -= 32;
-        return String.valueOf(strChars);
     }
 
     /**

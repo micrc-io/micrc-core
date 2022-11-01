@@ -77,11 +77,12 @@ public class ApplicationPresentationsServiceRouteConfiguration extends MicrcRout
                 // 构造发送
                 .choice()
                 .when(constant("QUERY").isEqualTo(simple("${exchange.properties.get(current).get(type)}")))
-                .bean(IntegrationParams.class, "executeQuery")
+                    .bean(IntegrationParams.class, "executeQuery")
                 .endChoice()
                 .otherwise()
-                .setBody(simple("${exchange.properties.get(current).get(params)}"))
-                .to("req://integration")
+                    .setBody(simple("${exchange.properties.get(current).get(params)}"))
+                    .setProperty("protocolFilePath", simple("${exchange.properties.get(current).get(protocol)}"))
+                    .to("req://integration")
                 .endChoice()
                 .end()
                   // 处理返回
@@ -215,7 +216,6 @@ class IntegrationParams {
                 executableIntegrationInfo.put("sorts", paramIntegration.getSortParams());
                 executableIntegrationInfo.put("pageSizePath", paramIntegration.getPageSizePath());
                 executableIntegrationInfo.put("pageNumberPath", paramIntegration.getPageNumberPath());
-                executableIntegrationInfo.put("params", paramMap);
             } else if (ParamIntegration.Type.INTEGRATE.equals(paramIntegration.getType())) {
                 // 集成
                 String protocolContent = fileReader(unIntegrateParams.get(checkNumber).getProtocol());
@@ -233,8 +233,8 @@ class IntegrationParams {
                         .at("/operationId");
                 executableIntegrationInfo.put("operationId", operationNode.textValue());
 
-                executableIntegrationInfo.put("params", JsonUtil.writeValueAsString(paramMap));
             }
+            executableIntegrationInfo.put("params", paramMap);
             executableIntegrationInfo.put("name", paramIntegration.getConcept());
             executableIntegrationInfo.put("type", paramIntegration.getType());
         } while (null == executableIntegrationInfo.get("name"));
@@ -250,29 +250,32 @@ class IntegrationParams {
     public static Object executeQuery(Exchange exchange, Map<String, Object> body) {
         Object pageSize = JsonUtil.readPath((String) exchange.getProperty("param"), (String) body.get("pageSizePath"));
         Object pageNumber = JsonUtil.readPath((String) exchange.getProperty("param"), (String) body.get("pageNumberPath"));
-        PageRequest pageRequest = null;
-        if (pageSize != null && pageNumber != null) {
-            pageRequest = PageRequest.of(((int) pageNumber) - 1, (int) pageSize);
-            // 追加排序参数
-            Sort sort = Sort.unsorted();
-            Map<String, String> sorts = ClassCastUtils.castHashMap(body.get("sorts"), String.class, String.class);
-            for (Map.Entry<String, String> next : sorts.entrySet()) {
-                sort = sort.and(Sort.by(Sort.Direction.valueOf(next.getValue()), next.getKey()));
-            }
-            pageRequest = pageRequest.withSort(sort);
+        PageRequest pageRequest = PageRequest.of((null == pageNumber ? 1 : (int) pageNumber) - 1, null == pageSize ? 10 : (int) pageSize);
+        // 追加排序参数
+        Sort sort = Sort.unsorted();
+        Map<String, String> sorts = ClassCastUtils.castHashMap(body.get("sorts"), String.class, String.class);
+        for (Map.Entry<String, String> next : sorts.entrySet()) {
+            sort = sort.and(Sort.by(Sort.Direction.valueOf(next.getValue()), next.getKey()));
         }
+        pageRequest = pageRequest.withSort(sort);
         try {
             Object repository = exchange.getContext().getRegistry().lookupByName(body.get("aggregation") + "Repository");
             Method method = Arrays.stream(repository.getClass().getMethods())
                     .filter(m -> m.getName().equals(body.get("method"))).findFirst().orElseThrow();
-            Class<?>[] parameterTypes = method.getParameterTypes();
+            Iterator<Class<?>> parameterTypes = Arrays.stream(method.getParameterTypes()).iterator();
+            Iterator<Object> parameterValues = (ClassCastUtils.castHashMap(body.get("params"), String.class, Object.class)).values().iterator();
+            // 解析查询参数
             ArrayList<Object> parameters = new ArrayList<>();
-            if (parameterTypes.length > 0 && "org.springframework.data.domain.Pageable".equals(parameterTypes[0].getName())) {
-                parameters.add(pageRequest);
+            while (parameterTypes.hasNext()) {
+                String typeName = parameterTypes.next().getName();
+                if ("org.springframework.data.domain.Pageable".equals(typeName)) {
+                    parameters.add(pageRequest);
+                    continue;
+                }
+                parameters.add(JsonUtil.writeObjectAsObject(parameterValues.next(), Class.forName(typeName)));
             }
-            parameters.addAll(ClassCastUtils.castHashMap(body.get("params"), String.class, Object.class).values());
             return method.invoke(repository, parameters.toArray());
-        } catch (IllegalAccessException | InvocationTargetException e) {
+        } catch (IllegalAccessException | InvocationTargetException | ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
     }
