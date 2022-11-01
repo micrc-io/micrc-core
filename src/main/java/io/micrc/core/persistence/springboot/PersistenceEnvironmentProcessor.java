@@ -33,6 +33,7 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
         envForEmbeddedMysql(profiles, properties);
         envForLiquibase(profiles, properties, environment);
         envForJPA(profiles, properties);
+        bootstrapEmbeddedMemoryDb(profiles, properties);
 
         PropertiesPropertySource source = new PropertiesPropertySource("micrc-persistence", properties);
         environment.getPropertySources().addLast(source);
@@ -47,7 +48,7 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
             // embedded mysql
             properties.setProperty("embedded.mysql.enabled", "true");
             properties.setProperty("embedded.mysql.reuseContainer", "true");
-            properties.setProperty("embedded.mysql.dockerImage", "mysql:8.0.30");
+            properties.setProperty("embedded.mysql.dockerImage", "mysql:8.0.13");
             properties.setProperty("embedded.mysql.waitTimeoutInSeconds", "60");
             properties.setProperty("embedded.mysql.encoding", "utf8mb4");
             properties.setProperty("embedded.mysql.collation", "utf8mb4_unicode_ci");
@@ -131,5 +132,27 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
             properties.setProperty("spring.jpa.properties.hibernate.show_sql", "true");
             properties.setProperty("spring.jpa.properties.hibernate.format_sql", "true");
         }
+    }
+
+    private void bootstrapEmbeddedMemoryDb(List<String> profiles, Properties properties) {
+        if (profiles.contains("default")) {
+            // default redis connection
+            properties.setProperty("micrc.spring.memory-db.host", "${embedded.redistack.host}");
+            properties.setProperty("micrc.spring.memory-db.port", "${embedded.redistack.port}");
+            properties.setProperty("micrc.spring.memory-db.password", "${embedded.redistack.password}");
+        } else {
+            // k8s集群中读取的configmap中的host，port和passwd
+            properties.setProperty("micrc.spring.memory-db.host", "${memory-db.host}");
+            properties.setProperty("micrc.spring.memory-db.port", "${memory-db.port}");
+            properties.setProperty("micrc.spring.memory-db.password", "${memory-db.pass}");
+        }
+        // 任何环境使用统一的连接配置
+        properties.setProperty("micrc.spring.memory-db.database", "15");
+        properties.setProperty("micrc.spring.memory-db.timeout", "3000");
+        properties.setProperty("micrc.spring.memory-db.lettuce.pool.max-active", "1000");
+        properties.setProperty("micrc.spring.memory-db.lettuce.pool.min-idle", "5");
+        properties.setProperty("micrc.spring.memory-db.lettuce.pool.max-idle", "10");
+        properties.setProperty("micrc.spring.memory-db.lettuce.pool.max-wait", "-1");
+        properties.setProperty("micrc.spring.memory-db.pool.time-between-eviction-runs-millis", "2000");
     }
 }

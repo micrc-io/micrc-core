@@ -115,6 +115,8 @@ dependencies {
     implementation "org.springframework.boot:spring-boot-starter-amqp"
     // mock rabbitmq msg
     implementation "com.playtika.testcontainers:embedded-rabbitmq:${property('testcontainers.version')}"
+    // mock memory db
+    implementation "com.playtika.testcontainers:embedded-redis:${property('testcontainers.version')}"
 
     // caffeine, redis for cache and schedule
     implementation "org.springframework.boot:spring-boot-starter-cache"
@@ -124,8 +126,6 @@ dependencies {
     // shedlock for schedule distributed lock
     implementation "net.javacrumbs.shedlock:shedlock-spring:${property('shedlock.version')}"
     implementation "net.javacrumbs.shedlock:shedlock-provider-redis-spring:${property('shedlock.version')}"
-    // mock server - redistack instead of
-    // implementation "com.playtika.testcontainers:embedded-redis:${property('testcontainers.version')}"
 
 }
 

@@ -10,7 +10,7 @@ public class MessagePublisherSchedule {
     @EndpointInject("eventstore://sender")
     private ProducerTemplate sender;
 
-    @Scheduled(initialDelay = 10000, fixedDelay = 3000)
+    @Scheduled(fixedDelay = 3000)
     @SchedulerLock(name = "MessagePublisherSchedule")
     public void adapt() {
         sender.sendBody(System.currentTimeMillis());

@@ -1,15 +1,15 @@
 package io.micrc.core.cache.springboot;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-import java.util.Properties;
-
 import org.apache.commons.logging.Log;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.env.EnvironmentPostProcessor;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.PropertiesPropertySource;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import java.util.Properties;
 
 /**
  * cache 配置. redis connection, embedded redis
@@ -30,12 +30,12 @@ public class CacheEnvironmentProcessor implements EnvironmentPostProcessor {
         Optional<String> profileStr = Optional.ofNullable(environment.getProperty("application.profiles"));
         List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
         Properties properties = new Properties();
-        bootstrapEmbeddedRedis(profiles, properties);
+        bootstrapEmbeddedCache(profiles, properties);
         PropertiesPropertySource source = new PropertiesPropertySource("micrc-cache", properties);
         environment.getPropertySources().addLast(source);
     }
 
-    private void bootstrapEmbeddedRedis(List<String> profiles, Properties properties) {
+    private void bootstrapEmbeddedCache(List<String> profiles, Properties properties) {
         if (!profiles.contains("default")) {
             properties.setProperty("embedded.redistack.enabled", "false");
         }
@@ -60,6 +60,7 @@ public class CacheEnvironmentProcessor implements EnvironmentPostProcessor {
             properties.setProperty("spring.redis.host", "${embedded.redistack.host}");
             properties.setProperty("spring.redis.port", "${embedded.redistack.port}");
             properties.setProperty("spring.redis.password", "${embedded.redistack.password}");
+
         } else {
             // k8s集群中读取的configmap中的host，port和passwd
             properties.setProperty("spring.redis.host", "${cache.host}");
@@ -67,6 +68,7 @@ public class CacheEnvironmentProcessor implements EnvironmentPostProcessor {
             properties.setProperty("spring.redis.password", "${cache.pass}");
         }
         // 任何环境使用统一的连接配置
+        properties.setProperty("spring.redis.database", "0");
         properties.setProperty("spring.redis.timeout", "3000");
         properties.setProperty("spring.redis.lettuce.pool.max-active", "1000");
         properties.setProperty("spring.redis.lettuce.pool.min-idle", "5");
