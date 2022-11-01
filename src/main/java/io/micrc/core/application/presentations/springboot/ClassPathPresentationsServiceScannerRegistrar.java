@@ -209,21 +209,6 @@ class ApplicationPresentationsServiceScanner extends ClassPathBeanDefinitionScan
     }
 
     /**
-     * 首字母大写
-     *
-     * @param str
-     * @return
-     */
-    private static String upperStringFirst(String str) {
-        if (str == null || str.length() == 0) {
-            return str;
-        }
-        char[] strChars = str.toCharArray();
-        strChars[0] -= 32;
-        return String.valueOf(strChars);
-    }
-
-    /**
      * 首字母小写
      *
      * @param str

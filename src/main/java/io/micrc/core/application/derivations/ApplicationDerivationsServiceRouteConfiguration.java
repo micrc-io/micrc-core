@@ -303,18 +303,17 @@ class IntegrationParams {
             Object repository = exchange.getContext().getRegistry().lookupByName(body.get("aggregation") + "Repository");
             Method method = Arrays.stream(repository.getClass().getMethods())
                     .filter(m -> m.getName().equals(body.get("method"))).findFirst().orElseThrow();
-            Class<?>[] parameterTypes = method.getParameterTypes();
-            ArrayList<Object> params = new ArrayList<>(((Map) body.get("params")).values());
+            Iterator<Class<?>> parameterTypes = Arrays.stream(method.getParameterTypes()).iterator();
+            Iterator<Object> parameterValues = (ClassCastUtils.castHashMap(body.get("params"), String.class, Object.class)).values().iterator();
             // 解析查询参数
             ArrayList<Object> parameters = new ArrayList<>();
-            for (int i = 0; i < parameterTypes.length; i++) {
-                String name = parameterTypes[i].getName();
-                if ("org.springframework.data.domain.Pageable".equals(name)) {
+            while (parameterTypes.hasNext()) {
+                String typeName = parameterTypes.next().getName();
+                if ("org.springframework.data.domain.Pageable".equals(typeName)) {
                     parameters.add(pageRequest);
+                    continue;
                 }
-                if (params.size() > i) {
-                    parameters.add(JsonUtil.writeObjectAsObject(params.get(i), Class.forName(name)));
-                }
+                parameters.add(JsonUtil.writeObjectAsObject(parameterValues.next(), Class.forName(typeName)));
             }
             return method.invoke(repository, parameters.toArray());
         } catch (IllegalAccessException | InvocationTargetException | ClassNotFoundException e) {
