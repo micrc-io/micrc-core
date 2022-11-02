@@ -77,31 +77,15 @@ public class SnowFlakeIdentity {
      * @return
      */
     public synchronized long nextId() {
-
-        long past = pastTimeStamp;
-        checkTime(past);
-
-        long sequence = currentSequence++;
-        if (sequence > MAX_SEQUENCE) {
-            past = ++pastTimeStamp;
-            checkTime(past);
+        if (currentSequence > MAX_SEQUENCE) {
+            pastTimeStamp++;
             currentSequence = 0;
-            sequence = currentSequence++;
         }
-
-        return (past - TIMESTAMP_DATUM) << MACHINE_NUMBER_BITS << SEQUENCE_BITS
-                | sequence << MACHINE_NUMBER_BITS
-                | machineNumber;
-    }
-
-    /**
-     * 检查时间
-     *
-     * @param past
-     */
-    private void checkTime(long past) {
-        while (past > System.currentTimeMillis()) {
+        while (pastTimeStamp > System.currentTimeMillis()) {
             // wait time go
         }
+        return (pastTimeStamp - TIMESTAMP_DATUM) << MACHINE_NUMBER_BITS << SEQUENCE_BITS
+                | currentSequence++ << MACHINE_NUMBER_BITS
+                | machineNumber;
     }
 }
