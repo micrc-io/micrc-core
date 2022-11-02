@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
 import io.micrc.core.persistence.snowflake.MachineNumberAliveSchedule;
 import io.micrc.core.persistence.snowflake.SnowFlakeIdentity;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -19,11 +18,11 @@ import org.springframework.data.redis.connection.RedisPassword;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
+import javax.annotation.Resource;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -44,8 +43,8 @@ public class PersistenceAutoConfiguration implements ApplicationRunner {
      */
     public static final String MACHINE_NUMBER_KEY_PREFIX = "MACHINE:NUMBER:";
 
-    @Autowired
-    StringRedisTemplate stringRedisTemplate;
+    @Resource(name = "memoryDbTemplate")
+    RedisTemplate<Object, Object> redisTemplate;
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
@@ -56,11 +55,11 @@ public class PersistenceAutoConfiguration implements ApplicationRunner {
         Integer number = null;
         for (int i = 0; i <= SnowFlakeIdentity.MAX_MACHINE_NUMBER; i++) {
             String key = MACHINE_NUMBER_KEY_PREFIX + i;
-            String value = stringRedisTemplate.opsForValue().get(key);
+            String value = (String) redisTemplate.opsForValue().get(key);
             if (value != null) {
                 continue;
             }
-            Boolean done = stringRedisTemplate.opsForValue().setIfAbsent(key, "1", 5, TimeUnit.MINUTES);
+            Boolean done = redisTemplate.opsForValue().setIfAbsent(key, "1", 5, TimeUnit.MINUTES);
             if (Boolean.TRUE.equals(done)) {
                 number = i;
                 break;
