@@ -49,7 +49,7 @@ public class SnowFlakeIdentity {
     /**
      * 当前序列号，默认从0开始，后续自增
      */
-    private int currentSequence = 0;
+    private long currentSequence = 0;
 
 
     private SnowFlakeIdentity() {
