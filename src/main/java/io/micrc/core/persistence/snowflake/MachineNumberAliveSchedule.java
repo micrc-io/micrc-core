@@ -1,6 +1,6 @@
 package io.micrc.core.persistence.snowflake;
 
-import io.micrc.core.persistence.springboot.PersistenceAutoConfiguration;
+import io.micrc.core.persistence.springboot.PersistenceAutoRunner;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -17,7 +17,7 @@ public class MachineNumberAliveSchedule {
     @SchedulerLock(name = "MachineNumberAliveSchedule")
     public void alive() {
         if (SnowFlakeIdentity.machineNumber >= 0) {
-            String key = PersistenceAutoConfiguration.MACHINE_NUMBER_KEY_PREFIX + SnowFlakeIdentity.machineNumber;
+            String key = PersistenceAutoRunner.MACHINE_NUMBER_KEY_PREFIX + SnowFlakeIdentity.machineNumber;
             redisTemplate.opsForValue().setIfPresent(key, "1", 5, TimeUnit.MINUTES);
         }
     }
