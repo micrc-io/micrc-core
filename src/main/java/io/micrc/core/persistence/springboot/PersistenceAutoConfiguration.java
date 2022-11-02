@@ -53,6 +53,7 @@ public class PersistenceAutoConfiguration {
         redisStandaloneConfiguration.setPort(port);
         redisStandaloneConfiguration.setPassword(RedisPassword.of(password));
         LettuceConnectionFactory factory = new LettuceConnectionFactory(redisStandaloneConfiguration);
+        factory.afterPropertiesSet();
         return factory;
     }
 
