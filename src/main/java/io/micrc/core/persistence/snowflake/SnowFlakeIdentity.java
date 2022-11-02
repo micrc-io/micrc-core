@@ -81,7 +81,7 @@ public class SnowFlakeIdentity {
             pastTimeStamp++;
             currentSequence = 0;
         }
-        while (pastTimeStamp > System.currentTimeMillis()) {
+        while (pastTimeStamp >= System.currentTimeMillis()) {
             // wait time go
         }
         return (pastTimeStamp - TIMESTAMP_DATUM) << MACHINE_NUMBER_BITS << SEQUENCE_BITS
