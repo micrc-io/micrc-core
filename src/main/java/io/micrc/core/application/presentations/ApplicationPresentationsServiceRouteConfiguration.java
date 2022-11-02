@@ -1,8 +1,6 @@
 package io.micrc.core.application.presentations;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.github.fge.jsonpatch.JsonPatch;
-import com.github.fge.jsonpatch.JsonPatchException;
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.lib.ClassCastUtils;
@@ -177,7 +175,7 @@ class IntegrationParams {
                 .findFirst().orElseThrow();
         // 标识该参数已成功
         find.setIntegrationComplete(true);
-        param = add(param, "/" + find.getConcept(), JsonUtil.writeValueAsString(body));
+        param = JsonUtil.add(param, "/" + find.getConcept(), JsonUtil.writeValueAsString(body));
         exchange.getProperties().put("param", param);
         exchange.getProperties().put("paramIntegrations", paramIntegrations);
     }
@@ -301,18 +299,5 @@ class IntegrationParams {
             throw new IllegalStateException(filePath + " file not found or can`t resolve...");
         }
         return fileContent.toString();
-    }
-
-
-    private static String add(String original, String path, String value) {
-        String patchCommand = "[{ \"op\": \"add\", \"path\": \"{{path}}\", \"value\": {{value}} }]";
-        try {
-            String pathReplaced = patchCommand.replace("{{path}}", path);
-            String valueReplaced = pathReplaced.replace("{{value}}", value);
-            JsonPatch patch = JsonPatch.fromJson(JsonUtil.readTree(valueReplaced));
-            return JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(original)));
-        } catch (IOException | JsonPatchException e) {
-            throw new RuntimeException("patch fail... please check object...");
-        }
     }
 }

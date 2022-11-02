@@ -1,7 +1,5 @@
 package io.micrc.core.application.derivations;
 
-import com.github.fge.jsonpatch.JsonPatch;
-import com.github.fge.jsonpatch.JsonPatchException;
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.core.rpc.LogicRequest;
@@ -211,7 +209,7 @@ class IntegrationParams {
         if (ParamIntegration.Type.OPERATE.equals(currentIntegrateType)) {
             value = TimeReplaceUtil.matchTimePathAndReplaceTime(timePathList, path, value, Long.class);
         }
-        param = add(param, path, value);
+        param = JsonUtil.add(param, path, value);
         exchange.getProperties().put("param", param);
         exchange.getProperties().put("paramIntegrations", paramIntegrations);
     }
@@ -318,18 +316,6 @@ class IntegrationParams {
             return method.invoke(repository, parameters.toArray());
         } catch (IllegalAccessException | InvocationTargetException | ClassNotFoundException e) {
             throw new RuntimeException(e);
-        }
-    }
-
-    private static String add(String original, String path, String value) {
-        String patchCommand = "[{ \"op\": \"add\", \"path\": \"{{path}}\", \"value\": {{value}} }]";
-        try {
-            String pathReplaced = patchCommand.replace("{{path}}", path);
-            String valueReplaced = pathReplaced.replace("{{value}}", value);
-            JsonPatch patch = JsonPatch.fromJson(JsonUtil.readTree(valueReplaced));
-            return JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(original)));
-        } catch (IOException | JsonPatchException e) {
-            throw new RuntimeException("patch fail... please check object...");
         }
     }
 }

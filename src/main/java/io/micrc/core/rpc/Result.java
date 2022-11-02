@@ -45,6 +45,7 @@ public class Result<T> {
         Result<T> result = new Result<>();
         if (null != error && StringUtils.hasText(error.getErrorCode())) {
             result.setCode(error.getErrorCode());
+            result.setMessage(error.getErrorMessage());
         }
         result.setData(data);
         return result;

@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.*;
 import com.fasterxml.jackson.databind.type.CollectionType;
+import com.github.fge.jsonpatch.JsonPatch;
+import com.github.fge.jsonpatch.JsonPatchException;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -158,6 +160,31 @@ public class JsonUtil {
             throw new UnsupportedOperationException(jsonNode.getClass().getName());
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public static String patch(String original, String path, String value) {
+        String patchCommand = "[{ \"op\": \"replace\", \"path\": \"{{path}}\", \"value\": {{value}} }]";
+
+        try {
+            String pathReplaced = patchCommand.replace("{{path}}", path);
+            String valueReplaced = pathReplaced.replace("{{value}}", value);
+            JsonPatch patch = JsonPatch.fromJson(JsonUtil.readTree(valueReplaced));
+            return JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(original)));
+        } catch (IOException | JsonPatchException e) {
+            throw new RuntimeException("patch fail... please check object...");
+        }
+    }
+
+    public static String add(String original, String path, String value) {
+        String patchCommand = "[{ \"op\": \"add\", \"path\": \"{{path}}\", \"value\": {{value}} }]";
+        try {
+            String pathReplaced = patchCommand.replace("{{path}}", path);
+            String valueReplaced = pathReplaced.replace("{{value}}", value);
+            JsonPatch patch = JsonPatch.fromJson(JsonUtil.readTree(valueReplaced));
+            return JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(original)));
+        } catch (IOException | JsonPatchException e) {
+            throw new RuntimeException("patch fail... please check object...");
         }
     }
 }

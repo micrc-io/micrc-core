@@ -108,12 +108,13 @@ public class MessageConsumeRouterExecution implements Ordered {
             }
             // 如果非已重复消息 转发至相应适配器
             Object resultObj = template.requestBody("message://" + messageDetail.get("region") + "Listener", eventMessage.getContent());
-            Result result = null;
+            Result<?> result = null;
             if(resultObj instanceof String){
                 result = JsonUtil.writeValueAsObjectRetainNull((String) resultObj, Result.class);
-            }
-            if(resultObj instanceof Result){
-                result = (Result) resultObj;
+            } else if(resultObj instanceof Result){
+                result = (Result<?>) resultObj;
+            } else {
+                return null;
             }
             if(StringUtils.hasText(result.getCode()) && !"200".equals(result.getCode())){
                 // 如果有异常 回滚事务 并应答失败进入死信

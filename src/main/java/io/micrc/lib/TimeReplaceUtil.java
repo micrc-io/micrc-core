@@ -1,9 +1,5 @@
 package io.micrc.lib;
 
-import com.github.fge.jsonpatch.JsonPatch;
-import com.github.fge.jsonpatch.JsonPatchException;
-
-import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -85,7 +81,7 @@ public class TimeReplaceUtil {
                 }
                 return o;
             }).collect(Collectors.toList());
-            return patch(outMapping, builder.toString(), JsonUtil.writeValueAsString(list));
+            return JsonUtil.patch(outMapping, builder.toString(), JsonUtil.writeValueAsString(list));
         } else if (isMap) {
             Map<String, Object> map = ClassCastUtils.castHashMap(JsonUtil.writeValueAsObject(current, Object.class), String.class, Object.class);
             map.forEach((k, v) -> {
@@ -93,7 +89,7 @@ public class TimeReplaceUtil {
                     map.put(k, JsonUtil.writeValueAsObject(replaceTime(JsonUtil.writeValueAsString(v), other, timeClass), Object.class));
                 }
             });
-            return patch(outMapping, builder.toString(), JsonUtil.writeValueAsString(map));
+            return JsonUtil.patch(outMapping, builder.toString(), JsonUtil.writeValueAsString(map));
         } else {
             Object time = JsonUtil.readPath(outMapping, builder.toString());
             String timeResult = null;
@@ -103,7 +99,7 @@ public class TimeReplaceUtil {
             } else {
                 timeResult = transTime2Long(time);
             }
-            return patch(outMapping, builder.toString(), timeResult);
+            return JsonUtil.patch(outMapping, builder.toString(), timeResult);
         }
     }
 
@@ -145,18 +141,5 @@ public class TimeReplaceUtil {
         ZonedDateTime zonedDateTime = ZonedDateTime.parse(o.toString(), formatter);
         Instant instant = zonedDateTime.toInstant();
         return String.valueOf(instant.toEpochMilli());
-    }
-
-    private static String patch(String original, String path, String value) {
-        String patchCommand = "[{ \"op\": \"replace\", \"path\": \"{{path}}\", \"value\": {{value}} }]";
-
-        try {
-            String pathReplaced = patchCommand.replace("{{path}}", path);
-            String valueReplaced = pathReplaced.replace("{{value}}", value);
-            JsonPatch patch = JsonPatch.fromJson(JsonUtil.readTree(valueReplaced));
-            return JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(original)));
-        } catch (IOException | JsonPatchException e) {
-            throw new RuntimeException("patch fail... please check object...");
-        }
     }
 }

@@ -46,12 +46,27 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
 
     @Override
     public void configureRoute() throws Exception {
-        // 拦截器检查commandJson里边有错误信息时直接处理并终止路由
-        intercept()
-                .when(exchange -> JsonUtil.readPath((String) exchange.getProperties().get("commandJson"), "/error/errorCode") != null)
-                .to("direct://commandAdapterResult") // 适配器层处理
-                .marshal().json().convertBodyTo(String.class) // REST返回
-                .stop();
+
+        // todo,事务回滚测试
+        // DMN检查错误
+        onException(IllegalStateException.class)
+                .handled(true)
+                .to("direct://commandAdapterResult")
+                .marshal().json().convertBodyTo(String.class);
+
+        // 其他错误
+        onException(Exception.class)
+                .setBody(exceptionMessage())
+                .process(exchange -> {
+                    ErrorInfo errorInfo = new ErrorInfo();
+                    errorInfo.setErrorCode("system error");
+                    errorInfo.setErrorMessage(exchange.getIn().getBody().toString());
+                    Object command = exchange.getProperties().get("commandJson");
+                    exchange.getIn().setBody(JsonUtil.patch((String) command, "/error", JsonUtil.writeValueAsString(errorInfo)));
+                })
+                .handled(true)
+                .to("direct://commandAdapterResult")
+                .marshal().json().convertBodyTo(String.class);
 
         routeTemplate(ROUTE_TMPL_BUSINESSES_SERVICE)
                 .templateParameter("serviceName", null, "the business service name")
@@ -281,19 +296,6 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
         protected String targetIdPath;
     }
 
-    private static String patch(String original, String path, String value) {
-        String patchCommand = "[{ \"op\": \"replace\", \"path\": \"{{path}}\", \"value\": {{value}} }]";
-
-        try {
-            String pathReplaced = patchCommand.replace("{{path}}", path);
-            String valueReplaced = pathReplaced.replace("{{value}}", value);
-            JsonPatch patch = JsonPatch.fromJson(JsonUtil.readTree(valueReplaced));
-            return JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(original)));
-        } catch (IOException | JsonPatchException e) {
-            throw new RuntimeException("patch fail... please check object...");
-        }
-    }
-
     @Data
     @SuperBuilder
     @NoArgsConstructor
@@ -365,17 +367,17 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
         public static void check(HashMap<String, Object> checkResult, Exchange exchange) {
             ErrorInfo errorInfo = new ErrorInfo();
             if (null == checkResult.get("checkResult")) {
-                errorInfo.setErrorCode("unknown");
-            }
-            if (!(Boolean) checkResult.get("checkResult")) {
+                errorInfo.setErrorCode("dmn error");
+            } else if (!(Boolean) checkResult.get("checkResult")) {
                 errorInfo.setErrorCode((String) checkResult.get("errorCode"));
             }
             if (null != errorInfo.getErrorCode()) {
-                String commandJson = patch((String) exchange.getProperties().get("commandJson"),
+                String commandJson = JsonUtil.patch((String) exchange.getProperties().get("commandJson"),
                         "/error",
                         JsonUtil.writeValueAsString(errorInfo));
                 exchange.getProperties().put("commandJson", commandJson);
                 exchange.getIn().setBody(commandJson);
+                throw new IllegalStateException(errorInfo.getErrorCode());
             }
         }
     }
@@ -422,37 +424,12 @@ class LogicInParamsResolve {
             String logicValue = JsonUtil.writeValueAsStringRetainNull(logicResult.get(key));
             logicValue = TimeReplaceUtil.matchTimePathAndReplaceTime(timePathList, path, logicValue, Long.class);
             try {
-                commandJson = patch(commandJson, path, logicValue);
+                commandJson = JsonUtil.patch(commandJson, path, logicValue);
             } catch (Exception e) {
-                commandJson = add(commandJson, path, logicValue);
+                commandJson = JsonUtil.add(commandJson, path, logicValue);
             }
         }
         return commandJson;
-    }
-
-    private String patch(String original, String path, String value) {
-        String patchCommand = "[{ \"op\": \"replace\", \"path\": \"{{path}}\", \"value\": {{value}} }]";
-
-        try {
-            String pathReplaced = patchCommand.replace("{{path}}", path);
-            String valueReplaced = pathReplaced.replace("{{value}}", value);
-            JsonPatch patch = JsonPatch.fromJson(JsonUtil.readTree(valueReplaced));
-            return JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(original)));
-        } catch (IOException | JsonPatchException e) {
-            throw new RuntimeException("patch fail... please check object...");
-        }
-    }
-
-    private static String add(String original, String path, String value) {
-        String patchCommand = "[{ \"op\": \"add\", \"path\": \"{{path}}\", \"value\": {{value}} }]";
-        try {
-            String pathReplaced = patchCommand.replace("{{path}}", path);
-            String valueReplaced = pathReplaced.replace("{{value}}", value);
-            JsonPatch patch = JsonPatch.fromJson(JsonUtil.readTree(valueReplaced));
-            return JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(original)));
-        } catch (IOException | JsonPatchException e) {
-            throw new RuntimeException("patch fail... please check object...");
-        }
     }
 }
 
@@ -509,24 +486,11 @@ class IntegrationCommandParams {
             body = JsonUtil.readPath((String) body, "/data");
         }
         log.info("业务已集成：{}，结果：{}", name, JsonUtil.writeValueAsString(body));
-        commandJson = patch(commandJson, unIntegrateParams.get(name).getObjectTreePath(), JsonUtil.writeValueAsString(body));
+        commandJson = JsonUtil.patch(commandJson, unIntegrateParams.get(name).getObjectTreePath(), JsonUtil.writeValueAsString(body));
         exchange.getProperties().put("commandJson", commandJson);
         unIntegrateParams.remove(name);
         exchange.getProperties().put("currentIntegrateParam", current);
         exchange.getProperties().put("unIntegrateParams", unIntegrateParams);
-    }
-
-    private static String patch(String original, String path, String value) {
-        String patchCommand = "[{ \"op\": \"replace\", \"path\": \"{{path}}\", \"value\": {{value}} }]";
-
-        try {
-            String pathReplaced = patchCommand.replace("{{path}}", path);
-            String valueReplaced = pathReplaced.replace("{{value}}", value);
-            JsonPatch patch = JsonPatch.fromJson(JsonUtil.readTree(valueReplaced));
-            return JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(original)));
-        } catch (IOException | JsonPatchException e) {
-            throw new RuntimeException("patch fail... please check object...");
-        }
     }
 
     /**
