@@ -96,7 +96,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .when(constant("").isEqualTo(simple("${exchange.properties.get(targetIdPath)}")))
                     .bean(SnowFlakeIdentity.class, "getInstance")
                     .bean(SnowFlakeIdentity.class, "nextId")
-                    .setHeader("path", constant("/source/embeddedIdentity/id"))
+                    .setHeader("path", constant("/source/identity/id"))
                     .setHeader("value", body())
                     .setBody(exchangeProperty("commandJson"))
                     .to("json-patch://add")
