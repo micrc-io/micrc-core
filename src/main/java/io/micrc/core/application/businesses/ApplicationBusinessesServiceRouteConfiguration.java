@@ -1,8 +1,6 @@
 package io.micrc.core.application.businesses;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.github.fge.jsonpatch.JsonPatch;
-import com.github.fge.jsonpatch.JsonPatchException;
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.CommandParamIntegration;
@@ -51,22 +49,12 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
         // DMN检查错误
         onException(IllegalStateException.class)
                 .handled(true)
-                .to("direct://commandAdapterResult")
-                .marshal().json().convertBodyTo(String.class);
+                .to("error-handle://command");
 
         // 其他错误
         onException(Exception.class)
-                .setBody(exceptionMessage())
-                .process(exchange -> {
-                    ErrorInfo errorInfo = new ErrorInfo();
-                    errorInfo.setErrorCode("system error");
-                    errorInfo.setErrorMessage(exchange.getIn().getBody().toString());
-                    Object command = exchange.getProperties().get("commandJson");
-                    exchange.getIn().setBody(JsonUtil.patch((String) command, "/error", JsonUtil.writeValueAsString(errorInfo)));
-                })
                 .handled(true)
-                .to("direct://commandAdapterResult")
-                .marshal().json().convertBodyTo(String.class);
+                .to("error-handle://system");
 
         routeTemplate(ROUTE_TMPL_BUSINESSES_SERVICE)
                 .templateParameter("serviceName", null, "the business service name")
@@ -338,36 +326,11 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
         private Map<String, String> enterMappings;
     }
 
-    public static class TargetSourceClone {
-        // TODO 考虑仓库集成于衍生集成混杂的情况
-
-        public static final String sourcePatchString = "[{ \"op\": \"replace\", \"path\": \"/source\", \"value\": {{value}} }]";
-
-        public static final String targetPatchString = "[{ \"op\": \"replace\", \"path\": \"/target\", \"value\": {{value}} }]";
-
-        public static String clone(Object source, String commandJson) {
-            try {
-                String sourceReplacedJson = sourcePatchString.replace("{{value}}",
-                        JsonUtil.writeValueAsStringRetainNull(source));
-                String targetReplacedJson = targetPatchString.replace("{{value}}",
-                        JsonUtil.writeValueAsStringRetainNull(source));
-                // 先用jsonPatch更新指令
-                JsonPatch sourcePatch = JsonPatch.fromJson(JsonUtil.readTree(sourceReplacedJson));
-                JsonNode sourceReplacedApply = sourcePatch.apply(JsonUtil.readTree(commandJson));
-                JsonPatch targetPatch = JsonPatch.fromJson(JsonUtil.readTree(targetReplacedJson));
-                JsonNode targetReplacedApply = targetPatch.apply(sourceReplacedApply);
-                return JsonUtil.writeValueAsStringRetainNull(targetReplacedApply);
-            } catch (IOException | JsonPatchException e) {
-                throw new RuntimeException("patch to source failed, please check Target is inited?...");
-            }
-        }
-    }
-
     public static class ResultCheck {
         public static void check(HashMap<String, Object> checkResult, Exchange exchange) {
             ErrorInfo errorInfo = new ErrorInfo();
             if (null == checkResult.get("checkResult")) {
-                errorInfo.setErrorCode("dmn error");
+                errorInfo.setErrorCode("888888888");
             } else if (!(Boolean) checkResult.get("checkResult")) {
                 errorInfo.setErrorCode((String) checkResult.get("errorCode"));
             }

@@ -32,6 +32,11 @@ public class ApplicationCommandAdapterRouteConfiguration extends MicrcRouteBuild
     @Override
     public void configureRoute() throws Exception {
 
+        // 其他错误
+        onException(Exception.class)
+                .handled(true)
+                .to("error-handle://system");
+
         routeTemplate(ROUTE_TMPL_BUSINESSES_ADAPTER)
                 .templateParameter("name", null, "the adapter name")
                 .templateParameter("serviceName", null, "the business service name")

@@ -22,6 +22,11 @@ public class DerivationsAdapterRouteConfiguration extends MicrcRouteBuilder {
     @Override
     public void configureRoute() throws Exception {
 
+        // 其他错误
+        onException(Exception.class)
+                .handled(true)
+                .to("error-handle://system");
+
         routeTemplate(ROUTE_TMPL_DERIVATIONS_ADAPTER)
                 .templateParameter("name", null, "the derivations adapter name")
                 .templateParameter("serviceName", null, "the derivations service name")

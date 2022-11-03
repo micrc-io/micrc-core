@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.github.fge.jsonpatch.JsonPatch;
 import com.schibsted.spt.data.jslt.Expression;
 import com.schibsted.spt.data.jslt.Parser;
+import io.micrc.core.rpc.ErrorInfo;
+import io.micrc.core.rpc.Result;
 import io.micrc.lib.JsonUtil;
 import lombok.SneakyThrows;
 import org.apache.camel.RoutesBuilder;
@@ -105,6 +107,43 @@ public class CamelComponentTempConfiguration {
                             JsonPatch patch = JsonPatch.fromJson(JsonUtil.readTree(valueReplaced));
                             exchange.getIn().setBody(JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(exchange.getIn().getBody()))));
                         })
+                        .end();
+            }
+        };
+    }
+
+    @Bean("error-handle")
+    public DirectComponent errorHandle() {
+        return new DirectComponent();
+    }
+
+    @Bean
+    public RoutesBuilder routersBuilder() {
+        return new RouteBuilder() {
+            @Override
+            public void configure() {
+                from("error-handle://system")
+                        .setBody(exceptionMessage())
+                        .process(exchange -> {
+                            log.error(exchange.getIn().getBody(String.class));
+                            ErrorInfo errorInfo = new ErrorInfo();
+                            errorInfo.setErrorCode("999999999");
+                            errorInfo.setErrorMessage("system error");
+                            exchange.getIn().setBody(new Result<>().result(errorInfo, null));
+                        })
+                        .marshal().json().convertBodyTo(String.class)
+                        .end();
+
+                from("error-handle://command")
+                        .process(exchange -> {
+                            log.error(exchange.getIn().getBody(String.class));
+                            ErrorInfo errorInfo = new ErrorInfo();
+                            errorInfo.setErrorCode("888888888");
+                            errorInfo.setErrorMessage("command error");
+                            String body = exchange.getIn().getBody(String.class);
+                            exchange.getIn().setBody(new Result<>().result(errorInfo, JsonUtil.writeValueAsObject(body, Object.class)));
+                        })
+                        .marshal().json().convertBodyTo(String.class)
                         .end();
             }
         };

@@ -49,6 +49,12 @@ public class ApplicationPresentationsServiceRouteConfiguration extends MicrcRout
      */
     @Override
     public void configureRoute() throws Exception {
+
+        // 其他错误
+        onException(Exception.class)
+                .handled(true)
+                .to("error-handle://system");
+
         routeTemplate(ROUTE_TMPL_PRESENTATIONS_SERVICE)
                 // 设置模板参数
                 .templateParameter("serviceName", null, "the presentations service name")
