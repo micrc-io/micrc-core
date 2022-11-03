@@ -13,6 +13,7 @@ import org.apache.camel.Exchange;
 import org.apache.camel.ExchangeProperties;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.util.StringUtils;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -291,6 +292,10 @@ class IntegrationParams {
      * @return
      */
     private static String fileReader(String filePath) {
+        if (!StringUtils.hasText(filePath) ||
+                (!filePath.endsWith(".xml") && !filePath.endsWith(".yaml") && !filePath.endsWith(".json"))) {
+            throw new RuntimeException("the openapi protocol file invalid...");
+        }
         StringBuilder fileContent = new StringBuilder();
         try {
             InputStream stream = Thread.currentThread().getContextClassLoader().getResourceAsStream(filePath);

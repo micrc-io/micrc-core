@@ -46,6 +46,10 @@ public class ClassPathRestEndpointScannerRegistrar implements ImportBeanDefiniti
     private ResourceLoader resourceLoader;
 
     public static String fileReader(String filePath) throws FileNotFoundException {
+        if (!StringUtils.hasText(filePath) ||
+                (!filePath.endsWith(".xml") && !filePath.endsWith(".yaml") && !filePath.endsWith(".json"))) {
+            throw new RuntimeException("the openapi protocol file invalid...");
+        }
         StringBuffer fileContent = new StringBuffer();
         try {
             InputStream stream = Thread.currentThread().getContextClassLoader()

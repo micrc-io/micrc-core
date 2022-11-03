@@ -19,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangeProperties;
 import org.apache.camel.support.ExpressionAdapter;
+import org.springframework.util.StringUtils;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -514,6 +515,10 @@ class IntegrationCommandParams {
      * @return
      */
     private static String fileReader(String filePath) {
+        if (!StringUtils.hasText(filePath) ||
+                (!filePath.endsWith(".xml") && !filePath.endsWith(".yaml") && !filePath.endsWith(".json"))) {
+            throw new RuntimeException("the openapi protocol file invalid...");
+        }
         StringBuffer fileContent = new StringBuffer();
         try {
             InputStream stream = Thread.currentThread().getContextClassLoader()

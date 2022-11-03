@@ -24,6 +24,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.core.type.StandardAnnotationMetadata;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
+import org.springframework.util.StringUtils;
 
 import java.io.*;
 import java.lang.reflect.Field;
@@ -160,6 +161,10 @@ public class RpcMockServerScannerRegistrar implements ImportBeanDefinitionRegist
         }
 
         private String fileReader(String filePath) throws FileNotFoundException {
+            if (!StringUtils.hasText(filePath) ||
+                    (!filePath.endsWith(".xml") && !filePath.endsWith(".yaml") && !filePath.endsWith(".json"))) {
+                throw new RuntimeException("the openapi protocol file invalid...");
+            }
             StringBuffer fileContent = new StringBuffer();
             try {
                 InputStream stream = Thread.currentThread().getContextClassLoader()
