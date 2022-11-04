@@ -181,16 +181,13 @@ class ApplicationDerivationsServiceScanner extends ClassPathBeanDefinitionScanne
         Arrays.stream(queryLogics).forEach(logic -> {
             Map<String, String> paramPath = new HashMap<>();
             // 解析查询参数
-            StringBuilder queryParam = new StringBuilder();
             Arrays.stream(logic.params()).forEach(param -> {
-                queryParam.append("And").append(param.belongConcept());
-                paramPath.put(param.belongConcept(), param.path());
+                paramPath.put(param.toString(), param.path());
             });
-            String methodName = queryParam.length() > 0 ? "findBy" + queryParam.substring(3) : "findBy";
             // 解析排序参数
             Map<String, String> sortParam = Arrays.stream(logic.sorts())
                     .collect(Collectors.toMap(i -> lowerStringFirst(i.belongConcept()), i -> i.type().name()));
-            paramIntegrations.add(new ParamIntegration(logic.name(), lowerStringFirst(logic.aggregation()), methodName,
+            paramIntegrations.add(new ParamIntegration(logic.name(), lowerStringFirst(logic.aggregation()), logic.methodName(),
                     paramPath, sortParam, logic.pageSizePath(), logic.pageNumberPath(), logic.order()));
         });
         // 运算解析
