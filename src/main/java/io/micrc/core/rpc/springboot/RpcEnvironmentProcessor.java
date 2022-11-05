@@ -52,9 +52,14 @@ public class RpcEnvironmentProcessor implements EnvironmentPostProcessor {
         if (profiles.contains("default") || profiles.contains("local")) {
             envForApidoc(properties);
         }
+        envForMockServer(properties);
 
         PropertiesPropertySource source = new PropertiesPropertySource(RPC_ENV_NAME, properties);
         environment.getPropertySources().addLast(source);
+    }
+
+    private void envForMockServer(Properties properties) {
+        properties.setProperty("logging.level.org.mockserver", "WARN");
     }
 
     private void envForApidoc(Properties properties) {
