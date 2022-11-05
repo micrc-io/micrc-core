@@ -225,7 +225,6 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
                             .batchPropertyPath(batchPropertyPath.get())
                             .serviceName(serviceName)
                             .logicName(logicName)
-                            .aggregationName(aggregationName)
                             .repositoryName(repositoryName)
                             .aggregationPath(aggregationPath)
                             .logicName(logicName)

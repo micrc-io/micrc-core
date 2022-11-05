@@ -61,28 +61,53 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .templateParameter("serviceName", null, "the business service name")
                 .templateParameter("logicName", null, "the logicName")
                 .templateParameter("commandParamIntegrationsJson", null, "the command integration params")
-                .templateParameter("aggregationName", null, "the aggregation name")
                 .templateParameter("repositoryName", null, "the repositoryName name")
                 .templateParameter("aggregationPath", null, "the aggregation full path")
-                .templateParameter("logicName", null, "the logicName")
                 .templateParameter("logicIntegrationJson", null, "the logic integration params")
                 .templateParameter("embeddedIdentityFullClassName", null, "embedded identity full class name")
                 .templateParameter("timePathsJson", null, "time path list json")
                 .templateParameter("targetIdPath", null, "target id path")
+                .templateParameter("batchPropertyPath", null, "batch property path")
                 .from("businesses:{{serviceName}}")
-                .transacted()
-                // 0 暂存入参
-                .marshal().json().convertBodyTo(String.class)
-                .setProperty("commandJson", body())
-                // 1 分发集成
                 .setProperty("repositoryName", simple("{{repositoryName}}"))
                 .setProperty("embeddedIdentityFullClassName", simple("{{embeddedIdentityFullClassName}}"))
                 .setProperty("commandParamIntegrationsJson", simple("{{commandParamIntegrationsJson}}"))
-                .dynamicRouter(method(IntegrationCommandParams.class, "integrate"))
-                // 是否需要赋值ID
                 .setProperty("targetIdPath", simple("{{targetIdPath}}"))
+                .setProperty("logicName", simple("{{logicName}}"))
+                .setProperty("batchPropertyPath", simple("{{batchPropertyPath}}"))
+                .setProperty("aggregationPath", simple("{{aggregationPath}}"))
+                .setProperty("logicIntegrationJson").groovy("new String(java.util.Base64.getDecoder().decode('{{logicIntegrationJson}}'))")
+                .setProperty("timePathsJson", simple("{{timePathsJson}}"))
+                .transacted()
+                // 1 处理请求
+                .to("direct://handle-request")
+                // 2 动态集成
+                .to("direct://dynamic-integration")
+                // 3 复制资源
+                .to("direct://copy-source")
+                // 4 解析时间
+                .to("direct://parse-time")
+                // 5 执行逻辑
+                .to("logic://logic-execute")
+                // 6 存储实体
+                .to("direct://save-entity")
+                // 7 存储消息
+                .to("direct://save-message")
+                // 8 处理结果
+                .to("direct://handle-result")
+                .end();
+
+        from("direct://handle-request")
+                .marshal().json().convertBodyTo(String.class)
+                .setProperty("commandJson", body());
+
+        from("direct://handle-result")
+                .setBody(exchangeProperty("commandJson"));
+
+        from("direct://dynamic-integration")
+                .dynamicRouter(method(IntegrationCommandParams.class, "integrate"))
                 .choice()
-                .when(constant("").isEqualTo(simple("${exchange.properties.get(targetIdPath)}")))
+                    .when(constant("").isEqualTo(simple("${exchange.properties.get(targetIdPath)}")))
                     .bean(SnowFlakeIdentity.class, "getInstance")
                     .bean(SnowFlakeIdentity.class, "nextId")
                     .setHeader("path", constant("/source/identity/id"))
@@ -90,8 +115,18 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                     .setBody(exchangeProperty("commandJson"))
                     .to("json-patch://add")
                     .setProperty("commandJson", body())
-                .end()
-                // 2 复制source到target
+                .end();
+
+        from("direct://parse-time")
+                .setBody(exchangeProperty("timePathsJson"))
+                .process(exchange -> {
+                    List<String[]> timePaths = JsonUtil.writeValueAsList(exchange.getIn().getBody(String.class), String.class)
+                            .stream().map(i -> i.split("/")).collect(Collectors.toList());
+                    exchange.getIn().setBody(timePaths);
+                })
+                .setProperty("timePaths", body());
+
+        from("direct://copy-source")
                 .setBody(exchangeProperty("commandJson"))
                 .setHeader("pointer", constant("/source"))
                 .to("json-patch://select")
@@ -100,44 +135,31 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .setHeader("value", body())
                 .setBody(exchangeProperty("commandJson"))
                 .to("json-patch://patch")
-                .setProperty("commandJson", body())
-                // 处理时间路径
-                .setBody(simple("{{timePathsJson}}"))
-                .process(exchange -> {
-                    exchange.getIn().setBody(JsonUtil.writeValueAsList(exchange.getIn().getBody(String.class), String.class)
-                            .stream().map(i -> i.split("/")).collect(Collectors.toList()));
+                .setProperty("commandJson", body());
 
-                })
-                .setProperty("timePaths", body())
-                // 2 执行逻辑
-                .setProperty("logicName", simple("{{logicName}}"))
-                .setProperty("logicIntegrationJson").groovy("new String(java.util.Base64.getDecoder().decode('{{logicIntegrationJson}}'))")
-                .setBody(exchangeProperty("commandJson"))
-                .to("logic://logic-execute")
-                // TODO 仓库集成抽进repository路由内部
+        from("direct://save-entity")
                 .setBody(exchangeProperty("commandJson"))
                 .setHeader("pointer", constant("/target"))
                 .to("json-patch://select")
                 .marshal().json().convertBodyTo(String.class)
-                .setHeader("CamelJacksonUnmarshalType").simple("{{aggregationPath}}")
+                .setHeader("CamelJacksonUnmarshalType").exchangeProperty("aggregationPath")
                 .to("dataformat:jackson:unmarshal?allow-unmarshall-type=true")
                 .removeHeader("pointer")
-                .toD("bean://${exchange.properties.get(repositoryName)}?method=save")
-                // TODO 仓库集成抽进repository路由内部 END
-                // 3 消息存储
+                .toD("bean://${exchange.properties.get(repositoryName)}?method=save");
+
+        from("direct://save-message")
                 .setBody(exchangeProperty("commandJson"))
                 .setHeader("pointer", constant("/event/eventName"))
                 .to("json-patch://select")
                 .setProperty("eventName", body())
                 .setBody(exchangeProperty("commandJson"))
-                .setProperty("batchPropertyPath", simple("{{batchPropertyPath}}"))
                 .choice()
                 .when(simple("${exchange.properties.get(eventName)}").isNull())
                     // nothing to do
-                .endChoice()
+                    .endChoice()
                 .when(constant("").isEqualTo(simple("${exchange.properties.get(batchPropertyPath)}")))
                     .to("eventstore://store")
-                .endChoice()
+                    .endChoice()
                 .otherwise()
                     .setHeader("pointer", constant("/event/eventBatchData"))
                     .to("json-patch://select")
@@ -148,10 +170,8 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                         .setBody(exchangeProperty("commandJson"))
                         .to("json-patch://add")
                         .to("eventstore://store")
-                    .end()
-                .endChoice()
-                .end()
-                .setBody(exchangeProperty("commandJson"))
+                        .end()
+                    .endChoice()
                 .end();
 
         from("direct://integration-params")
@@ -177,6 +197,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .end();
 
         from("logic://logic-execute")
+                .setBody(exchangeProperty("commandJson"))
                 // 2.1 执行前置校验
                 .setHeader("logic", simple("${exchange.properties.get(logicName)}/before"))
                 .bean(LogicRequest.class, "request")
@@ -243,11 +264,6 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
          * 执行逻辑名(截取Command的一部分) - 内部获取
          */
         protected String logicName;
-
-        /**
-         * 聚合名称 - 内部获取
-         */
-        protected String aggregationName;
 
         /**
          * 资源库名称 - 内部获取
