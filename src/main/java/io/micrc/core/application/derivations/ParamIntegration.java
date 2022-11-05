@@ -66,6 +66,16 @@ public class ParamIntegration {
     private String logicName;
 
     /**
+     * 路由内容路径
+     */
+    private String routeContentPath;
+
+    /**
+     * 路由ID路径
+     */
+    private String routeIdPath;
+
+    /**
      * 该参数是否已经集成
      */
     private Boolean integrationComplete = false;
@@ -80,11 +90,12 @@ public class ParamIntegration {
      */
     private Type type;
 
-    public ParamIntegration(String concept, HashMap<String, String> queryParams, int order, String routePath) {
+    public ParamIntegration(String concept, HashMap<String, String> queryParams, int order, String routeContentPath, String routeIdPath) {
         this.concept = concept;
         this.queryParams = queryParams;
         this.order = order;
-        this.logicName = routePath;
+        this.routeContentPath = routeContentPath;
+        this.routeIdPath = routeIdPath;
         this.type = Type.EXECUTE;
     }
 

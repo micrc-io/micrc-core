@@ -265,18 +265,18 @@ class IntegrationParams {
                 executableIntegrationInfo.put("logic", paramIntegration.getLogicName());
                 executableIntegrationInfo.put("params", JsonUtil.writeValueAsString(paramMap));
             } else if (ParamIntegration.Type.EXECUTE.equals(paramIntegration.getType())) {
-                Object content = JsonUtil.readPath(param, paramIntegration.getLogicName());
-                if (null == content) {
+                String routeContent = (String) JsonUtil.readPath(param, paramIntegration.getRouteContentPath());
+                if (null == routeContent) {
                     continue;
                 }
+                executableIntegrationInfo.put("routeContent", routeContent);
+                String routeId = (String) JsonUtil.readPath(param, paramIntegration.getRouteIdPath());
+                executableIntegrationInfo.put("routeId", routeId);
                 DocumentBuilder db = DocumentBuilderFactory.newInstance().newDocumentBuilder();
                 XPath xPath = XPathFactory.newInstance().newXPath();
-                Document document = db.parse(new ByteArrayInputStream(content.toString().getBytes()));
-                String routeId = ((Node) xPath.evaluate("/routes/route[1]/@id", document, XPathConstants.NODE)).getTextContent();
-                executableIntegrationInfo.put("routeId", routeId);
+                Document document = db.parse(new ByteArrayInputStream(routeContent.getBytes()));
                 String routeName = ((Node) xPath.evaluate("/routes/route[1]/from/@uri", document, XPathConstants.NODE)).getTextContent();
                 executableIntegrationInfo.put("routeName", routeName);
-                executableIntegrationInfo.put("routeContent", content.toString());
                 executableIntegrationInfo.put("params", JsonUtil.writeValueAsString(paramMap));
             }
             executableIntegrationInfo.put("name", paramIntegration.getConcept());

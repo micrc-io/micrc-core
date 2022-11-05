@@ -204,7 +204,7 @@ class ApplicationDerivationsServiceScanner extends ClassPathBeanDefinitionScanne
             Arrays.stream(execution.executeParams()).forEach(param -> {
                 map.put(param.name(), param.path());
             });
-            paramIntegrations.add(new ParamIntegration(execution.name(), map, execution.order(), execution.routePath()));
+            paramIntegrations.add(new ParamIntegration(execution.name(), map, execution.order(), execution.routeContentPath(), execution.routeIdPath()));
         });
         // 按照优先级排序
         paramIntegrations.sort(Comparator.comparing(ParamIntegration::getOrder));
