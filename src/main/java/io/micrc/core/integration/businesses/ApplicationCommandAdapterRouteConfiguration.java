@@ -41,12 +41,13 @@ public class ApplicationCommandAdapterRouteConfiguration extends MicrcRouteBuild
                 .templateParameter("name", null, "the adapter name")
                 .templateParameter("serviceName", null, "the business service name")
                 .templateParameter("commandPath", null, "the command full path")
-                .templateParameter("conceptionsJson", null, "the conceptions json")
+//                .templateParameter("conceptionsJson", null, "the conceptions json")
                 .from("command:{{name}}?exchangePattern=InOut")
                 .setProperty("commandPath", constant("{{commandPath}}"))
-                .setProperty("conceptionsJson", constant("{{conceptionsJson}}"))
+//                .setProperty("conceptionsJson", constant("{{conceptionsJson}}"))
                 .setProperty("paramsJson", body())
-                .dynamicRouter(method(AdapterParamsHandler.class, "convert"))
+//                .dynamicRouter(method(AdapterParamsHandler.class, "convert"))
+                .bean(AdapterParamsHandler.class, "convertCommand")
                 .setBody(exchangeProperty("command"))
                 .to("businesses://{{serviceName}}")
                 .to("direct://commandAdapterResult");
@@ -82,11 +83,20 @@ public class ApplicationCommandAdapterRouteConfiguration extends MicrcRouteBuild
 
         private String commandPath;
 
-        private String conceptionsJson;
+//        private String conceptionsJson;
     }
 }
 
 class AdapterParamsHandler {
+
+    public static void convertCommand(
+            @ExchangeProperties Map<String, Object> properties) throws ClassNotFoundException {
+        String paramsJson = (String) properties.get("paramsJson");
+        Class<?> commandClazz = Class.forName((String) properties.get("commandPath"));
+        Object commandInstance = JsonUtil.writeValueAsObject(paramsJson, commandClazz);
+        properties.put("command", commandInstance);
+    }
+
     public static String convert(
             Exchange exchange,
             @ExchangeProperties Map<String, Object> properties) throws ClassNotFoundException, NoSuchMethodException,

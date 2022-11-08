@@ -148,23 +148,23 @@ class ApplicationCommandAdapterScanner extends ClassPathBeanDefinitionScanner {
                 throw new MethodAdapterDesignException(" the application businesses adapter endpoint service interface " + commandAdapter.serviceName() + " method execute param only can use command and only one param. please check");
             }
             String commandPath = serviceMethodParameterTypes[0].getName();
-            Conception[] conceptionAnnotations = commandAdapter.conceptions();
-            List<ConceptionParam> conceptions = new ArrayList<>();
-            Arrays.stream(conceptionAnnotations).forEach(conceptionAnnotation -> {
-                String commandInnerName = "";
-                if (commandInnerName.equals(conceptionAnnotation.commandInnerName())) {
-                    commandInnerName = conceptionAnnotation.name();
-                } else {
-                    commandInnerName = conceptionAnnotation.commandInnerName();
-                }
-                ConceptionParam conceptionParam = new ConceptionParam();
-                conceptionParam.setName(conceptionAnnotation.name());
-                conceptionParam.setCommandInnerName(commandInnerName);
-                conceptionParam.setOrder(conceptionAnnotation.order());
-                conceptionParam.setTargetConceptionMappingPath(conceptionAnnotation.targetConceptionMappingPath());
-                conceptionParam.setResolved(false);
-                conceptions.add(conceptionParam);
-            });
+//            Conception[] conceptionAnnotations = commandAdapter.conceptions();
+//            List<ConceptionParam> conceptions = new ArrayList<>();
+//            Arrays.stream(conceptionAnnotations).forEach(conceptionAnnotation -> {
+//                String commandInnerName = "";
+//                if (commandInnerName.equals(conceptionAnnotation.commandInnerName())) {
+//                    commandInnerName = conceptionAnnotation.name();
+//                } else {
+//                    commandInnerName = conceptionAnnotation.commandInnerName();
+//                }
+//                ConceptionParam conceptionParam = new ConceptionParam();
+//                conceptionParam.setName(conceptionAnnotation.name());
+//                conceptionParam.setCommandInnerName(commandInnerName);
+//                conceptionParam.setOrder(conceptionAnnotation.order());
+//                conceptionParam.setTargetConceptionMappingPath(conceptionAnnotation.targetConceptionMappingPath());
+//                conceptionParam.setResolved(false);
+//                conceptions.add(conceptionParam);
+//            });
             sourceDefinition.addParameter(
                     routeId(beanDefinition.getBeanClass().getSimpleName()),
                     ApplicationCommandAdapterRouteConfiguration.ApplicationCommandRouteTemplateParamDefinition.builder()
@@ -172,7 +172,7 @@ class ApplicationCommandAdapterScanner extends ClassPathBeanDefinitionScanner {
                             .name(name)
                             .serviceName(serviceName)
                             .commandPath(commandPath)
-                            .conceptionsJson(JsonUtil.writeValueAsString(conceptions))
+//                            .conceptionsJson(JsonUtil.writeValueAsString(conceptions))
                             .build());
         }
         holders.clear();
