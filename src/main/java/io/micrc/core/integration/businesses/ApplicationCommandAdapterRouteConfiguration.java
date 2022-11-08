@@ -145,18 +145,13 @@ class AdapterParamsHandler {
         properties.put("currentResolveParam", conceptionParam.getName());
         String body = JsonUtil.readTree(paramsJson).at("/" + conceptionParam.getName()).toString();
         exchange.getIn().setHeader("mappingFilePath", conceptionParam.getTargetConceptionMappingPath());
-        return "bean://io.micrc.core.integration.businesses.BodyHandler?method=getBody(" + body + "), json-mapping://file";
+        exchange.getIn().setBody(body);
+        return "json-mapping://file";
     }
 
     private static String upperStringFirst(String str) {
         char[] strChars = str.toCharArray();
         strChars[0] -= 32;
         return String.valueOf(strChars);
-    }
-}
-
-class BodyHandler {
-    public static String getBody(String body) {
-        return body;
     }
 }

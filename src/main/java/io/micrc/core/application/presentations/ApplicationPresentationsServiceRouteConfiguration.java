@@ -166,6 +166,9 @@ class IntegrationParams {
             body = new String((byte[]) body);
         }
         String param = (String) properties.get("param");
+        if (null == param) {
+            param = "{}";
+        }
         Map<String, Object> current = ClassCastUtils.castHashMap(properties.get("current"), String.class, Object.class);
         String name = (String) current.get("name");
         ParamIntegration.Type currentIntegrateType = (ParamIntegration.Type) current.get("type");
