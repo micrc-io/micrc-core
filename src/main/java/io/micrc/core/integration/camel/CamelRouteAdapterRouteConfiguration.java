@@ -17,7 +17,9 @@ public class CamelRouteAdapterRouteConfiguration extends MicrcRouteBuilder {
 
     @Override
     public void configureRoute() throws Exception {
-
+        onException(Exception.class)
+                .handled(false)
+                .end();
         // TODO 要替换脚本里的routeId
         from("camel-route://execute")
                 .routeId("camel-route")
