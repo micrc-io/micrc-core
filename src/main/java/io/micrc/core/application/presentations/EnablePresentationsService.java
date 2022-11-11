@@ -23,7 +23,8 @@ import java.lang.annotation.Target;
 @Import({
         ClassPathPresentationsServiceScannerRegistrar.class,
         PresentationsServiceAutoConfiguration.class,
-        ApplicationPresentationsServiceRouteConfiguration.class})
+        ApplicationPresentationsServiceRouteConfiguration.class,
+        PresentationsServiceRouterExecution.class})
 public @interface EnablePresentationsService {
 
     /**
