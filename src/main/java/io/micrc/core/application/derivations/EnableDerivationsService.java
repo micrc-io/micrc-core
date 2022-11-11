@@ -23,7 +23,9 @@ import java.lang.annotation.Target;
 @Import({
         ClassPathDerivationsServiceScannerRegistrar.class,
         DerivationsServiceAutoConfiguration.class,
-        ApplicationDerivationsServiceRouteConfiguration.class})
+        ApplicationDerivationsServiceRouteConfiguration.class,
+        DerivationsServiceRouterExecution.class
+})
 public @interface EnableDerivationsService {
 
     /**
