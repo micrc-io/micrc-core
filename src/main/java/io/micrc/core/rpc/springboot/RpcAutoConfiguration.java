@@ -5,14 +5,20 @@ import org.apache.camel.RoutesBuilder;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.direct.DirectComponent;
 import org.apache.camel.component.rest.RestComponent;
+import org.apache.camel.component.rest.openapi.RestOpenApiComponent;
 import org.apache.camel.component.rest.openapi.springboot.RestOpenApiComponentAutoConfiguration;
 import org.apache.camel.component.rest.springboot.RestComponentAutoConfiguration;
+import org.apache.camel.support.jsse.SSLContextParameters;
+import org.apache.camel.support.jsse.TrustManagersParameters;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Profile;
 
+import javax.net.ssl.X509TrustManager;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.Map;
 
 /**
@@ -53,6 +59,38 @@ public class RpcAutoConfiguration {
         };
     }
 
+    @Bean("rest-openapi-ssl")
+    public RestOpenApiComponent restOpenapiSSlComponent() {
+        RestOpenApiComponent component = new RestOpenApiComponent();
+        component.setComponentName("undertow");
+        // 设置信任全部证书
+        SSLContextParameters parameters = new SSLContextParameters();
+        TrustManagersParameters trustManagersParameters = new TrustManagersParameters();
+        trustManagersParameters.setTrustManager(new TrustALLManager());
+        parameters.setTrustManagers(trustManagersParameters);
+        component.setSslContextParameters(parameters);
+        // 桥接错误
+        component.setBridgeErrorHandler(true);
+        return component;
+    }
+
+    private class TrustALLManager implements X509TrustManager {
+        @Override
+        public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+            // Do nothing
+        }
+
+        @Override
+        public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+            // Do nothing
+        }
+
+        @Override
+        public X509Certificate[] getAcceptedIssuers() {
+            return new X509Certificate[0];
+        }
+    }
+
     @Profile({"default", "local"})
     @Bean
     public RoutesBuilder rpcApiDocumentEndpoint() {
@@ -75,28 +113,4 @@ public class RpcAutoConfiguration {
             }
         };
     }
-
-//    @Bean
-//    public RoutesBuilder restDemo() {
-//        return new MicrcRouteBuilder() {
-//            @Override
-//            public void configureRoute() throws Exception {
-//                from("direct:test").log("rest test done.").setBody().constant("{}");
-//                from("timer:restDemo?delay=10000&repeatCount=1")
-//                        .log("starting restDemo...")
-//                        // .setBody().constant("test body")
-//                        .to("rest:get:/api/test?host=localhost:8080");
-//
-//                routeTemplate("restTestTemplate")
-//                        .templateParameter("verb")
-//                        .templateParameter("api-path")
-//                        .from("rest:{{verb}}:{{api-path}}")
-//                        .to("direct:test");
-//
-//                templatedRoute("restTestTemplate")
-//                        .parameter("verb", "get")
-//                        .parameter("api-path", "test");
-//            }
-//        };
-//    }
 }

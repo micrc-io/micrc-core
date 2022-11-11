@@ -31,7 +31,7 @@ public class DerivationsAdapterRouteConfiguration extends MicrcRouteBuilder {
                 .templateParameter("name", null, "the derivations adapter name")
                 .templateParameter("serviceName", null, "the derivations service name")
                 .from("operate:{{name}}")
-                .to("derivations:{{serviceName}}")
+                .toD("bean://{{serviceName}}?method=execute")
                 .unmarshal().json(Object.class)
                 .bean(Result.class, "result(${in.body})")
                 .end();

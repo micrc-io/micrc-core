@@ -31,7 +31,7 @@ public class PresentationsAdapterRouteConfiguration extends MicrcRouteBuilder {
                 .templateParameter("name", null, "the presentations adapter name")
                 .templateParameter("serviceName", null, "the presentations service name")
                 .from("query:{{name}}")
-                .to("presentations:{{serviceName}}")
+                .toD("bean://{{serviceName}}?method=execute")
                 .unmarshal().json(Object.class)
                 .bean(Result.class, "result(${in.body})")
                 .end();

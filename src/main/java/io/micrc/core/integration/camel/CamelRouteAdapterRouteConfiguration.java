@@ -30,6 +30,8 @@ public class CamelRouteAdapterRouteConfiguration extends MicrcRouteBuilder {
                     }
                 })
                 .toD("${header.from}")
+                .removeHeader("from")
+                .removeHeader("route")
                 .end();
     }
 }
