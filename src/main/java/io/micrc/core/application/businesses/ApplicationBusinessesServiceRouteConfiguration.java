@@ -385,29 +385,28 @@ class LogicInParamsResolve {
 
     public String toTargetParams(Map<String, Object> logicResult, String commandJson, String logicIntegrationJson, List<String[]> timePathList) {
         LogicIntegration logicIntegration = JsonUtil.writeValueAsObject(logicIntegrationJson, LogicIntegration.class);
-        for (String key : logicResult.keySet()) {
-            Object value = logicResult.get(key);
-            // 当值序列化后为对象的时候
-            if (value instanceof HashMap) {
-                Map<String, Object> valueMap = ClassCastUtils.castHashMap(value, String.class, Object.class);
-                logicResult.put(key, valueMap);
-                valueMap.keySet().forEach(innerKey -> {
-                    valueMap.put(innerKey, valueMap.get(innerKey));
-                });
+        String resultJson = JsonUtil.writeValueAsString(logicResult);
+        for (Map.Entry<String, String> entry : logicIntegration.getEnterMappings().entrySet()) {
+            String targetPath = entry.getKey();
+            String resultPath = entry.getValue();
+            Object value = JsonUtil.readPath(resultJson, resultPath.startsWith("/") ? resultPath : "/" + resultPath);
+            if (null == value) {
+                throw new RuntimeException(resultPath + " - the params can`t get value, please check the annotation.like integration annotation error or toTargetMappings annotation have error ");
             }
-            // TODO 当值序列化后为List的时候
-            logicResult.put(key, logicResult.get(key));
-            String path = logicIntegration.getEnterMappings().get(key);
-            if (null == path) {
-                continue;
+            // 补全所有目的路径不存在的节点
+            String[] split = targetPath.split("/");
+            String p = "";
+            for (int i = 1; i < split.length; i++) {
+                p = p + "/" + split[i];
+                Object o = JsonUtil.readPath(commandJson, p);
+                if (null == o) {
+                    commandJson = JsonUtil.add(commandJson, p, "{}");
+                }
             }
-            String logicValue = JsonUtil.writeValueAsStringRetainNull(logicResult.get(key));
-            logicValue = TimeReplaceUtil.matchTimePathAndReplaceTime(timePathList, path, logicValue, Long.class);
-            try {
-                commandJson = JsonUtil.patch(commandJson, path, logicValue);
-            } catch (Exception e) {
-                commandJson = JsonUtil.add(commandJson, path, logicValue);
-            }
+            // 替换目的路径上的真实值
+            String valueJson = JsonUtil.writeValueAsString(value);
+            valueJson = TimeReplaceUtil.matchTimePathAndReplaceTime(timePathList, targetPath, valueJson, Long.class);
+            commandJson = JsonUtil.patch(commandJson, targetPath, valueJson);
         }
         return commandJson;
     }

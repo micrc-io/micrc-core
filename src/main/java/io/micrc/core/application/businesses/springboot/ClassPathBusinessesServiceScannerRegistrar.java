@@ -172,10 +172,10 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
             Map<String, String> outMappingMap = new HashMap<>();
             Arrays.asList(logicMappings).forEach(logicMapping -> outMappingMap.put(logicMapping.name(), logicMapping.mapping()));
             Map<String, String> enterMappingMap = new HashMap<>();
-            enterMappingMap.put("event", "/event");
-            enterMappingMap.put("error", "/error");
-            enterMappingMap.put("state", "/target/state");
-            Arrays.stream(targetMappings).forEach(targetMapping -> enterMappingMap.put(targetMapping.name(), targetMapping.mapping()));
+            enterMappingMap.put("/event", "event");
+            enterMappingMap.put("/error", "error");
+            enterMappingMap.put("/target/state", "state");
+            Arrays.stream(targetMappings).forEach(targetMapping -> enterMappingMap.put(targetMapping.mapping(), targetMapping.name()));
             LogicIntegration logicIntegration = LogicIntegration.builder().enterMappings(enterMappingMap).outMappings(outMappingMap).build();
             // 获取Command身上的参数的服务集成注解
             List<CommandParamIntegration> commandParamIntegrations = new ArrayList<>();
