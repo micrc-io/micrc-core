@@ -372,7 +372,11 @@ class LogicInParamsResolve {
         Map<String, Object> logicParams = new HashMap<>();
         logicIntegration.getOutMappings().forEach((key, path) -> {
             // 原始结果
-            String outMapping = JsonUtil.readTree(commandJson).at(path).toString();
+            Object pathValue = JsonUtil.readPath(commandJson, path);
+            if (null == pathValue) {
+                return;
+            }
+            String outMapping = JsonUtil.writeValueAsString(pathValue);
             outMapping = TimeReplaceUtil.matchTimePathAndReplaceTime(timePathList, path, outMapping, String.class);
             Object value = JsonUtil.writeValueAsObject(outMapping, Object.class);
             if (null == value) {
@@ -391,7 +395,8 @@ class LogicInParamsResolve {
             String resultPath = entry.getValue();
             Object value = JsonUtil.readPath(resultJson, resultPath.startsWith("/") ? resultPath : "/" + resultPath);
             if (null == value) {
-                throw new RuntimeException(resultPath + " - the params can`t get value, please check the annotation.like integration annotation error or toTargetMappings annotation have error ");
+                continue;
+                // throw new RuntimeException(resultPath + " - the params can`t get value, please check the annotation.like integration annotation error or toTargetMappings annotation have error ");
             }
             // 补全所有目的路径不存在的节点
             String[] split = targetPath.split("/");
