@@ -83,6 +83,7 @@ public class MessageConsumeRouterExecution implements Ordered {
             consumed = template.requestBody("subscribe://idempotent-check", messageDetail, Boolean.class);
         } catch (IllegalStateException e) {
             log.info("the listener is init....");
+            Thread.sleep(5 * 1000);// 预留5秒等待CAMEL路由初始化完成
             channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, true);
             platformTransactionManager.rollback(transactionStatus);
             return null;
