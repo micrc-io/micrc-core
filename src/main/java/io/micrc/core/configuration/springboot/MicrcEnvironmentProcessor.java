@@ -1,11 +1,5 @@
 package io.micrc.core.configuration.springboot;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Properties;
-import java.util.stream.Collectors;
-
 import org.apache.commons.logging.Log;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.env.EnvironmentPostProcessor;
@@ -17,6 +11,12 @@ import org.springframework.core.env.PropertiesPropertySource;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.util.StringUtils;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Properties;
+import java.util.stream.Collectors;
 
 /**
  * micro 全局环境配置，读取自定义micrc.properties文件注入配置，处理profiles、banner等
@@ -48,7 +48,7 @@ public class MicrcEnvironmentProcessor implements EnvironmentPostProcessor {
             properties.setProperty("embedded.containers.enabled", "false");
         }
         envForKubernetes(profiles, properties);
-        envForActuator(profiles, properties);
+        //envForActuator(profiles, properties);
         envForGracefulShutdown(properties);
 
         // TODO 处理banner: springboot版本，micrc版本，应用版本；micrc logo，应用logo；当前profile及描述
