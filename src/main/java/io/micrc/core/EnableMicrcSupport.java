@@ -4,16 +4,16 @@ import io.micrc.core._camel.CamelComponentTempConfiguration;
 import io.micrc.core.application.EnableApplicationService;
 import io.micrc.core.cache.springboot.CacheAutoConfiguration;
 import io.micrc.core.configuration.springboot.EmbeddedServerLoggingApplicationRunner;
+import io.micrc.core.dynamic.springboot.DynamicExecutorAutoConfiguration;
 import io.micrc.core.integration.EnableIntegration;
 import io.micrc.core.message.springboot.ClassPathMessageScannerRegistrar;
 import io.micrc.core.message.springboot.MessageAutoConfiguration;
 import io.micrc.core.persistence.springboot.PersistenceAutoConfiguration;
 import io.micrc.core.rpc.springboot.ClassPathRestEndpointScannerRegistrar;
-import io.micrc.core.rpc.springboot.RpcMockServerAutoConfiguration;
 import io.micrc.core.rpc.springboot.RpcAutoConfiguration;
+import io.micrc.core.rpc.springboot.RpcMockServerAutoConfiguration;
 import io.micrc.core.rpc.springboot.RpcMockServerScannerRegistrar;
 import io.micrc.core.schedule.springboot.ScheduleAutoConfiguration;
-
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Import;
@@ -37,17 +37,18 @@ import java.lang.annotation.*;
 @EnableApplicationService
 @EnableIntegration
 @Import({
-    CamelComponentTempConfiguration.class,
-    EmbeddedServerLoggingApplicationRunner.class,
-    PersistenceAutoConfiguration.class,
-    CacheAutoConfiguration.class,
-    RpcAutoConfiguration.class,
-    ClassPathRestEndpointScannerRegistrar.class,
-    RpcMockServerScannerRegistrar.class,
-    RpcMockServerAutoConfiguration.class,
-    MessageAutoConfiguration.class,
-    ClassPathMessageScannerRegistrar.class,
-    ScheduleAutoConfiguration.class,
+        CamelComponentTempConfiguration.class,
+        EmbeddedServerLoggingApplicationRunner.class,
+        PersistenceAutoConfiguration.class,
+        CacheAutoConfiguration.class,
+        RpcAutoConfiguration.class,
+        ClassPathRestEndpointScannerRegistrar.class,
+        RpcMockServerScannerRegistrar.class,
+        RpcMockServerAutoConfiguration.class,
+        MessageAutoConfiguration.class,
+        ClassPathMessageScannerRegistrar.class,
+        ScheduleAutoConfiguration.class,
+        DynamicExecutorAutoConfiguration.class
 })
 public @interface EnableMicrcSupport {
     String[] basePackages() default {};

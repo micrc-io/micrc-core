@@ -1,7 +1,6 @@
 package io.micrc.core.integration;
 
 import io.micrc.core.integration.businesses.EnableCommandAdapter;
-import io.micrc.core.integration.camel.EnableCamelRouteAdapter;
 import io.micrc.core.integration.derivations.EnableDerivationsAdapter;
 import io.micrc.core.integration.message.EnableMessageAdapter;
 import io.micrc.core.integration.presentations.EnablePresentationsAdapter;
@@ -22,7 +21,6 @@ import java.lang.annotation.*;
 @EnableCommandAdapter
 @EnablePresentationsAdapter
 @EnableDerivationsAdapter
-@EnableCamelRouteAdapter
 public @interface EnableIntegration {
 
 }
