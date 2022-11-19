@@ -17,7 +17,7 @@ public class DynamicExecutorRouteConfiguration extends MicrcRouteBuilder {
                 .handled(false)
                 .end();
         /**
-        header: executeType 执行类型
+        header: executeType 执行类型 可选类型为DMN - ROUTE - JSLT
                 script 执行脚本
                 from 动态端点-仅针对ROUTE类型
                 decision 决策结果节点-仅针对DMN-默认为result
@@ -26,6 +26,7 @@ public class DynamicExecutorRouteConfiguration extends MicrcRouteBuilder {
                 .routeId("dynamic-executor-execute")
                 .choice()
                     .when(header("executeType").isEqualTo("DMN"))
+                        .setHeader("dmn", header("script"))
                         .to("dynamic-dmn://execute")
                     .when(header("executeType").isEqualTo("ROUTE"))
                         .setHeader("route", header("script"))
@@ -34,8 +35,14 @@ public class DynamicExecutorRouteConfiguration extends MicrcRouteBuilder {
                         .setHeader("mappingContent", header("script"))
                         .to("json-mapping://content")
                     .endChoice()
+                .end()
                 .removeHeader("executeType")
                 .removeHeader("script")
+                .removeHeader("decision")
+                .removeHeader("dmn")
+                .removeHeader("from")
+                .removeHeader("route")
+                .removeHeader("mappingContent")
                 .end();
     }
 }

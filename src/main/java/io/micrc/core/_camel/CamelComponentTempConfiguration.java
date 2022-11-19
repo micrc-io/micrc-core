@@ -26,7 +26,15 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.util.ResourceUtils;
 import org.springframework.util.StreamUtils;
 import org.springframework.util.StringUtils;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathFactory;
+import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Optional;
@@ -43,27 +51,6 @@ public class CamelComponentTempConfiguration {
 
     @Autowired
     private JITDMNService jitdmnService;
-
-    @Bean("json-patch")
-    public DirectComponent jsonPatch() {
-        return new DirectComponent();
-    }
-
-    @Bean("json-mapping")
-    public DirectComponent jsonMapping() {
-        return new DirectComponent();
-    }
-
-    @Bean("dynamic-dmn")
-    public DirectComponent dynamicDmn() {
-        return new DirectComponent();
-    }
-
-    @Bean("dynamic-route")
-    public DirectComponent dynamicRoute() {
-        return new DirectComponent();
-    }
-
 
     @Bean
     public RoutesBuilder jsonMappingComp() {
@@ -93,6 +80,28 @@ public class CamelComponentTempConfiguration {
                             JsonNode resultNode = expression.apply(JsonUtil.readTree(exchange.getIn().getBody()));
                             exchange.getIn().setBody(JsonUtil.writeValueAsStringRetainNull(resultNode));
                             exchange.getIn().removeHeader("mappingContent");
+                        })
+                        .end();
+            }
+        };
+    }
+
+    @Bean
+    public RoutesBuilder xmlPathComp() {
+        return new RouteBuilder() {
+            @Override
+            @SneakyThrows
+            public void configure() throws Exception {
+                from("xml-path://content")
+                        .routeId("xml-path-content")
+                        .process(exchange -> {
+                            String path = exchange.getIn().getHeader("path", String.class);
+                            String body = exchange.getIn().getBody(String.class);
+                            DocumentBuilder db = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+                            XPath xPath = XPathFactory.newInstance().newXPath();
+                            Document document = db.parse(new ByteArrayInputStream(body.getBytes()));
+                            String result = ((Node) xPath.evaluate(path, document, XPathConstants.NODE)).getTextContent();
+                            exchange.getIn().setBody(result);
                         })
                         .end();
             }
@@ -135,10 +144,10 @@ public class CamelComponentTempConfiguration {
                             String dmn = exchange.getIn().getHeader("dmn", String.class);
                             String decision = exchange.getIn().getHeader("decision", String.class);
                             String context = exchange.getIn().getBody(String.class);
-                            if(!StringUtils.hasText(dmn)){
+                            if (!StringUtils.hasText(dmn)) {
                                 throw new RuntimeException("the dmn script not have value, please check dmn....");
                             }
-                            if(!StringUtils.hasText(decision)){
+                            if (!StringUtils.hasText(decision)) {
                                 decision = "result"; // 当不传入取那个结果的时候,默认用result的决策节点
                             }
                             JITDMNResult jitdmnResult = jitdmnService.evaluateModel(dmn, JsonUtil.writeValueAsObjectRetainNull(context, Map.class));

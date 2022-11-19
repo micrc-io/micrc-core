@@ -1,6 +1,6 @@
 package io.micrc.core;
 
-import io.micrc.core._camel.CamelComponentTempConfiguration;
+import io.micrc.core._camel.springboot.CustomCamelComponentAutoConfiguration;
 import io.micrc.core.application.EnableApplicationService;
 import io.micrc.core.cache.springboot.CacheAutoConfiguration;
 import io.micrc.core.configuration.springboot.EmbeddedServerLoggingApplicationRunner;
@@ -37,7 +37,7 @@ import java.lang.annotation.*;
 @EnableApplicationService
 @EnableIntegration
 @Import({
-        CamelComponentTempConfiguration.class,
+        CustomCamelComponentAutoConfiguration.class,
         EmbeddedServerLoggingApplicationRunner.class,
         PersistenceAutoConfiguration.class,
         CacheAutoConfiguration.class,
