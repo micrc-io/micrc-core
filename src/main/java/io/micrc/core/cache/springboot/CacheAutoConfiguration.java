@@ -14,6 +14,7 @@ import org.springframework.cache.interceptor.KeyGenerator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.core.env.Environment;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.cache.RedisCacheManager.RedisCacheManagerBuilder;
@@ -52,6 +53,9 @@ import io.micrc.core.cache.layering.CustomizeRedisCache;
 public class CacheAutoConfiguration {
 
     @Autowired
+    Environment environment;
+
+    @Autowired
     private CaffeineRedisCacheConfiguration properties;
 
     @Primary
@@ -67,6 +71,7 @@ public class CacheAutoConfiguration {
         return RedisCacheManagerBuilder.fromConnectionFactory(redisConnectionFactory)
             .cacheDefaults(
                 RedisCacheConfiguration.defaultCacheConfig()
+                    .prefixCacheNameWith(environment.getProperty("spring.application.name") + ":")
                     .entryTtl(Duration.ofMinutes(60))
             )
             .build();
