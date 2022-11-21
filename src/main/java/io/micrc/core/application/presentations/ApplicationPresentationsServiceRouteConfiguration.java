@@ -200,22 +200,19 @@ class IntegrationParams {
     public static Map<String, Object> findExecutable(List<ParamIntegration> unIntegrateParams, String param) {
 
         Map<String, Object> executableIntegrationInfo = new HashMap<>();
-        int checkNumber = -1;
-        do {
-            // 没有可执行的集成了,抛异常
-            checkNumber++;
-            if (checkNumber >= unIntegrateParams.size()) {
-                throw new IllegalStateException("the integration file have error, command need integrate, but the param can not use... ");
-            }
-            ParamIntegration paramIntegration = JsonUtil.writeObjectAsObject(unIntegrateParams.get(checkNumber), ParamIntegration.class);
-            LinkedHashMap<String, Object> paramMap = new LinkedHashMap<>();
+        integrates: for (ParamIntegration paramIntegration : unIntegrateParams) {
             // 获取当前查询的每个参数
-            paramIntegration.getQueryParams().forEach((name, path) -> {
-                paramMap.put(name, JsonUtil.readPath(param, path));
-            });
-            // 检查当前查询是否可执行
-            if (paramMap.values().stream().anyMatch(Objects::isNull)) {
-                continue;
+            String body = "{}";
+            for (Map.Entry<String, String> entry : paramIntegration.getQueryParams().entrySet()) {
+                String targetPath = entry.getKey();
+                targetPath = targetPath.startsWith("/") ? targetPath : "/" + targetPath;
+                Object value = JsonUtil.readPath(param, entry.getValue());
+                if (null == value) {
+                    continue integrates;
+                }
+                // 补全所有目的路径不存在的节点
+                body = JsonUtil.supplementNotExistsNode(body, targetPath);
+                body = JsonUtil.patch(body, targetPath, JsonUtil.writeValueAsString(value));
             }
             if (ParamIntegration.Type.QUERY.equals(paramIntegration.getType())) {
                 // 如果能够集成,收集信息,然后会自动跳出循环
@@ -226,7 +223,7 @@ class IntegrationParams {
                 executableIntegrationInfo.put("pageNumberPath", paramIntegration.getPageNumberPath());
             } else if (ParamIntegration.Type.INTEGRATE.equals(paramIntegration.getType())) {
                 // 集成
-                String protocolContent = fileReader(unIntegrateParams.get(checkNumber).getProtocol());
+                String protocolContent = fileReader(paramIntegration.getProtocol());
                 JsonNode protocolNode = JsonUtil.readTree(protocolContent);
                 // 如果能够集成,收集信息,然后会自动跳出循环
                 executableIntegrationInfo.put("protocol", paramIntegration.getProtocol());
@@ -240,12 +237,15 @@ class IntegrationParams {
                         .at("/paths").elements().next().elements().next()
                         .at("/operationId");
                 executableIntegrationInfo.put("operationId", operationNode.textValue());
-
             }
-            executableIntegrationInfo.put("params", paramMap);
+            executableIntegrationInfo.put("params", JsonUtil.writeValueAsObject(body, Object.class));
             executableIntegrationInfo.put("name", paramIntegration.getConcept());
             executableIntegrationInfo.put("type", paramIntegration.getType());
-        } while (null == executableIntegrationInfo.get("name"));
+        }
+        if (null == executableIntegrationInfo.get("name")) {
+            throw new RuntimeException(
+                    "the integration file have error, command need integrate, but the param can not use... ");
+        }
         log.info("展示可集成：{}，参数：{}", executableIntegrationInfo.get("name"), executableIntegrationInfo.get("params"));
         return executableIntegrationInfo;
     }

@@ -187,4 +187,24 @@ public class JsonUtil {
             throw new RuntimeException("patch fail... please check object...");
         }
     }
+
+    /**
+     * 补充目标JSON中不存在的节点
+     *
+     * @param json
+     * @param targetPath
+     * @return
+     */
+    public static String supplementNotExistsNode(String json, String targetPath) {
+        String[] split = targetPath.split("/");
+        String p = "";
+        for (int i = 1; i < split.length; i++) {
+            p = p + "/" + split[i];
+            Object o = readPath(json, p);
+            if (null == o) {
+                json = add(json, p, "{}");
+            }
+        }
+        return json;
+    }
 }

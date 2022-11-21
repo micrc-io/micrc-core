@@ -396,18 +396,9 @@ class LogicInParamsResolve {
             Object value = JsonUtil.readPath(resultJson, resultPath.startsWith("/") ? resultPath : "/" + resultPath);
             if (null == value) {
                 continue;
-                // throw new RuntimeException(resultPath + " - the params can`t get value, please check the annotation.like integration annotation error or toTargetMappings annotation have error ");
             }
             // 补全所有目的路径不存在的节点
-            String[] split = targetPath.split("/");
-            String p = "";
-            for (int i = 1; i < split.length; i++) {
-                p = p + "/" + split[i];
-                Object o = JsonUtil.readPath(commandJson, p);
-                if (null == o) {
-                    commandJson = JsonUtil.add(commandJson, p, "{}");
-                }
-            }
+            commandJson = JsonUtil.supplementNotExistsNode(commandJson, targetPath);
             // 替换目的路径上的真实值
             String valueJson = JsonUtil.writeValueAsString(value);
             valueJson = TimeReplaceUtil.matchTimePathAndReplaceTime(timePathList, targetPath, valueJson, Long.class);
@@ -486,23 +477,20 @@ class IntegrationCommandParams {
     public static Map<String, Object> executableIntegrationInfo(Map<String, CommandParamIntegration> unIntegrateParams,
                                                                 String commandJson) {
         Map<String, Object> executableIntegrationInfo = new HashMap<>();
-        Integer checkNumber = -1;
-        for (String key : unIntegrateParams.keySet()) {
-            checkNumber++;
-            if (checkNumber >= unIntegrateParams.size()) {
-                throw new RuntimeException(
-                        "the integration file have error, command need integrate, but the param can not use... ");
-            }
+        integrates: for (String key : unIntegrateParams.keySet()) {
             CommandParamIntegration commandParamIntegration = unIntegrateParams.get(key);
-            LinkedHashMap<String, Object> paramMap = new LinkedHashMap<>();
-
             // 获取当前查询的每个参数
-            commandParamIntegration.getParamMappings().forEach((name, path) -> {
-                paramMap.put(name, JsonUtil.readPath(commandJson, path));
-            });
-            // 检查当前查询是否可执行
-            if (paramMap.values().stream().anyMatch(Objects::isNull)) {
-                continue;
+            String body = "{}";
+            for (Map.Entry<String, String> entry : commandParamIntegration.getParamMappings().entrySet()) {
+                String targetPath = entry.getKey();
+                targetPath = targetPath.startsWith("/") ? targetPath : "/" + targetPath;
+                Object value = JsonUtil.readPath(commandJson, entry.getValue());
+                if (null == value) {
+                    continue integrates;
+                }
+                // 补全所有目的路径不存在的节点
+                body = JsonUtil.supplementNotExistsNode(body, targetPath);
+                body = JsonUtil.patch(body, targetPath, JsonUtil.writeValueAsString(value));
             }
             if (!"".equals(commandParamIntegration.getProtocol())) {
                 String protocolContent = fileReader(commandParamIntegration.getProtocol());
@@ -521,8 +509,12 @@ class IntegrationCommandParams {
             // 如果能够集成,收集信息,然后会自动跳出循环
             executableIntegrationInfo.put("paramName", commandParamIntegration.getParamName());
             executableIntegrationInfo.put("protocol", commandParamIntegration.getProtocol());
-            executableIntegrationInfo.put("integrateParams", paramMap);
+            executableIntegrationInfo.put("integrateParams", JsonUtil.writeValueAsObject(body, Object.class));
             break;
+        }
+        if (null == executableIntegrationInfo.get("paramName")) {
+            throw new RuntimeException(
+                    "the integration file have error, command need integrate, but the param can not use... ");
         }
         log.info("业务可集成：{}，参数：{}", executableIntegrationInfo.get("paramName"), executableIntegrationInfo.get("integrateParams"));
         return executableIntegrationInfo;
