@@ -5,8 +5,10 @@ import io.micrc.core.application.EnableApplicationService;
 import io.micrc.core.cache.springboot.CacheAutoConfiguration;
 import io.micrc.core.configuration.springboot.EmbeddedServerLoggingApplicationRunner;
 import io.micrc.core.integration.EnableIntegration;
+import io.micrc.core.message.MessageMockSenderRouteConfiguration;
 import io.micrc.core.message.springboot.ClassPathMessageScannerRegistrar;
 import io.micrc.core.message.springboot.MessageAutoConfiguration;
+import io.micrc.core.message.springboot.MessageMockSenderApiScannerRegistrar;
 import io.micrc.core.persistence.springboot.PersistenceAutoConfiguration;
 import io.micrc.core.rpc.springboot.ClassPathRestEndpointScannerRegistrar;
 import io.micrc.core.rpc.springboot.RpcMockServerAutoConfiguration;
@@ -45,6 +47,8 @@ import java.lang.annotation.*;
     ClassPathRestEndpointScannerRegistrar.class,
     RpcMockServerScannerRegistrar.class,
     RpcMockServerAutoConfiguration.class,
+    MessageMockSenderApiScannerRegistrar.class,
+    MessageMockSenderRouteConfiguration.class,
     MessageAutoConfiguration.class,
     ClassPathMessageScannerRegistrar.class,
     ScheduleAutoConfiguration.class,

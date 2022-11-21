@@ -49,7 +49,6 @@ public class ApplicationCommandAdapterRouteConfiguration extends MicrcRouteBuild
 //                .dynamicRouter(method(AdapterParamsHandler.class, "convert"))
                 .bean(AdapterParamsHandler.class, "convertCommand")
                 .setBody(exchangeProperty("command"))
-//                .toD("bean://{{serviceName}}?method=execute")
                 .to("businesses://{{serviceName}}")
                 .to("direct://commandAdapterResult");
 
