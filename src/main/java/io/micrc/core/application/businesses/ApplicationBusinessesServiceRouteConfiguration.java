@@ -483,8 +483,9 @@ class IntegrationCommandParams {
             String body = "{}";
             for (Map.Entry<String, String> entry : commandParamIntegration.getParamMappings().entrySet()) {
                 String targetPath = entry.getKey();
+                String sourcePath = entry.getValue();
                 targetPath = targetPath.startsWith("/") ? targetPath : "/" + targetPath;
-                Object value = JsonUtil.readPath(commandJson, entry.getValue());
+                Object value = sourcePath.startsWith("/") ? JsonUtil.readPath(commandJson, sourcePath) : JsonUtil.writeValueAsObject(sourcePath, Object.class);
                 if (null == value) {
                     continue integrates;
                 }

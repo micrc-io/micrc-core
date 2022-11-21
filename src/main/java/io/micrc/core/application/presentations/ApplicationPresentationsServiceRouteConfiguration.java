@@ -205,8 +205,9 @@ class IntegrationParams {
             String body = "{}";
             for (Map.Entry<String, String> entry : paramIntegration.getQueryParams().entrySet()) {
                 String targetPath = entry.getKey();
+                String sourcePath = entry.getValue();
                 targetPath = targetPath.startsWith("/") ? targetPath : "/" + targetPath;
-                Object value = JsonUtil.readPath(param, entry.getValue());
+                Object value = sourcePath.startsWith("/") ? JsonUtil.readPath(param, sourcePath) : JsonUtil.writeValueAsObject(sourcePath, Object.class);
                 if (null == value) {
                     continue integrates;
                 }
