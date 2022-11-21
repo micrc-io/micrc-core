@@ -1,6 +1,7 @@
 package io.micrc.core.rpc.springboot;
 
 import io.micrc.core.rpc.IntegrationsInfo;
+import org.apache.camel.component.direct.DirectComponent;
 import org.mockserver.integration.ClientAndServer;
 import org.mockserver.mock.OpenAPIExpectation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +17,11 @@ public class RpcMockServerAutoConfiguration {
 
     @Autowired
     private IntegrationsInfo integrationsInfo;
+
+    @Bean("rest-openapi-executor")
+    public DirectComponent restOpenapiExecutor() {
+        return new DirectComponent();
+    }
 
     @Profile({"default", "local"})
     @Bean

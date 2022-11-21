@@ -117,6 +117,8 @@ dependencies {
     implementation "com.playtika.testcontainers:embedded-rabbitmq:${property('testcontainers.version')}"
     // mock memory db
     // implementation "com.playtika.testcontainers:embedded-redis:${property('testcontainers.version')}"
+    // JIT runtime
+    implementation "org.kie.kogito:kogito-dmn:1.29.0.Final"
 
     // caffeine, redis for cache and schedule
     implementation "org.springframework.boot:spring-boot-starter-cache"

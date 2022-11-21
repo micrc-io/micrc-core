@@ -4,21 +4,40 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.github.fge.jsonpatch.JsonPatch;
 import com.schibsted.spt.data.jslt.Expression;
 import com.schibsted.spt.data.jslt.Parser;
+import io.micrc.core._camel.jit.JITDMNResult;
+import io.micrc.core._camel.jit.JITDMNService;
 import io.micrc.core.rpc.ErrorInfo;
 import io.micrc.core.rpc.Result;
 import io.micrc.lib.JsonUtil;
 import lombok.SneakyThrows;
+import org.apache.camel.CamelContext;
+import org.apache.camel.ExtendedCamelContext;
+import org.apache.camel.Route;
 import org.apache.camel.RoutesBuilder;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.direct.DirectComponent;
+import org.apache.camel.support.ResourceHelper;
+import org.kie.dmn.api.core.DMNDecisionResult;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.util.ResourceUtils;
 import org.springframework.util.StreamUtils;
+import org.springframework.util.StringUtils;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathFactory;
+import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * 使用路由和direct组件，临时实现各种没有的camel组件
@@ -30,15 +49,8 @@ import java.nio.charset.StandardCharsets;
 @Configuration
 public class CamelComponentTempConfiguration {
 
-    @Bean("json-patch")
-    public DirectComponent jsonPatch() {
-        return new DirectComponent();
-    }
-
-    @Bean("json-mapping")
-    public DirectComponent jsonMapping() {
-        return new DirectComponent();
-    }
+    @Autowired
+    private JITDMNService jitdmnService;
 
     @Bean
     public RoutesBuilder jsonMappingComp() {
@@ -47,6 +59,7 @@ public class CamelComponentTempConfiguration {
             @SneakyThrows
             public void configure() throws Exception {
                 from("json-mapping://file")
+                        .routeId("json-mapping-file")
                         .process(exchange -> {
                             Resource[] resources = new PathMatchingResourcePatternResolver()
                                     .getResources(ResourceUtils.CLASSPATH_URL_PREFIX + exchange.getIn().getHeader("mappingFilePath"));
@@ -61,11 +74,88 @@ public class CamelComponentTempConfiguration {
                         })
                         .end();
                 from("json-mapping://content")
+                        .routeId("json-mapping-content")
                         .process(exchange -> {
                             Expression expression = Parser.compileString((String) exchange.getIn().getHeader("mappingContent"));
                             JsonNode resultNode = expression.apply(JsonUtil.readTree(exchange.getIn().getBody()));
                             exchange.getIn().setBody(JsonUtil.writeValueAsStringRetainNull(resultNode));
                             exchange.getIn().removeHeader("mappingContent");
+                        })
+                        .end();
+            }
+        };
+    }
+
+    @Bean
+    public RoutesBuilder xmlPathComp() {
+        return new RouteBuilder() {
+            @Override
+            @SneakyThrows
+            public void configure() throws Exception {
+                from("xml-path://content")
+                        .routeId("xml-path-content")
+                        .process(exchange -> {
+                            String path = exchange.getIn().getHeader("path", String.class);
+                            String body = exchange.getIn().getBody(String.class);
+                            DocumentBuilder db = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+                            XPath xPath = XPathFactory.newInstance().newXPath();
+                            Document document = db.parse(new ByteArrayInputStream(body.getBytes()));
+                            String result = ((Node) xPath.evaluate(path, document, XPathConstants.NODE)).getTextContent();
+                            exchange.getIn().setBody(result);
+                        })
+                        .end();
+            }
+        };
+    }
+
+    @Bean
+    public RoutesBuilder dynamicRouteComp() {
+        return new RouteBuilder() {
+            @Override
+            @SneakyThrows
+            public void configure() throws Exception {
+                from("dynamic-route://execute")
+                        .routeId("dynamic-route-execute")
+                        .process(exchange -> {
+                            CamelContext context = exchange.getContext();
+                            Route camelRoute = context.getRoute((String) exchange.getIn().getHeader("from"));
+                            if (null == camelRoute) {
+                                ExtendedCamelContext ec = context.adapt(ExtendedCamelContext.class);
+                                ec.getRoutesLoader().loadRoutes(ResourceHelper.fromString(exchange.getIn().getHeader("from") + ".xml", (String) exchange.getIn().getHeader("route")));
+                            }
+                        })
+                        .toD("${header.from}")
+                        .removeHeader("from")
+                        .removeHeader("route")
+                        .end();
+            }
+        };
+    }
+
+    @Bean
+    public RoutesBuilder dynamicDmnComp() {
+        return new RouteBuilder() {
+            @Override
+            @SneakyThrows
+            public void configure() throws Exception {
+                from("dynamic-dmn://execute")
+                        .routeId("dynamic-dmn-execute")
+                        .process(exchange -> {
+                            String dmn = exchange.getIn().getHeader("dmn", String.class);
+                            String decision = exchange.getIn().getHeader("decision", String.class);
+                            String context = exchange.getIn().getBody(String.class);
+                            if (!StringUtils.hasText(dmn)) {
+                                throw new RuntimeException("the dmn script not have value, please check dmn....");
+                            }
+                            if (!StringUtils.hasText(decision)) {
+                                decision = "result"; // 当不传入取那个结果的时候,默认用result的决策节点
+                            }
+                            JITDMNResult jitdmnResult = jitdmnService.evaluateModel(dmn, JsonUtil.writeValueAsObjectRetainNull(context, Map.class));
+                            String finalDecisionName = decision;
+                            Optional<DMNDecisionResult> executeResult = jitdmnResult.getDecisionResults().stream().filter(result -> result.getDecisionName().equals(finalDecisionName)).findFirst();
+                            exchange.getIn().setBody(JsonUtil.writeValueAsStringRetainNull(executeResult.get().getResult()));
+                            exchange.getIn().removeHeader("dmn");
+                            exchange.getIn().removeHeader("decision");
                         })
                         .end();
             }
@@ -79,6 +169,7 @@ public class CamelComponentTempConfiguration {
             @Override
             public void configure() throws Exception {
                 from("json-patch://command")
+                        .routeId("json-patch-command")
                         .process(exchange -> {
                             JsonPatch patch = JsonPatch.fromJson(JsonUtil.readTree(exchange.getIn().getHeader("command")));
                             exchange.getIn().setBody(JsonUtil.writeValueAsStringRetainNull(patch.apply(JsonUtil.readTree(exchange.getIn().getBody()))));
@@ -86,6 +177,7 @@ public class CamelComponentTempConfiguration {
                         })
                         .end();
                 from("json-patch://select")
+                        .routeId("json-patch-select")
                         .process(exchange -> {
                             String content = String.valueOf(exchange.getIn().getBody());
                             String pointer = String.valueOf(exchange.getIn().getHeader("pointer"));
@@ -94,6 +186,7 @@ public class CamelComponentTempConfiguration {
                         })
                         .end();
                 from("json-patch://patch")
+                        .routeId("json-patch-patch")
                         .process(exchange -> {
                             String patchStr = "[{ \"op\": \"replace\", \"path\": \"{{path}}\", \"value\": {{value}} }]";
                             String pathReplaced = patchStr.replace("{{path}}", String.valueOf(exchange.getIn().getHeader("path")));
@@ -105,6 +198,7 @@ public class CamelComponentTempConfiguration {
                         })
                         .end();
                 from("json-patch://add")
+                        .routeId("json-patch-add")
                         .process(exchange -> {
                             String addStr = "[{ \"op\": \"add\", \"path\": \"{{path}}\", \"value\": {{value}} }]";
                             String pathReplaced = addStr.replace("{{path}}", String.valueOf(exchange.getIn().getHeader("path")));
@@ -130,6 +224,7 @@ public class CamelComponentTempConfiguration {
             @Override
             public void configure() {
                 from("error-handle://system")
+                        .routeId("error-handle-system")
                         .setBody(exceptionMessage())
                         .process(exchange -> {
                             log.error(exchange.getIn().getBody(String.class));
@@ -142,6 +237,7 @@ public class CamelComponentTempConfiguration {
                         .end();
 
                 from("error-handle://command")
+                        .routeId("error-handle-command")
                         .process(exchange -> {
                             log.error(exchange.getIn().getBody(String.class));
                             ErrorInfo errorInfo = new ErrorInfo();

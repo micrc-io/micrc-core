@@ -23,6 +23,27 @@ public class RpcRestRouteConfiguration extends MicrcRouteBuilder {
 
     @Override
     public void configureRoute() throws Exception {
+        /**
+         header:    openApiPath openapi文件路径
+                    operatorId 操作ID
+                    host 主机地址
+         */
+        from("rest-openapi-executor://https")
+                .routeId("rest-openapi-executor-https")
+                .toD("rest-openapi-ssl://${exchange.properties.get(openapiInfo).get(openApiPath)}#${exchange.properties.get(openapiInfo).get(operatorId)}?host=${exchange.properties.get(openapiInfo).get(host)}")
+                .convertBodyTo(String.class)
+                .log(body() + "")
+                .end();
+        /**
+         header:    openApiPath openapi文件路径
+                    operatorId 操作ID
+                    host 主机地址
+         */
+        from("rest-openapi-executor://http")
+                .routeId("rest-openapi-executor-http")
+                .toD("rest-openapi://${exchange.properties.get(openapiInfo).get(openApiPath)}#${exchange.properties.get(openapiInfo).get(operatorId)}?host=${exchange.properties.get(openapiInfo).get(host)}")
+                .convertBodyTo(String.class)
+                .end();
 
         // 逻辑请求路由，定义req协议
         from("req://logic")
