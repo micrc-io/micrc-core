@@ -115,11 +115,11 @@ class ApplicationPresentationsAdapterScanner extends ClassPathBeanDefinitionScan
         for (BeanDefinitionHolder holder : holders) {
             GenericBeanDefinition beanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
             beanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
-            String name = beanDefinition.getBeanClass().getSimpleName();
+            String adapterName = beanDefinition.getBeanClass().getSimpleName();
             Method[] adapterMethods = beanDefinition.getBeanClass().getDeclaredMethods();
             Boolean haveAdaptMethod = Arrays.stream(adapterMethods).anyMatch(method -> "adapt".equals(method.getName()));
             if (!haveAdaptMethod || adapterMethods.length != 1) {
-                throw new IllegalStateException(" the message adapter interface " + name + " need extends MessageIntegrationAdapter. please check");
+                throw new IllegalStateException(" the message adapter interface " + adapterName + " need extends MessageIntegrationAdapter. please check");
             }
             PresentationsAdapter presentationsAdapter = beanDefinition.getBeanClass().getAnnotation(PresentationsAdapter.class);
             // 需要自定义的服务不生成路由
@@ -128,10 +128,10 @@ class ApplicationPresentationsAdapterScanner extends ClassPathBeanDefinitionScan
             }
             String serviceName = presentationsAdapter.serviceName();
             sourceDefinition.addParameter(
-                    routeId(serviceName),
+                    routeId(adapterName),
                     PresentationsAdapterRouteConfiguration.ApplicationPresentationsAdapterDefinition.builder()
                             .templateId(PresentationsAdapterRouteConfiguration.ROUTE_TMPL_PRESENTATIONS_ADAPTER)
-                            .name(name)
+                            .name(adapterName)
                             .serviceName(serviceName)
                             .build());
         }

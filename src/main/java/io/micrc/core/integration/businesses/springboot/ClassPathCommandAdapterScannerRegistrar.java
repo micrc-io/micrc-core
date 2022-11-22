@@ -1,13 +1,10 @@
 package io.micrc.core.integration.businesses.springboot;
 
 import io.micrc.core.annotations.integration.command.CommandAdapter;
-import io.micrc.core.annotations.integration.command.Conception;
 import io.micrc.core.integration.businesses.ApplicationCommandAdapterRouteConfiguration;
 import io.micrc.core.integration.businesses.ApplicationCommandAdapterRouteTemplateParameterSource;
-import io.micrc.core.integration.businesses.ConceptionParam;
 import io.micrc.core.integration.businesses.EnableCommandAdapter;
 import io.micrc.core.integration.message.MethodAdapterDesignException;
-import io.micrc.lib.JsonUtil;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -123,7 +120,7 @@ class ApplicationCommandAdapterScanner extends ClassPathBeanDefinitionScanner {
             if (beanDefinition.getBeanClass().getAnnotation(CommandAdapter.class).custom()) {
                 continue;
             }
-            String name = beanDefinition.getBeanClass().getSimpleName();
+            String adapterName = beanDefinition.getBeanClass().getSimpleName();
             // Method[] adapterMethods = beanDefinition.getBeanClass().getDeclaredMethods();
             // Boolean haveAdaptMethod = Arrays.stream(adapterMethods).anyMatch(method -> {
             //     if ("adapt".equals(method.getName())) {
@@ -166,10 +163,10 @@ class ApplicationCommandAdapterScanner extends ClassPathBeanDefinitionScanner {
 //                conceptions.add(conceptionParam);
 //            });
             sourceDefinition.addParameter(
-                    routeId(beanDefinition.getBeanClass().getSimpleName()),
+                    routeId(adapterName),
                     ApplicationCommandAdapterRouteConfiguration.ApplicationCommandRouteTemplateParamDefinition.builder()
                             .templateId(ApplicationCommandAdapterRouteConfiguration.ROUTE_TMPL_BUSINESSES_ADAPTER)
-                            .name(name)
+                            .name(adapterName)
                             .serviceName(serviceName)
                             .commandPath(commandPath)
 //                            .conceptionsJson(JsonUtil.writeValueAsString(conceptions))

@@ -114,11 +114,11 @@ class ApplicationDerivationsAdapterScanner extends ClassPathBeanDefinitionScanne
         for (BeanDefinitionHolder holder : holders) {
             GenericBeanDefinition beanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
             beanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
-            String name = beanDefinition.getBeanClass().getSimpleName();
+            String adapterName = beanDefinition.getBeanClass().getSimpleName();
             Method[] adapterMethods = beanDefinition.getBeanClass().getDeclaredMethods();
             Boolean haveAdaptMethod = Arrays.stream(adapterMethods).anyMatch(method -> "adapt".equals(method.getName()));
             if (!haveAdaptMethod || adapterMethods.length != 1) {
-                throw new IllegalStateException(" the message adapter interface " + name + " need extends MessageIntegrationAdapter. please check");
+                throw new IllegalStateException(" the message adapter interface " + adapterName + " need extends MessageIntegrationAdapter. please check");
             }
             DerivationsAdapter derivationsAdapter = beanDefinition.getBeanClass().getAnnotation(DerivationsAdapter.class);
             // 需要自定义的服务不生成路由
@@ -126,26 +126,11 @@ class ApplicationDerivationsAdapterScanner extends ClassPathBeanDefinitionScanne
                 continue;
             }
             String serviceName = derivationsAdapter.serviceName();
-//            String servicePath = basePackages[0] + ".application.derivations.store." + serviceName;
-//            Class<?> service = Class.forName(servicePath);
-//            if (null == service) {
-//                throw new ClassNotFoundException(" the application service interface " + servicePath + " not exist. please check");
-//            }
-//
-//            Method[] serviceMethods = service.getDeclaredMethods();
-//            List<Method> haveExecuteMethod = Arrays.stream(serviceMethods).filter(method -> "execute".equals(method.getName()) && !method.isBridge()).collect(Collectors.toList());
-//            if (haveExecuteMethod.size() != 1) {
-//                throw new IllegalStateException(" the application service interface " + serviceName + " need extends ApplicationBusinessesService. please check");
-//            }
-//            Class<?>[] serviceMethodParameterTypes = serviceMethods[0].getParameterTypes();
-//            if (serviceMethodParameterTypes.length != 1) {
-//                throw new IllegalStateException(" the message endpoint service interface " + serviceName + " method execute param only can use command and only one param. please check");
-//            }
             sourceDefinition.addParameter(
-                    routeId(serviceName),
+                    routeId(adapterName),
                     DerivationsAdapterRouteConfiguration.ApplicationDerivationsAdapterDefinition.builder()
                             .templateId(DerivationsAdapterRouteConfiguration.ROUTE_TMPL_DERIVATIONS_ADAPTER)
-                            .name(name)
+                            .name(adapterName)
                             .serviceName(serviceName)
                             .build());
         }
