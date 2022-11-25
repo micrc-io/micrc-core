@@ -32,7 +32,6 @@ public class RpcRestRouteConfiguration extends MicrcRouteBuilder {
                 .routeId("rest-openapi-executor-https")
                 .toD("rest-openapi-ssl://${exchange.properties.get(openapiInfo).get(openApiPath)}#${exchange.properties.get(openapiInfo).get(operatorId)}?host=${exchange.properties.get(openapiInfo).get(host)}")
                 .convertBodyTo(String.class)
-                .log(body() + "")
                 .end();
         /**
          header:    openApiPath openapi文件路径
