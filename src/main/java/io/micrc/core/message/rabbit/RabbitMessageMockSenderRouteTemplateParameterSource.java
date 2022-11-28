@@ -1,4 +1,4 @@
-package io.micrc.core.message;
+package io.micrc.core.message.rabbit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.camel.spi.RouteTemplateParameterSource;
@@ -14,7 +14,7 @@ import java.util.Set;
  * @date 2022-11-19 14:21
  * @since 0.0.1
  */
-public class MessageMockSenderRouteTemplateParameterSource implements RouteTemplateParameterSource {
+public class RabbitMessageMockSenderRouteTemplateParameterSource implements RouteTemplateParameterSource {
     private final Map<String, MessageMockSenderRouteConfiguration.MessageMockSenderDefinition> parameters = new LinkedHashMap<>();
 
     @SuppressWarnings("unchecked")

@@ -1,9 +1,9 @@
-package io.micrc.core.message.springboot;
+package io.micrc.core.message.rabbit.springboot;
 
 import io.micrc.core.EnableMicrcSupport;
 import io.micrc.core.annotations.application.businesses.DomainEvents;
-import io.micrc.core.message.MessageRouteConfiguration.EventsInfo;
-import io.micrc.core.message.MessageRouteConfiguration.EventsInfo.Event;
+import io.micrc.core.message.rabbit.RabbitMessageRouteConfiguration.EventsInfo;
+import io.micrc.core.message.rabbit.RabbitMessageRouteConfiguration.EventsInfo.Event;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -31,7 +31,7 @@ import java.util.Set;
  * @date 2022-09-13 05:30
  * @since 0.0.1
  */
-public class ClassPathMessageScannerRegistrar implements ImportBeanDefinitionRegistrar, ResourceLoaderAware {
+public class RabbitClassPathMessageScannerRegistrar implements ImportBeanDefinitionRegistrar, ResourceLoaderAware {
 
     private ResourceLoader resourceLoader;
 

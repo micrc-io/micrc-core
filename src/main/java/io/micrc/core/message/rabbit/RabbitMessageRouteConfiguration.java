@@ -1,10 +1,10 @@
-package io.micrc.core.message;
+package io.micrc.core.message.rabbit;
 
-import io.micrc.core.message.store.EventMessage;
-import io.micrc.core.message.store.EventMessageRepository;
-import io.micrc.core.message.store.IdempotentMessageRepository;
-import io.micrc.core.message.tracking.ErrorMessageRepository;
-import io.micrc.core.message.tracking.MessageTrackerRepository;
+import io.micrc.core.message.rabbit.store.EventMessage;
+import io.micrc.core.message.rabbit.store.EventMessageRepository;
+import io.micrc.core.message.rabbit.store.IdempotentMessageRepository;
+import io.micrc.core.message.rabbit.tracking.ErrorMessageRepository;
+import io.micrc.core.message.rabbit.tracking.MessageTrackerRepository;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -24,7 +24,7 @@ import java.util.*;
  * @date 2022-09-13 05:35
  * @since 0.0.1
  */
-public class MessageRouteConfiguration extends RouteBuilder {
+public class RabbitMessageRouteConfiguration extends RouteBuilder {
 
 
     @Autowired

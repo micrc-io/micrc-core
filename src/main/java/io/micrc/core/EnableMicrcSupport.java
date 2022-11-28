@@ -6,10 +6,10 @@ import io.micrc.core.cache.springboot.CacheAutoConfiguration;
 import io.micrc.core.configuration.springboot.EmbeddedServerLoggingApplicationRunner;
 import io.micrc.core.dynamic.springboot.DynamicExecutorAutoConfiguration;
 import io.micrc.core.integration.EnableIntegration;
-import io.micrc.core.message.MessageMockSenderRouteConfiguration;
-import io.micrc.core.message.springboot.ClassPathMessageScannerRegistrar;
-import io.micrc.core.message.springboot.MessageAutoConfiguration;
-import io.micrc.core.message.springboot.MessageMockSenderApiScannerRegistrar;
+import io.micrc.core.message.rabbit.MessageMockSenderRouteConfiguration;
+import io.micrc.core.message.rabbit.springboot.RabbitClassPathMessageScannerRegistrar;
+import io.micrc.core.message.rabbit.springboot.RabbitMessageAutoConfiguration;
+import io.micrc.core.message.rabbit.springboot.RabbitMessageMockSenderApiScannerRegistrar;
 import io.micrc.core.persistence.springboot.PersistenceAutoConfiguration;
 import io.micrc.core.rpc.springboot.ClassPathRestEndpointScannerRegistrar;
 import io.micrc.core.rpc.springboot.RpcAutoConfiguration;
@@ -47,10 +47,10 @@ import java.lang.annotation.*;
     ClassPathRestEndpointScannerRegistrar.class,
     RpcMockServerScannerRegistrar.class,
     RpcMockServerAutoConfiguration.class,
-    MessageMockSenderApiScannerRegistrar.class,
+    RabbitMessageMockSenderApiScannerRegistrar.class,
     MessageMockSenderRouteConfiguration.class,
-    MessageAutoConfiguration.class,
-    ClassPathMessageScannerRegistrar.class,
+    RabbitMessageAutoConfiguration.class,
+    RabbitClassPathMessageScannerRegistrar.class,
     ScheduleAutoConfiguration.class,
     DynamicExecutorAutoConfiguration.class
 })

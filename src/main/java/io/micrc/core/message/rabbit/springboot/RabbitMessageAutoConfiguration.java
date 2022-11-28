@@ -1,15 +1,15 @@
-package io.micrc.core.message.springboot;
+package io.micrc.core.message.rabbit.springboot;
 
 import com.rabbitmq.client.ShutdownSignalException;
-import io.micrc.core.message.MessageConsumeRouterExecution;
-import io.micrc.core.message.MessageRouteConfiguration;
-import io.micrc.core.message.store.EventMessage;
-import io.micrc.core.message.store.IdempotentMessage;
-import io.micrc.core.message.store.MessagePublisherSchedule;
-import io.micrc.core.message.tracking.ErrorMessage;
-import io.micrc.core.message.tracking.ErrorMessage.DeadMessageResolver;
-import io.micrc.core.message.tracking.MessageCallback;
-import io.micrc.core.message.tracking.MessageTracker;
+import io.micrc.core.message.rabbit.RabbitMessageConsumeRouterExecution;
+import io.micrc.core.message.rabbit.RabbitMessageRouteConfiguration;
+import io.micrc.core.message.rabbit.store.EventMessage;
+import io.micrc.core.message.rabbit.store.IdempotentMessage;
+import io.micrc.core.message.rabbit.store.MessagePublisherSchedule;
+import io.micrc.core.message.rabbit.tracking.ErrorMessage;
+import io.micrc.core.message.rabbit.tracking.ErrorMessage.DeadMessageResolver;
+import io.micrc.core.message.rabbit.tracking.MessageCallback;
+import io.micrc.core.message.rabbit.tracking.MessageTracker;
 import org.apache.camel.component.direct.DirectComponent;
 import org.apache.camel.spring.boot.CamelAutoConfiguration;
 import org.springframework.amqp.core.*;
@@ -38,7 +38,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 @AutoConfigureAfter(CamelAutoConfiguration.class)
 @Configuration
 @Import({
-        MessageRouteConfiguration.class,
+        RabbitMessageRouteConfiguration.class,
         MessagePublisherSchedule.class,
         MessageCallback.class,
         MessageTracker.class,
@@ -46,11 +46,11 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
         ErrorMessage.class,
         IdempotentMessage.class,
         DeadMessageResolver.class,
-        MessageConsumeRouterExecution.class
+        RabbitMessageConsumeRouterExecution.class
 })
-@EntityScan(basePackages = {"io.micrc.core.message.store", "io.micrc.core.message.tracking"})
-@EnableJpaRepositories(basePackages = {"io.micrc.core.message.store", "io.micrc.core.message.tracking"})
-public class MessageAutoConfiguration implements ApplicationRunner {
+@EntityScan(basePackages = {"io.micrc.core.message.rabbit.store", "io.micrc.core.message.rabbit.tracking"})
+@EnableJpaRepositories(basePackages = {"io.micrc.core.message.rabbit.store", "io.micrc.core.message.rabbit.tracking"})
+public class RabbitMessageAutoConfiguration implements ApplicationRunner {
 
     public static final String DEAD_LETTER_EXCHANGE_KEY = "x-dead-letter-exchange";
 

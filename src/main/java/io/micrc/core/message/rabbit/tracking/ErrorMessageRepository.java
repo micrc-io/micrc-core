@@ -1,4 +1,4 @@
-package io.micrc.core.message.tracking;
+package io.micrc.core.message.rabbit.tracking;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

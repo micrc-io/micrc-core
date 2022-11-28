@@ -1,4 +1,4 @@
-package io.micrc.core.message.store;
+package io.micrc.core.message.rabbit.store;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

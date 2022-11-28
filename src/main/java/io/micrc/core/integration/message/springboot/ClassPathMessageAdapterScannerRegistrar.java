@@ -1,6 +1,6 @@
 package io.micrc.core.integration.message.springboot;
 
-import io.micrc.core.annotations.integration.message.MessageAdapter;
+import io.micrc.core.annotations.message.RabbitMessageAdapter;
 import io.micrc.core.integration.message.EnableMessageAdapter;
 import io.micrc.core.integration.message.MessageAdapterRouteConfiguration;
 import io.micrc.core.integration.message.MessageAdapterRouteConfiguration.ApplicationMessageRouteTemplateParamDefinition;
@@ -112,12 +112,12 @@ class ApplicationMessageAdapterScanner extends ClassPathBeanDefinitionScanner {
     @SneakyThrows
     @Override
     protected Set<BeanDefinitionHolder> doScan(String... basePackages) {
-        this.addIncludeFilter(new AnnotationTypeFilter(MessageAdapter.class));
+        this.addIncludeFilter(new AnnotationTypeFilter(RabbitMessageAdapter.class));
         Set<BeanDefinitionHolder> holders = super.doScan(basePackages);
         for (BeanDefinitionHolder holder : holders) {
             GenericBeanDefinition beanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
             beanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
-            if (beanDefinition.getBeanClass().getAnnotation(MessageAdapter.class).custom()) {
+            if (beanDefinition.getBeanClass().getAnnotation(RabbitMessageAdapter.class).custom()) {
                 continue;
             }
             String name = beanDefinition.getBeanClass().getSimpleName();
@@ -132,7 +132,7 @@ class ApplicationMessageAdapterScanner extends ClassPathBeanDefinitionScanner {
                 throw new MethodAdapterDesignException(" the message adapter interface " + name
                         + " need extends MessageIntegrationAdapter. please check");
             }
-            MessageAdapter messageAdapter = beanDefinition.getBeanClass().getAnnotation(MessageAdapter.class);
+            RabbitMessageAdapter messageAdapter = beanDefinition.getBeanClass().getAnnotation(RabbitMessageAdapter.class);
             String serviceName = messageAdapter.logicName() + "Service";
             String servicePath = basePackages[0] + ".application.businesses."
                     + messageAdapter.rootEntityName().toLowerCase() + "." + serviceName;

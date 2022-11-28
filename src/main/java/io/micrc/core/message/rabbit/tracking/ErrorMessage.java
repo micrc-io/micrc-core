@@ -1,8 +1,8 @@
-package io.micrc.core.message.tracking;
+package io.micrc.core.message.rabbit.tracking;
 
 import com.rabbitmq.client.Channel;
-import io.micrc.core.message.springboot.MessageAutoConfiguration;
-import io.micrc.core.message.store.EventMessage;
+import io.micrc.core.message.rabbit.springboot.RabbitMessageAutoConfiguration;
+import io.micrc.core.message.rabbit.store.EventMessage;
 import io.micrc.lib.ClassCastUtils;
 import io.micrc.lib.JsonUtil;
 import lombok.Data;
@@ -156,9 +156,9 @@ public class ErrorMessage {
         @SneakyThrows
         @RabbitListener(
                 bindings = @QueueBinding(
-                        value = @Queue(value = MessageAutoConfiguration.DEAD_LETTER_QUEUE_NAME),
-                        exchange = @Exchange(value = MessageAutoConfiguration.DEAD_LETTER_EXCHANGE_NAME),
-                        key = MessageAutoConfiguration.DEAD_LETTER_ROUTING_KEY
+                        value = @Queue(value = RabbitMessageAutoConfiguration.DEAD_LETTER_QUEUE_NAME),
+                        exchange = @Exchange(value = RabbitMessageAutoConfiguration.DEAD_LETTER_EXCHANGE_NAME),
+                        key = RabbitMessageAutoConfiguration.DEAD_LETTER_ROUTING_KEY
                 )
         )
         public void adapt(EventMessage eventMessage, Channel channel, Message message) {

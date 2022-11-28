@@ -1,4 +1,4 @@
-package io.micrc.core.message.springboot;
+package io.micrc.core.message.rabbit.springboot;
 
 import org.apache.commons.logging.Log;
 import org.springframework.boot.SpringApplication;
@@ -18,11 +18,11 @@ import java.util.Properties;
  * @since 0.0.1
  * @date 2022-09-01 15:36
  */
-public class MessageEnvironmentProcessor implements EnvironmentPostProcessor {
+public class RabbitMessageEnvironmentProcessor implements EnvironmentPostProcessor {
 
     private final Log log;
 
-    public MessageEnvironmentProcessor(Log log) {
+    public RabbitMessageEnvironmentProcessor(Log log) {
         this.log = log;
     }
 

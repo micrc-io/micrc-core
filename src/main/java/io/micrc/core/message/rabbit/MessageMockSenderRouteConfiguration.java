@@ -1,4 +1,4 @@
-package io.micrc.core.message;
+package io.micrc.core.message.rabbit;
 
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;

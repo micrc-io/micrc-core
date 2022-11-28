@@ -1,8 +1,8 @@
-package io.micrc.core.message;
+package io.micrc.core.message.rabbit;
 
 import com.rabbitmq.client.Channel;
-import io.micrc.core.annotations.integration.message.MessageAdapter;
-import io.micrc.core.message.store.EventMessage;
+import io.micrc.core.annotations.message.RabbitMessageAdapter;
+import io.micrc.core.message.rabbit.store.EventMessage;
 import io.micrc.core.rpc.Result;
 import io.micrc.lib.ClassCastUtils;
 import io.micrc.lib.JsonUtil;
@@ -27,7 +27,7 @@ import java.util.Map;
 @Aspect
 @Slf4j
 @Configuration
-public class MessageConsumeRouterExecution implements Ordered {
+public class RabbitMessageConsumeRouterExecution implements Ordered {
 
     @EndpointInject
     private ProducerTemplate template;
@@ -39,7 +39,7 @@ public class MessageConsumeRouterExecution implements Ordered {
     private TransactionDefinition transactionDefinition;
 
 
-    @Pointcut("@annotation(io.micrc.core.annotations.message.MessageExecution)")
+    @Pointcut("@annotation(io.micrc.core.annotations.message.RabbitMessageExecution)")
     public void annotationPointCut() {/* leave it out */}
 
     @Around("annotationPointCut()")
@@ -50,7 +50,7 @@ public class MessageConsumeRouterExecution implements Ordered {
                     "businesses service implementation class must only implement it's interface. ");
         }
         boolean custom = false;
-        MessageAdapter annotation = interfaces[0].getAnnotation(MessageAdapter.class);
+        RabbitMessageAdapter annotation = interfaces[0].getAnnotation(RabbitMessageAdapter.class);
         if (annotation != null) {
             custom = annotation.custom();
         }

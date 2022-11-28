@@ -1,7 +1,7 @@
-package io.micrc.core.message.tracking;
+package io.micrc.core.message.rabbit.tracking;
 
-import io.micrc.core.message.MessageRouteConfiguration.EventsInfo.Event;
-import io.micrc.core.message.store.EventMessage;
+import io.micrc.core.message.rabbit.RabbitMessageRouteConfiguration.EventsInfo.Event;
+import io.micrc.core.message.rabbit.store.EventMessage;
 import io.micrc.lib.JsonUtil;
 import lombok.Data;
 import org.apache.camel.Body;
