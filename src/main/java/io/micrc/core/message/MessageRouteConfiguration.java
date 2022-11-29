@@ -102,6 +102,11 @@ public class MessageRouteConfiguration extends RouteBuilder {
             private String topicName;
 
             /**
+             * 发送地址名
+             */
+            private String senderAddress;
+
+            /**
              * 事件名称
              */
             private String eventName;
@@ -130,6 +135,13 @@ public class MessageRouteConfiguration extends RouteBuilder {
              * @return
              */
             private String mappingPath;
+
+            /**
+             * 接收方地址 - 放入消息header
+             *
+             * @return
+             */
+            private String receiverAddress;
         }
     }
 
