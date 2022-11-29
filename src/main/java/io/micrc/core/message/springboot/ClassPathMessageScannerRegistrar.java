@@ -1,9 +1,10 @@
-package io.micrc.core.message.rabbit.springboot;
+package io.micrc.core.message.springboot;
 
 import io.micrc.core.EnableMicrcSupport;
-import io.micrc.core.annotations.message.rabbit.RabbitDomainEvents;
-import io.micrc.core.message.rabbit.RabbitMessageRouteConfiguration.EventsInfo;
-import io.micrc.core.message.rabbit.RabbitMessageRouteConfiguration.EventsInfo.Event;
+import io.micrc.core.annotations.message.DomainEvents;
+import io.micrc.core.message.MessageRouteConfiguration;
+import io.micrc.core.message.MessageRouteConfiguration.EventsInfo;
+import io.micrc.core.message.MessageRouteConfiguration.EventsInfo.Event;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -31,7 +32,7 @@ import java.util.Set;
  * @date 2022-09-13 05:30
  * @since 0.0.1
  */
-public class RabbitClassPathMessageScannerRegistrar implements ImportBeanDefinitionRegistrar, ResourceLoaderAware {
+public class ClassPathMessageScannerRegistrar implements ImportBeanDefinitionRegistrar, ResourceLoaderAware {
 
     private ResourceLoader resourceLoader;
 
@@ -47,7 +48,7 @@ public class RabbitClassPathMessageScannerRegistrar implements ImportBeanDefinit
             return;
         }
 
-        EventsInfo eventsInfo = new EventsInfo();
+        MessageRouteConfiguration.EventsInfo eventsInfo = new EventsInfo();
         /**
          * 发送器注解扫描
          */
@@ -85,23 +86,18 @@ class MessagePublisherScanner extends ClassPathBeanDefinitionScanner {
     @SneakyThrows
     @Override
     protected Set<BeanDefinitionHolder> doScan(String... basePackages) {
-        this.addIncludeFilter(new AnnotationTypeFilter(RabbitDomainEvents.class));
+        this.addIncludeFilter(new AnnotationTypeFilter(DomainEvents.class));
         Set<BeanDefinitionHolder> holders = super.doScan(basePackages);
         for (BeanDefinitionHolder holder : holders) {
             GenericBeanDefinition beanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
             beanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
-            // 构造全局EventsInfo
-            RabbitDomainEvents RabbitDomainEvents = beanDefinition.getBeanClass().getAnnotation(RabbitDomainEvents.class);
-            Arrays.stream(RabbitDomainEvents.events()).forEach(eventInfo -> {
-                String channel = eventInfo.eventName() + "-" + eventInfo.channel();
+            DomainEvents domainEvents = beanDefinition.getBeanClass().getAnnotation(DomainEvents.class);
+            // TODO xxhan 完善扫描并填充赋值
+            Arrays.stream(domainEvents.events()).forEach(eventInfo -> {
                 Event event = Event.builder()
                         .eventName(eventInfo.eventName())
-                        .exchangeName(eventInfo.aggregationName())
-                        .channel(channel)
-                        .mappingPath(eventInfo.mappingPath())
-                        .ordered(eventInfo.ordered())
                         .build();
-                eventsInfo.put(channel, event);
+                //eventsInfo.put(channel, event);
             });
         }
         holders.clear();

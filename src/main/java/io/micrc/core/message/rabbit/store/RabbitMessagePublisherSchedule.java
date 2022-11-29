@@ -1,11 +1,9 @@
 package io.micrc.core.message.rabbit.store;
 
-import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.apache.camel.EndpointInject;
 import org.apache.camel.ProducerTemplate;
-import org.springframework.scheduling.annotation.Scheduled;
 
-public class MessagePublisherSchedule {
+public class RabbitMessagePublisherSchedule {
 
     @EndpointInject("eventstore://sender")
     private ProducerTemplate sender;

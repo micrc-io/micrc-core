@@ -15,7 +15,7 @@ import java.util.Set;
  * @since 0.0.1
  */
 public class RabbitMessageMockSenderRouteTemplateParameterSource implements RouteTemplateParameterSource {
-    private final Map<String, MessageMockSenderRouteConfiguration.MessageMockSenderDefinition> parameters = new LinkedHashMap<>();
+    private final Map<String, RabbitMessageMockSenderRouteConfiguration.MessageMockSenderDefinition> parameters = new LinkedHashMap<>();
 
     @SuppressWarnings("unchecked")
     @Override
@@ -28,11 +28,11 @@ public class RabbitMessageMockSenderRouteTemplateParameterSource implements Rout
         return parameters.keySet();
     }
 
-    public void addParameter(String routeId, MessageMockSenderRouteConfiguration.MessageMockSenderDefinition definition) {
+    public void addParameter(String routeId, RabbitMessageMockSenderRouteConfiguration.MessageMockSenderDefinition definition) {
         parameters.put(routeId, definition);
     }
 
-    public MessageMockSenderRouteConfiguration.MessageMockSenderDefinition parameter(String routeId) {
+    public RabbitMessageMockSenderRouteConfiguration.MessageMockSenderDefinition parameter(String routeId) {
         return parameters.get(routeId);
     }
 }

@@ -11,7 +11,7 @@ import org.springframework.stereotype.Repository;
  * @date 2022/1/12 9:11 PM
  */
 @Repository
-public interface MessageTrackerRepository extends JpaRepository<MessageTracker, String> {
+public interface RabbitMessageTrackerRepository extends JpaRepository<RabbitMessageTracker, String> {
 
-    MessageTracker findFirstByChannel(String channel);
+    RabbitMessageTracker findFirstByChannel(String channel);
 }

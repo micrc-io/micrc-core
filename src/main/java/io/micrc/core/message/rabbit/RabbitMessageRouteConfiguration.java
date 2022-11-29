@@ -1,10 +1,10 @@
 package io.micrc.core.message.rabbit;
 
-import io.micrc.core.message.rabbit.store.EventMessage;
-import io.micrc.core.message.rabbit.store.EventMessageRepository;
-import io.micrc.core.message.rabbit.store.IdempotentMessageRepository;
-import io.micrc.core.message.rabbit.tracking.ErrorMessageRepository;
-import io.micrc.core.message.rabbit.tracking.MessageTrackerRepository;
+import io.micrc.core.message.rabbit.store.RabbitEventMessage;
+import io.micrc.core.message.rabbit.store.RabbitEventMessageRepository;
+import io.micrc.core.message.rabbit.store.RabbitIdempotentMessageRepository;
+import io.micrc.core.message.rabbit.tracking.RabbitErrorMessageRepository;
+import io.micrc.core.message.rabbit.tracking.RabbitMessageTrackerRepository;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -40,8 +40,8 @@ public class RabbitMessageRouteConfiguration extends RouteBuilder {
                 .to("json-patch://select")
                     .choice()
                         .when(body().isNotNull())
-                            .bean(EventMessage.class, "store(${header.currentCommandJson}, ${in.body})")
-                            .bean(EventMessageRepository.class, "save")
+                            .bean(RabbitEventMessage.class, "store(${header.currentCommandJson}, ${in.body})")
+                            .bean(RabbitEventMessageRepository.class, "save")
                         .endChoice()
                     .end()
                 .end();
@@ -52,7 +52,7 @@ public class RabbitMessageRouteConfiguration extends RouteBuilder {
                 .bean(EventsInfo.class, "getAllEvents")
                 .split(new SplitList()).parallelProcessing()
                     .setProperty("eventInfo", body())
-                    .bean(MessageTrackerRepository.class, "findFirstByChannel(${body.getChannel()})")
+                    .bean(RabbitMessageTrackerRepository.class, "findFirstByChannel(${body.getChannel()})")
                     .choice()
                         .when(body().isNull())
                             .setBody(exchangeProperty("eventInfo"))
@@ -60,21 +60,21 @@ public class RabbitMessageRouteConfiguration extends RouteBuilder {
                         .endChoice()
                     .end()
                     .setProperty("currentTracker", body())
-                    .bean(ErrorMessageRepository.class, "findErrorMessageByExchangeAndChannelLimitByCount(${exchange.properties.get(currentTracker).getExchange()}, ${exchange.properties.get(currentTracker).getChannel()}, 100)")
+                    .bean(RabbitErrorMessageRepository.class, "findErrorMessageByExchangeAndChannelLimitByCount(${exchange.properties.get(currentTracker).getExchange()}, ${exchange.properties.get(currentTracker).getChannel()}, 100)")
                     .setHeader("errorMessageCount", simple("${body.size}"))
                     .setProperty("errorEvents", body())
                     .process(exchange -> {
                         Integer errorMessageCount = (Integer) exchange.getIn().getHeader("errorMessageCount");
                         exchange.getIn().setHeader("normalMessageCount", 100 - errorMessageCount);
                     })
-                    .bean(EventMessageRepository.class, "findEventMessageByRegionAndCurrentSequenceLimitByCount(${exchange.properties.get(currentTracker).getRegion()}, ${exchange.properties.get(currentTracker).getSequence()}, ${header.normalMessageCount})")
+                    .bean(RabbitEventMessageRepository.class, "findEventMessageByRegionAndCurrentSequenceLimitByCount(${exchange.properties.get(currentTracker).getRegion()}, ${exchange.properties.get(currentTracker).getSequence()}, ${header.normalMessageCount})")
                     .setProperty("normalEvents", body())
                     .choice()
                         .when(simple("${body.size} > 0"))
                             .setBody(exchangeProperty("currentTracker"))
                             .setHeader("eventMessages", simple("${exchange.properties.get(normalEvents)}"))
                             .to("eventstore://tracker-move")
-                            .bean(MessageTrackerRepository.class, "save")
+                            .bean(RabbitMessageTrackerRepository.class, "save")
                         .endChoice()
                     .end()
                     .setBody(exchangeProperty("errorEvents"))
@@ -92,7 +92,7 @@ public class RabbitMessageRouteConfiguration extends RouteBuilder {
                 .routeId("direct://send-error")
                 .setHeader("errorMessage", body())
                 .setBody(simple("${body.sequence}"))
-                .bean(EventMessageRepository.class, "findEventMessageBySequence")
+                .bean(RabbitEventMessageRepository.class, "findEventMessageBySequence")
                 .setHeader("normalMessage", body())
                 .setHeader("mappingFilePath", simple("${exchange.properties.get(eventInfo).getMappingPath()}"))
                 .setBody(simple("${body.getContent()}"))
@@ -100,7 +100,7 @@ public class RabbitMessageRouteConfiguration extends RouteBuilder {
                 .setHeader("sendContext", body())
                 .setBody(header("errorMessage"))
                 .to("eventstore://error-message-sending")
-                .bean(ErrorMessageRepository.class, "save")
+                .bean(RabbitErrorMessageRepository.class, "save")
                 .setBody(header("normalMessage"))
                 .setHeader("content", header("sendContext"))
                 .to("eventstore://message-set-content")
@@ -137,12 +137,12 @@ public class RabbitMessageRouteConfiguration extends RouteBuilder {
         from("subscribe://idempotent-check")
                 .routeId("subscribe://idempotent-check")
                 .setHeader("messageDetail", body())
-                .bean(IdempotentMessageRepository.class, "findFirstByExchangeAndChannelAndSequenceAndRegion(${body.get(exchange)}, ${body.get(channel)}, ${body.get(sequence)}, ${body.get(region)})")
+                .bean(RabbitIdempotentMessageRepository.class, "findFirstByExchangeAndChannelAndSequenceAndRegion(${body.get(exchange)}, ${body.get(channel)}, ${body.get(sequence)}, ${body.get(region)})")
                 .choice()
                     .when(body().isNull())
                         .setBody(header("messageDetail"))
                         .to("subscribe://idempotent-message")
-                        .bean(IdempotentMessageRepository.class, "save")
+                        .bean(RabbitIdempotentMessageRepository.class, "save")
                         .setBody(constant(false))
                     .endChoice()
                     .otherwise()
@@ -154,7 +154,7 @@ public class RabbitMessageRouteConfiguration extends RouteBuilder {
                 .routeId("subscribe://dead-message")
                 .transacted()
                 .to("eventstore://dead-message-store")
-                .bean(ErrorMessageRepository.class, "save")
+                .bean(RabbitErrorMessageRepository.class, "save")
                 .end();
 
         // 发送失败监听路由,落盘本地Tracker关联表
@@ -165,13 +165,13 @@ public class RabbitMessageRouteConfiguration extends RouteBuilder {
                 // FIXME 存在交换区不存在时调度重试导致消息重复落盘问题,需修复
                 .choice()
                     .when(header("type").isEqualTo("ERROR"))
-                        .bean(ErrorMessageRepository.class, "findFirstByExchangeAndChannelAndSequenceAndRegion(${body.get(exchange)}, ${body.get(channel)}, ${body.get(sequence)}, ${body.get(region)})")
+                        .bean(RabbitErrorMessageRepository.class, "findFirstByExchangeAndChannelAndSequenceAndRegion(${body.get(exchange)}, ${body.get(channel)}, ${body.get(sequence)}, ${body.get(region)})")
                         .to("eventstore://send-error-error-message-store")
-                        .bean(ErrorMessageRepository.class, "save")
+                        .bean(RabbitErrorMessageRepository.class, "save")
                     .endChoice()
                     .when(header("type").isEqualTo("NORMAL"))
                         .to("eventstore://send-normal-error-message-store")
-                        .bean(ErrorMessageRepository.class, "save")
+                        .bean(RabbitErrorMessageRepository.class, "save")
                     .endChoice()
                 .end()
                 .end();
@@ -183,13 +183,13 @@ public class RabbitMessageRouteConfiguration extends RouteBuilder {
                 // FIXME 存在交换区不存在时调度重试导致消息重复落盘问题,需修复
                 .choice()
                 .when(header("type").isEqualTo("ERROR"))
-                .bean(ErrorMessageRepository.class, "findFirstByExchangeAndChannelAndSequenceAndRegion(${body.get(exchange)}, ${body.get(channel)}, ${body.get(sequence)}, ${body.get(region)})")
+                .bean(RabbitErrorMessageRepository.class, "findFirstByExchangeAndChannelAndSequenceAndRegion(${body.get(exchange)}, ${body.get(channel)}, ${body.get(sequence)}, ${body.get(region)})")
                 .to("eventstore://send-error-return-message-store")
-                .bean(ErrorMessageRepository.class, "save")
+                .bean(RabbitErrorMessageRepository.class, "save")
                 .endChoice()
                 .when(header("type").isEqualTo("NORMAL"))
                 .to("eventstore://send-normal-return-message-store")
-                .bean(ErrorMessageRepository.class, "save")
+                .bean(RabbitErrorMessageRepository.class, "save")
                 .endChoice()
                 .end()
                 .end();
@@ -199,7 +199,7 @@ public class RabbitMessageRouteConfiguration extends RouteBuilder {
                 .transacted()
                 .choice()
                     .when(header("type").isEqualTo("ERROR"))
-                        .bean(ErrorMessageRepository.class, "deleteByExchangeAndChannelAndSequenceAndRegion(${body.get(exchange)}, ${body.get(channel)}, ${body.get(sequence)}, ${body.get(region)})")
+                        .bean(RabbitErrorMessageRepository.class, "deleteByExchangeAndChannelAndSequenceAndRegion(${body.get(exchange)}, ${body.get(channel)}, ${body.get(sequence)}, ${body.get(region)})")
                     .end()
                 .end();
     }

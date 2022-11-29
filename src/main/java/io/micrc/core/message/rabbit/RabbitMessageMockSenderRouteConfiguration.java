@@ -14,11 +14,11 @@ import lombok.experimental.SuperBuilder;
  * @date 2022-09-19 11:23
  * @since 0.0.1
  */
-public class MessageMockSenderRouteConfiguration extends MicrcRouteBuilder {
+public class RabbitMessageMockSenderRouteConfiguration extends MicrcRouteBuilder {
 
     // 路由模版ID
     public static final String ROUTE_TMPL_MESSAGE_SENDER =
-            MessageMockSenderRouteConfiguration.class.getName() + ".messageSender";
+            RabbitMessageMockSenderRouteConfiguration.class.getName() + ".messageSender";
 
     /**
      * 配置消息MOCK发送路由模板

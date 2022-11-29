@@ -19,8 +19,8 @@ import java.util.Map;
 @Data
 @Entity
 @NoArgsConstructor
-@Table(name = "message_idempotent_message")
-public class IdempotentMessage {
+@Table(name = "rabbit_message_idempotent_message")
+public class RabbitIdempotentMessage {
 
     /**
      * 幂等消息ID
@@ -49,8 +49,8 @@ public class IdempotentMessage {
     private String region;
 
     @Consume("subscribe://idempotent-message")
-    public IdempotentMessage idempotent(Map<String, Object> messageDetail) {
-        IdempotentMessage idempotent = new IdempotentMessage();
+    public RabbitIdempotentMessage idempotent(Map<String, Object> messageDetail) {
+        RabbitIdempotentMessage idempotent = new RabbitIdempotentMessage();
         idempotent.setChannel((String) messageDetail.get("channel"));
         idempotent.setSequence(Long.valueOf(messageDetail.get("sequence").toString()));
         idempotent.setExchange((String) messageDetail.get("exchange"));

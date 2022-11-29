@@ -1,8 +1,8 @@
 package io.micrc.core.message.rabbit;
 
 import com.rabbitmq.client.Channel;
-import io.micrc.core.annotations.message.RabbitMessageAdapter;
-import io.micrc.core.message.rabbit.store.EventMessage;
+import io.micrc.core.annotations.message.rabbit.RabbitMessageAdapter;
+import io.micrc.core.message.rabbit.store.RabbitEventMessage;
 import io.micrc.core.rpc.Result;
 import io.micrc.lib.ClassCastUtils;
 import io.micrc.lib.JsonUtil;
@@ -39,7 +39,7 @@ public class RabbitMessageConsumeRouterExecution implements Ordered {
     private TransactionDefinition transactionDefinition;
 
 
-    @Pointcut("@annotation(io.micrc.core.annotations.message.RabbitMessageExecution)")
+    @Pointcut("@annotation(io.micrc.core.annotations.message.rabbit.RabbitMessageExecution)")
     public void annotationPointCut() {/* leave it out */}
 
     @Around("annotationPointCut()")
@@ -55,12 +55,12 @@ public class RabbitMessageConsumeRouterExecution implements Ordered {
             custom = annotation.custom();
         }
         Object[] args = proceedingJoinPoint.getArgs();
-        EventMessage eventMessage = null;
+        RabbitEventMessage rabbitEventMessage = null;
         Channel channel = null;
         Message message = null;
         for (Object arg : args) {
-            if(arg instanceof EventMessage){
-                eventMessage = (EventMessage) arg;
+            if(arg instanceof RabbitEventMessage){
+                rabbitEventMessage = (RabbitEventMessage) arg;
             }
             if(arg instanceof Channel){
                 channel = (Channel) arg;
@@ -69,7 +69,7 @@ public class RabbitMessageConsumeRouterExecution implements Ordered {
                 message = (Message) arg;
             }
         }
-        if (null == eventMessage || null == channel || null == message) {
+        if (null == rabbitEventMessage || null == channel || null == message) {
             return null;
         }
         Object retVal = null;
@@ -108,7 +108,7 @@ public class RabbitMessageConsumeRouterExecution implements Ordered {
                 }
             }
             // 如果非已重复消息 转发至相应适配器
-            Object resultObj = template.requestBody("message://" + messageDetail.get("region") + "Listener", eventMessage.getContent());
+            Object resultObj = template.requestBody("message://" + messageDetail.get("region") + "Listener", rabbitEventMessage.getContent());
             Result<?> result = null;
             if(resultObj instanceof String){
                 result = JsonUtil.writeValueAsObjectRetainNull((String) resultObj, Result.class);

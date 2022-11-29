@@ -15,7 +15,7 @@ import java.util.List;
  * @date 2022/1/12 9:11 PM
  */
 @Repository
-public interface EventMessageRepository extends JpaRepository<EventMessage, String> {
+public interface RabbitEventMessageRepository extends JpaRepository<RabbitEventMessage, String> {
 
     @Query(nativeQuery = true,
            value = "select ms.* from message_message_store ms " +
@@ -25,8 +25,8 @@ public interface EventMessageRepository extends JpaRepository<EventMessage, Stri
                    "ms.sequence > :currentSequence " +
                    "order by ms.sequence asc " +
                    "limit :count ")
-    List<EventMessage> findEventMessageByRegionAndCurrentSequenceLimitByCount(
+    List<RabbitEventMessage> findEventMessageByRegionAndCurrentSequenceLimitByCount(
             @Param(value = "region") String region, @Param(value = "currentSequence") Long currentSequence, @Param(value = "count") Integer count);
 
-    EventMessage findEventMessageBySequence(@Param(value = "sequence") Long sequence);
+    RabbitEventMessage findEventMessageBySequence(@Param(value = "sequence") Long sequence);
 }

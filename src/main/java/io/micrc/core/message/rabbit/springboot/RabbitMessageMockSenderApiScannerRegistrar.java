@@ -1,8 +1,8 @@
 package io.micrc.core.message.rabbit.springboot;
 
 import io.micrc.core.EnableMicrcSupport;
-import io.micrc.core.annotations.message.RabbitMessageAdapter;
-import io.micrc.core.message.rabbit.MessageMockSenderRouteConfiguration;
+import io.micrc.core.annotations.message.rabbit.RabbitMessageAdapter;
+import io.micrc.core.message.rabbit.RabbitMessageMockSenderRouteConfiguration;
 import io.micrc.core.message.rabbit.RabbitMessageMockSenderRouteTemplateParameterSource;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -127,8 +127,8 @@ class RabbitMessageMockSenderApiScanner extends ClassPathBeanDefinitionScanner {
             RabbitMessageAdapter messageAdapter = beanDefinition.getBeanClass().getAnnotation(RabbitMessageAdapter.class);
             // 获取RabbitMessageAdapter注解参数
             String listenerName = beanDefinition.getBeanClass().getSimpleName();
-            MessageMockSenderRouteConfiguration.MessageMockSenderDefinition build = MessageMockSenderRouteConfiguration.MessageMockSenderDefinition.builder()
-                    .templateId(MessageMockSenderRouteConfiguration.ROUTE_TMPL_MESSAGE_SENDER)
+            RabbitMessageMockSenderRouteConfiguration.MessageMockSenderDefinition build = RabbitMessageMockSenderRouteConfiguration.MessageMockSenderDefinition.builder()
+                    .templateId(RabbitMessageMockSenderRouteConfiguration.ROUTE_TMPL_MESSAGE_SENDER)
                     .listenerName(listenerName)
                     .eventName(messageAdapter.eventName())
                     .build();
@@ -148,6 +148,6 @@ class RabbitMessageMockSenderApiScanner extends ClassPathBeanDefinitionScanner {
         if (!StringUtils.hasText(routeId)) {
             routeId = String.valueOf(INDEX.getAndIncrement());
         }
-        return MessageMockSenderRouteConfiguration.ROUTE_TMPL_MESSAGE_SENDER + "-" + routeId;
+        return RabbitMessageMockSenderRouteConfiguration.ROUTE_TMPL_MESSAGE_SENDER + "-" + routeId;
     }
 }

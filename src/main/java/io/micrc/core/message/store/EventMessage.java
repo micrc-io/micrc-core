@@ -1,11 +1,9 @@
-package io.micrc.core.message.rabbit.store;
+package io.micrc.core.message.store;
 
+import io.micrc.core.persistence.snowflake.SnowFlakeIdentity;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.apache.camel.Body;
-import org.apache.camel.Consume;
-import org.apache.camel.Header;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -31,7 +29,7 @@ public class EventMessage implements Serializable {
      * 消息ID
      */
     @Id
-    private String messageId = System.currentTimeMillis() + java.util.UUID.randomUUID().toString().replaceAll("-", "");
+    private Long messageId = SnowFlakeIdentity.getInstance().nextId();
 
     /**
      * 消息创建时间
@@ -40,8 +38,6 @@ public class EventMessage implements Serializable {
     
     @Column(columnDefinition = "LONGTEXT")
     private String content;
-
-    private Long sequence;
 
     private String region;
 
@@ -56,14 +52,6 @@ public class EventMessage implements Serializable {
         this.messageId = eventMessage.getMessageId();
         this.createTime = eventMessage.getCreateTime();
         this.content = eventMessage.getContent();
-        this.sequence = eventMessage.getSequence();
         this.region = eventMessage.getRegion();
-    }
-
-    @Consume("eventstore://message-set-content")
-    public EventMessage replaceContent(@Body EventMessage eventMessage, @Header("content") String content) {
-        EventMessage eventMessageNewInstance = new EventMessage(eventMessage);
-        eventMessageNewInstance.setContent(content);
-        return eventMessageNewInstance;
     }
 }

@@ -6,10 +6,11 @@ import io.micrc.core.cache.springboot.CacheAutoConfiguration;
 import io.micrc.core.configuration.springboot.EmbeddedServerLoggingApplicationRunner;
 import io.micrc.core.dynamic.springboot.DynamicExecutorAutoConfiguration;
 import io.micrc.core.integration.EnableIntegration;
-import io.micrc.core.message.rabbit.MessageMockSenderRouteConfiguration;
+import io.micrc.core.message.rabbit.RabbitMessageMockSenderRouteConfiguration;
 import io.micrc.core.message.rabbit.springboot.RabbitClassPathMessageScannerRegistrar;
 import io.micrc.core.message.rabbit.springboot.RabbitMessageAutoConfiguration;
 import io.micrc.core.message.rabbit.springboot.RabbitMessageMockSenderApiScannerRegistrar;
+import io.micrc.core.message.springboot.MessageAutoConfiguration;
 import io.micrc.core.persistence.springboot.PersistenceAutoConfiguration;
 import io.micrc.core.rpc.springboot.ClassPathRestEndpointScannerRegistrar;
 import io.micrc.core.rpc.springboot.RpcAutoConfiguration;
@@ -39,20 +40,21 @@ import java.lang.annotation.*;
 @EnableApplicationService
 @EnableIntegration
 @Import({
-    CustomCamelComponentAutoConfiguration.class,
-    EmbeddedServerLoggingApplicationRunner.class,
-    PersistenceAutoConfiguration.class,
-    CacheAutoConfiguration.class,
-    RpcAutoConfiguration.class,
-    ClassPathRestEndpointScannerRegistrar.class,
-    RpcMockServerScannerRegistrar.class,
-    RpcMockServerAutoConfiguration.class,
-    RabbitMessageMockSenderApiScannerRegistrar.class,
-    MessageMockSenderRouteConfiguration.class,
-    RabbitMessageAutoConfiguration.class,
-    RabbitClassPathMessageScannerRegistrar.class,
-    ScheduleAutoConfiguration.class,
-    DynamicExecutorAutoConfiguration.class
+        CustomCamelComponentAutoConfiguration.class,
+        EmbeddedServerLoggingApplicationRunner.class,
+        PersistenceAutoConfiguration.class,
+        CacheAutoConfiguration.class,
+        RpcAutoConfiguration.class,
+        ClassPathRestEndpointScannerRegistrar.class,
+        RpcMockServerScannerRegistrar.class,
+        RpcMockServerAutoConfiguration.class,
+        RabbitMessageMockSenderApiScannerRegistrar.class,
+        RabbitMessageMockSenderRouteConfiguration.class,
+        RabbitMessageAutoConfiguration.class,
+        RabbitClassPathMessageScannerRegistrar.class,
+        ScheduleAutoConfiguration.class,
+        DynamicExecutorAutoConfiguration.class,
+        MessageAutoConfiguration.class
 })
 public @interface EnableMicrcSupport {
     String[] basePackages() default {};

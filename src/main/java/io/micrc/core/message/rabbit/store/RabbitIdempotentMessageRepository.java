@@ -12,9 +12,9 @@ import org.springframework.stereotype.Repository;
  * @date 2022/1/12 9:11 PM
  */
 @Repository
-public interface IdempotentMessageRepository extends JpaRepository<IdempotentMessage, String> {
+public interface RabbitIdempotentMessageRepository extends JpaRepository<RabbitIdempotentMessage, String> {
 
-    IdempotentMessage findFirstByExchangeAndChannelAndSequenceAndRegion(
+    RabbitIdempotentMessage findFirstByExchangeAndChannelAndSequenceAndRegion(
             @Param(value = "exchange") String exchange,
             @Param(value = "channel") String channel,
             @Param(value = "sequence") Long sequence,

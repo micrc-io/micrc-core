@@ -3,13 +3,13 @@ package io.micrc.core.message.rabbit.springboot;
 import com.rabbitmq.client.ShutdownSignalException;
 import io.micrc.core.message.rabbit.RabbitMessageConsumeRouterExecution;
 import io.micrc.core.message.rabbit.RabbitMessageRouteConfiguration;
-import io.micrc.core.message.rabbit.store.EventMessage;
-import io.micrc.core.message.rabbit.store.IdempotentMessage;
-import io.micrc.core.message.rabbit.store.MessagePublisherSchedule;
-import io.micrc.core.message.rabbit.tracking.ErrorMessage;
-import io.micrc.core.message.rabbit.tracking.ErrorMessage.DeadMessageResolver;
-import io.micrc.core.message.rabbit.tracking.MessageCallback;
-import io.micrc.core.message.rabbit.tracking.MessageTracker;
+import io.micrc.core.message.rabbit.store.RabbitEventMessage;
+import io.micrc.core.message.rabbit.store.RabbitIdempotentMessage;
+import io.micrc.core.message.rabbit.store.RabbitMessagePublisherSchedule;
+import io.micrc.core.message.rabbit.tracking.RabbitErrorMessage;
+import io.micrc.core.message.rabbit.tracking.RabbitErrorMessage.DeadMessageResolver;
+import io.micrc.core.message.rabbit.tracking.RabbitMessageCallback;
+import io.micrc.core.message.rabbit.tracking.RabbitMessageTracker;
 import org.apache.camel.component.direct.DirectComponent;
 import org.apache.camel.spring.boot.CamelAutoConfiguration;
 import org.springframework.amqp.core.*;
@@ -39,12 +39,12 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 @Configuration
 @Import({
         RabbitMessageRouteConfiguration.class,
-        MessagePublisherSchedule.class,
-        MessageCallback.class,
-        MessageTracker.class,
-        EventMessage.class,
-        ErrorMessage.class,
-        IdempotentMessage.class,
+        RabbitMessagePublisherSchedule.class,
+        RabbitMessageCallback.class,
+        RabbitMessageTracker.class,
+        RabbitEventMessage.class,
+        RabbitErrorMessage.class,
+        RabbitIdempotentMessage.class,
         DeadMessageResolver.class,
         RabbitMessageConsumeRouterExecution.class
 })
@@ -63,7 +63,7 @@ public class RabbitMessageAutoConfiguration implements ApplicationRunner {
     public static final String DEAD_LETTER_ROUTING_KEY = "error";
 
     @Autowired
-    private MessageCallback messageCallback;
+    private RabbitMessageCallback rabbitMessageCallback;
 
     @Autowired
     private RabbitTemplate template;
@@ -114,9 +114,9 @@ public class RabbitMessageAutoConfiguration implements ApplicationRunner {
     public void run(ApplicationArguments args) throws Exception {
         template.setMandatory(true);
         // 设置出错回调
-        template.setReturnsCallback(messageCallback);
+        template.setReturnsCallback(rabbitMessageCallback);
         // 设置返回回调
-        template.setConfirmCallback(messageCallback);
+        template.setConfirmCallback(rabbitMessageCallback);
         // 设置在链接时的监听器
         template.getConnectionFactory().addConnectionListener(new ConnectionListener() {
             @Override

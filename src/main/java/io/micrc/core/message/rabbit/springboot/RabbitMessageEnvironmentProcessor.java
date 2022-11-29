@@ -32,7 +32,7 @@ public class RabbitMessageEnvironmentProcessor implements EnvironmentPostProcess
         List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
         Properties properties = new Properties();
         envForRabbitMQ(profiles, properties);
-        PropertiesPropertySource source = new PropertiesPropertySource("micrc-message", properties);
+        PropertiesPropertySource source = new PropertiesPropertySource("micrc-rabbit-message", properties);
         environment.getPropertySources().addLast(source);
     }
 
