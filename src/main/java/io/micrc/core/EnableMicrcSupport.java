@@ -10,6 +10,7 @@ import io.micrc.core.message.rabbit.RabbitMessageMockSenderRouteConfiguration;
 import io.micrc.core.message.rabbit.springboot.RabbitClassPathMessageScannerRegistrar;
 import io.micrc.core.message.rabbit.springboot.RabbitMessageAutoConfiguration;
 import io.micrc.core.message.rabbit.springboot.RabbitMessageMockSenderApiScannerRegistrar;
+import io.micrc.core.message.springboot.ClassPathMessageScannerRegistrar;
 import io.micrc.core.message.springboot.MessageAutoConfiguration;
 import io.micrc.core.persistence.springboot.PersistenceAutoConfiguration;
 import io.micrc.core.rpc.springboot.ClassPathRestEndpointScannerRegistrar;
@@ -50,10 +51,11 @@ import java.lang.annotation.*;
         RpcMockServerAutoConfiguration.class,
         RabbitMessageMockSenderApiScannerRegistrar.class,
         RabbitMessageMockSenderRouteConfiguration.class,
-        RabbitMessageAutoConfiguration.class,
-        RabbitClassPathMessageScannerRegistrar.class,
+//        RabbitMessageAutoConfiguration.class,
+//        RabbitClassPathMessageScannerRegistrar.class,
         ScheduleAutoConfiguration.class,
         DynamicExecutorAutoConfiguration.class,
+        ClassPathMessageScannerRegistrar.class,
         MessageAutoConfiguration.class
 })
 public @interface EnableMicrcSupport {

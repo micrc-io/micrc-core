@@ -4,7 +4,10 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.env.EnvironmentPostProcessor;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.PropertiesPropertySource;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -19,10 +22,8 @@ import java.util.Properties;
  */
 public class MessageEnvironmentProcessor implements EnvironmentPostProcessor {
 
-
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
-        System.out.printf("tengwang-test");
         Optional<String> profileStr = Optional.ofNullable(environment.getProperty("application.profiles"));
         List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
         Properties properties = new Properties();
@@ -69,7 +70,9 @@ public class MessageEnvironmentProcessor implements EnvironmentPostProcessor {
         // 32MB的批处理缓冲区
         properties.setProperty("spring.kafka.producer.buffer-memory", "33554432");
         // 默认消费者组
-        properties.setProperty("spring.kafka.consumer.group-id", "test");
+        Properties loadMicrcProperties = loadMicrcProperties();
+        String applicationName = loadMicrcProperties.getProperty("spring.application.name");
+        properties.setProperty("spring.kafka.consumer.group-id", applicationName);
         // 最早未被消费的offset
         properties.setProperty("spring.kafka.consumer.auto-offset-reset", "earliest");
         // 批量一次最大拉取数据量
@@ -78,5 +81,20 @@ public class MessageEnvironmentProcessor implements EnvironmentPostProcessor {
         properties.setProperty("spring.kafka.consumer.enable-auto-commit", "false");
         // 批消费并发量，小于或等于Topic的分区数
         properties.setProperty("spring.kafka.consumer.batch.concurrency", "3");
+        // 监听器设置手动应答
+        properties.setProperty("spring.kafka.listener.ack-mode", "MANUAL_IMMEDIATE");
+        // 日志级别
+        properties.setProperty("logging.level.org.apache.kafka", "WARN");
+    }
+
+    private Properties loadMicrcProperties() {
+        Resource resource = new ClassPathResource("micrc.properties");
+        Properties properties = new Properties();
+        try {
+            properties.load(resource.getInputStream());
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable loading properties from 'micrc.properties'", e);
+        }
+        return properties;
     }
 }

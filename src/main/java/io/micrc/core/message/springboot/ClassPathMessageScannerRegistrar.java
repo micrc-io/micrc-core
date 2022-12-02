@@ -23,7 +23,9 @@ import org.springframework.core.type.StandardAnnotationMetadata;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 消息监听适配器扫描，注入路由参数bean，用于每个适配器生成路由
@@ -91,13 +93,25 @@ class MessagePublisherScanner extends ClassPathBeanDefinitionScanner {
         for (BeanDefinitionHolder holder : holders) {
             GenericBeanDefinition beanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
             beanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
+            String serviceName = beanDefinition.getBeanClass().getSimpleName();
             DomainEvents domainEvents = beanDefinition.getBeanClass().getAnnotation(DomainEvents.class);
-            // TODO xxhan 完善扫描并填充赋值
             Arrays.stream(domainEvents.events()).forEach(eventInfo -> {
+                // 事件对应接收方各自映射
+                List<EventsInfo.EventMapping> mappingList = Arrays.stream(eventInfo.mappings())
+                        .map(mapping -> EventsInfo.EventMapping.builder()
+                                .mappingKey(mapping.mappingKey())
+                                .mappingPath(mapping.mappingPath())
+                                .receiverAddress(mapping.receiverAddress()).build())
+                        .collect(Collectors.toList());
+                // 事件信息
                 Event event = Event.builder()
+                        .topicName(eventInfo.topicName())
                         .eventName(eventInfo.eventName())
+                        .senderAddress(serviceName)
+                        .eventMappings(mappingList)
                         .build();
-                //eventsInfo.put(channel, event);
+                // 注册事件信息
+                eventsInfo.put(serviceName + "-" + event.getTopicName(), event);
             });
         }
         holders.clear();

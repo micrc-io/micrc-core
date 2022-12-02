@@ -14,7 +14,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: message_id
-                  type: VARCHAR(255)
+                  type: BIGINT(11)
                   remarks: id of message
                   constraints:
                     nullable: false
@@ -59,19 +59,19 @@ databaseChangeLog:
                     primaryKey: true
                     primaryKeyName: tracker-pk
               - column:
-                  name: channel
+                  name: topic_name
                   type: VARCHAR(500)
                   remarks: the channel of event
                   constraints:
                     nullable: false
               - column:
-                  name: exchange
+                  name: sender_name
                   type: VARCHAR(500)
                   remarks: the event exchange
                   constraints:
                     nullable: true
               - column:
-                  name: region
+                  name: event_name
                   type: VARCHAR(500)
                   remarks: the event type
                   constraints:
@@ -154,7 +154,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: idempotent_message_id
-                  type: VARCHAR(255)
+                  type: BIGINT(11)
                   remarks: the id of idempotent event
                   constraints:
                     nullable: false
@@ -167,21 +167,15 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: channel
+                  name: sender
                   type: VARCHAR(500)
-                  remarks: the event channel
+                  remarks: the event sender
                   constraints:
                     nullable: false
               - column:
-                  name: exchange
+                  name: receiver
                   type: VARCHAR(500)
-                  remarks: the event exchange
-                  constraints:
-                    nullable: false
-              - column:
-                  name: region
-                  type: VARCHAR(500)
-                  remarks: the event type
+                  remarks: the event receiver
                   constraints:
                     nullable: false
         - addAutoIncrement:
