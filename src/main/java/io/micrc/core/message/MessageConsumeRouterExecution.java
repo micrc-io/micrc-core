@@ -180,9 +180,6 @@ public class MessageConsumeRouterExecution implements Ordered {
                 messageDetail.put("mappingPath", mapping.get("mappingPath"));
             }
         }
-        System.out.println("consumer header: " + headerString.substring(1));
-        System.out.println("consumer value: " + consumerRecord.value());
-        System.out.println("consumer topic: " + consumerRecord.topic());
     }
 
     @Override

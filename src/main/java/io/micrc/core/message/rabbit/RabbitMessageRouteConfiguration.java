@@ -99,7 +99,7 @@ public class RabbitMessageRouteConfiguration extends RouteBuilder {
                 .to("json-mapping://file")
                 .setHeader("sendContext", body())
                 .setBody(header("errorMessage"))
-                .to("eventstore://error-message-sending")
+                .to("eventstore://error-message-sending") // sending
                 .bean(RabbitErrorMessageRepository.class, "save")
                 .setBody(header("normalMessage"))
                 .setHeader("content", header("sendContext"))
@@ -184,7 +184,7 @@ public class RabbitMessageRouteConfiguration extends RouteBuilder {
                 .choice()
                 .when(header("type").isEqualTo("ERROR"))
                 .bean(RabbitErrorMessageRepository.class, "findFirstByExchangeAndChannelAndSequenceAndRegion(${body.get(exchange)}, ${body.get(channel)}, ${body.get(sequence)}, ${body.get(region)})")
-                .to("eventstore://send-error-return-message-store")
+                .to("eventstore://send-error-return-message-store") // stop
                 .bean(RabbitErrorMessageRepository.class, "save")
                 .endChoice()
                 .when(header("type").isEqualTo("NORMAL"))

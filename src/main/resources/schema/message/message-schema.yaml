@@ -88,64 +88,64 @@ databaseChangeLog:
             columns:
               - column:
                   name: error_message_id
-                  type: VARCHAR(255)
+                  type: BIGINT(11)
                   remarks: the id of error event
                   constraints:
                     nullable: false
                     primaryKey: true
                     primaryKeyName: error_event-pk
               - column:
-                  name: sequence
+                  name: message_id
                   type: BIGINT(11)
                   remarks: the event sequence
                   constraints:
                     nullable: false
               - column:
-                  name: channel
+                  name: sender
                   type: VARCHAR(500)
                   remarks: the event channel
                   constraints:
                     nullable: false
               - column:
-                  name: exchange
+                  name: topic
+                  type: VARCHAR(500)
+                  remarks: the event channel
+                  constraints:
+                    nullable: false
+              - column:
+                  name: event
                   type: VARCHAR(500)
                   remarks: the event exchange
                   constraints:
                     nullable: false
               - column:
-                  name: region
-                  type: VARCHAR(500)
+                  name: mapping_map
+                  type: LONGTEXT
                   remarks: the event type
-                  constraints:
-                    nullable: false
-              - column:
-                  name: reason
-                  type: VARCHAR(500)
-                  remarks: send error reason - the SEND is in send step error, the DEAD_MESSAGE is on consumer can not consumer error
-                  constraints:
-                    nullable: false
-              - column:
-                  name: last_error_time
-                  type: BIGINT(11)
-                  remarks: the last error time
-                  constraints:
-                    nullable: false
-              - column:
-                  name: error_frequency
-                  type: INT(11)
-                  remarks: the error message error frequency
-                  constraints:
-                    nullable: false
-              - column:
-                  name: state
-                  type: VARCHAR(500)
-                  remarks: send state - NOT_SEND未发送 STOP不发送 SENDING发送中
                   constraints:
                     nullable: false
               - column:
                   name: content
                   type: LONGTEXT
-                  remarks: message content
+                  remarks: send error reason - the SEND is in send step error, the DEAD_MESSAGE is on consumer can not consumer error
+                  constraints:
+                    nullable: false
+              - column:
+                  name: error_count
+                  type: INT(11)
+                  remarks: the last error time
+                  constraints:
+                    nullable: false
+              - column:
+                  name: error_message
+                  type: VARCHAR(500)
+                  remarks: the error message error frequency
+                  constraints:
+                    nullable: false
+              - column:
+                  name: error_position
+                  type: VARCHAR(500)
+                  remarks: send state - NOT_SEND未发送 STOP不发送 SENDING发送中
                   constraints:
                     nullable: false
         - createTable:

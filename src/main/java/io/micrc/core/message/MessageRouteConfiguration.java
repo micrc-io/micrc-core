@@ -1,10 +1,11 @@
 package io.micrc.core.message;
 
-import io.micrc.core.message.rabbit.store.RabbitIdempotentMessageRepository;
 import io.micrc.core.message.store.EventMessage;
 import io.micrc.core.message.store.EventMessageRepository;
 import io.micrc.core.message.store.IdempotentMessage;
 import io.micrc.core.message.store.IdempotentMessageRepository;
+import io.micrc.core.message.tracking.ErrorMessage;
+import io.micrc.core.message.tracking.ErrorMessageRepository;
 import io.micrc.core.message.tracking.MessageTracker;
 import io.micrc.core.message.tracking.MessageTrackerRepository;
 import io.micrc.lib.JsonUtil;
@@ -13,24 +14,24 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import org.apache.camel.Body;
 import org.apache.camel.Consume;
+import org.apache.camel.EndpointInject;
 import org.apache.camel.Exchange;
 import org.apache.camel.Header;
+import org.apache.camel.ProducerTemplate;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.support.ExpressionAdapter;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.clients.producer.RecordMetadata;
-import org.apache.kafka.common.header.Headers;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
-import org.springframework.stereotype.Component;
 import org.springframework.util.concurrent.ListenableFuture;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -43,8 +44,18 @@ import java.util.stream.Collectors;
 public class MessageRouteConfiguration extends RouteBuilder {
 
     @Autowired
-    private KafkaTemplate<String, String> template;
+    private KafkaTemplate<String, String> kafkaTemplate;
 
+    @EndpointInject
+    private ProducerTemplate producerTemplate;
+
+    /**
+     * 组装事件消息
+     *
+     * @param body
+     * @param currentCommandJson
+     * @return
+     */
     @Consume("eventstore://get-event-message")
     public EventMessage getEventMessage(@Body String body, @Header("currentCommandJson") String currentCommandJson) {
         EventMessage eventMessage = new EventMessage();
@@ -53,6 +64,12 @@ public class MessageRouteConfiguration extends RouteBuilder {
         return eventMessage;
     }
 
+    /**
+     * 创建事件跟踪器
+     *
+     * @param event
+     * @return
+     */
     @Consume("eventstore://create-tracker")
     public MessageTracker create(MessageRouteConfiguration.EventsInfo.Event event) {
         MessageTracker tracker = new MessageTracker();
@@ -64,47 +81,102 @@ public class MessageRouteConfiguration extends RouteBuilder {
         return tracker;
     }
 
+    /**
+     * 修改跟踪器序号
+     *
+     * @param tracker
+     * @param eventMessages
+     * @return
+     */
     @Consume("eventstore://tracker-move")
     public MessageTracker move(@Body MessageTracker tracker, @Header("eventMessages") List<EventMessage> eventMessages) {
         tracker.setSequence(eventMessages.get(eventMessages.size() - 1).getMessageId());
         return tracker;
     }
 
+    /**
+     * 发送消息
+     *
+     * @param object
+     * @param mappings
+     * @param tracker
+     * @param type
+     */
     @Consume("publish://sending-message")
     public void send(
-            @Body EventMessage eventMessage,
+            @Body Object object,
             @Header("mappings") List<EventsInfo.EventMapping> mappings,
             @Header("tracker") MessageTracker tracker,
             @Header("type") String type
     ) {
+        HashMap eventObject = JsonUtil.writeObjectAsObject(object, HashMap.class);
+        String content = (String) eventObject.get("content");
+        Long messageId = (Long) eventObject.get("messageId");
         Map<String, EventsInfo.EventMapping> mappingMap = mappings.stream().collect(Collectors.toMap(EventsInfo.EventMapping::getReceiverAddress, i -> i, (i1, i2) -> i1));
         Message<?> objectMessage = MessageBuilder
-                .withPayload(eventMessage.getContent())
+                .withPayload(content)
                 .setHeader(KafkaHeaders.TOPIC, tracker.getTopicName())
-                .setHeader("sequence", eventMessage.getMessageId())
+                .setHeader("sequence", messageId)
                 .setHeader("sender", tracker.getSenderName())
                 .setHeader("event", tracker.getEventName())
                 .setHeader("mappingMap", mappingMap).build();
-        ListenableFuture<SendResult<String, String>> future = template.send(objectMessage);
-        future.completable().whenCompleteAsync((n, e) -> {
-//            if (null != e) {
-                ProducerRecord<String, String> producerRecord = n.getProducerRecord();
-            Iterator<org.apache.kafka.common.header.Header> iterator = producerRecord.headers().iterator();
-            StringBuilder headerString = new StringBuilder();
-            while (iterator.hasNext()) {
-                org.apache.kafka.common.header.Header header = iterator.next();
-                String k = header.key();
-                String v = new String(header.value());
-                headerString.append(",").append(k).append("=").append(v);
-            }
-            System.out.println("producer header: " + headerString.substring(1));
-            System.out.println("producer value: " + producerRecord.value());
-            System.out.println("producer topic: " + n.getRecordMetadata().topic());
+        ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(objectMessage);
+        future.completable().whenCompleteAsync((sendResult, throwable) -> {
+//            Random random = new Random();
+//            boolean b = random.nextBoolean();
+//            if (b) {
+//                throwable = new Throwable("test error");// todo，测试代码，模拟某些失败情况
 //            }
+            if (null == throwable) {
+                // 发送成功 则 删除错误记录
+                producerTemplate.requestBody("publish://success-sending-resolve", messageId);
+            } else {
+                // 发送失败 则 记录错误信息/累加错误次数
+                ErrorMessage errorMessage = new ErrorMessage();
+                errorMessage.setMessageId(messageId);
+                errorMessage.setSender(tracker.getSenderName());
+                errorMessage.setTopic(tracker.getTopicName());
+                errorMessage.setEvent(tracker.getEventName());
+                errorMessage.setMappingMap(JsonUtil.writeValueAsString(mappingMap));
+                errorMessage.setContent(content);
+                errorMessage.setErrorCount(1);
+                errorMessage.setErrorPosition("SEND");
+                errorMessage.setErrorMessage(throwable.getLocalizedMessage());
+                producerTemplate.requestBody("publish://error-sending-resolve", errorMessage);
+            }
         });
-
     }
 
+    /**
+     * 修改跟踪器序号
+     *
+     * @param errorMessage
+     * @return
+     */
+    @Consume("publish://error-sending-resolve-create")
+    public ErrorMessage createErrorMessage(@Header("current") ErrorMessage errorMessage) {
+        return errorMessage;
+    }
+
+    /**
+     * 修改跟踪器序号
+     *
+     * @param errorMessage
+     * @return
+     */
+    @Consume("publish://error-sending-resolve-update")
+    public ErrorMessage updateErrorMessage(@Body ErrorMessage errorMessage, @Header("current") ErrorMessage current) {
+        errorMessage.setErrorCount(errorMessage.getErrorCount() + 1);
+        errorMessage.setErrorMessage(current.getErrorMessage());
+        return errorMessage;
+    }
+
+    /**
+     * 组装幂等消息
+     *
+     * @param messageDetail
+     * @return
+     */
     @Consume("subscribe://idempotent-message")
     public IdempotentMessage idempotent(Map<String, Object> messageDetail) {
         IdempotentMessage idempotent = new IdempotentMessage();
@@ -140,20 +212,18 @@ public class MessageRouteConfiguration extends RouteBuilder {
                     .choice()
                         .when(body().isNull())
                             .setBody(exchangeProperty("eventInfo"))
-                            .log("创建跟踪器" + body())
                             .to("eventstore://create-tracker")
                         .endChoice()
                     .end()
                     .setProperty("currentTracker", body())
                     .bean(MessageTrackerRepository.class, "save")
 
-    //                .bean(RabbitErrorMessageRepository.class, "findErrorMessageByExchangeAndChannelLimitByCount(${exchange.properties.get(currentTracker).getExchange()}, ${exchange.properties.get(currentTracker).getChannel()}, 100)")
-    //                .setHeader("errorMessageCount", simple("${body.size}"))
-    //                .setProperty("errorEvents", body())
+                    .bean(ErrorMessageRepository.class, "findErrorMessageByTopicAndSenderLimitByCount(${exchange.properties.get(currentTracker).getTopicName()},${exchange.properties.get(currentTracker).getSenderName()},100)")
+                    .setHeader("errorMessageCount", simple("${body.size}"))
+                    .setProperty("errorEvents", body())
                     .process(exchange -> {
-    //                    Integer errorMessageCount = (Integer) exchange.getIn().getHeader("errorMessageCount");
-    //                    exchange.getIn().setHeader("normalMessageCount", 100 - errorMessageCount);
-                        exchange.getIn().setHeader("normalMessageCount", 1000);
+                        Integer errorMessageCount = (Integer) exchange.getIn().getHeader("errorMessageCount");
+                        exchange.getIn().setHeader("normalMessageCount", 1000 - errorMessageCount);
                     })
                     .bean(EventMessageRepository.class, "findEventMessageByRegionAndCurrentSequenceLimitByCount(" +
                             "${exchange.properties.get(currentTracker).getEventName()}," +
@@ -167,10 +237,10 @@ public class MessageRouteConfiguration extends RouteBuilder {
                             .bean(MessageTrackerRepository.class, "save")
                         .endChoice()
                     .end()
-    //                .setBody(exchangeProperty("errorEvents"))
-    //                .split(new RabbitMessageRouteConfiguration.SplitList()).parallelProcessing()
-    //                .to("publish://send-error")
-    //                .end()
+                    .setBody(exchangeProperty("errorEvents"))
+                    .split(new SplitList()).parallelProcessing()
+                        .to("publish://send-normal")
+                        .end()
                     .setBody(exchangeProperty("normalEvents"))
                     .split(new SplitList()).parallelProcessing()
                         .to("publish://send-normal")
@@ -178,29 +248,13 @@ public class MessageRouteConfiguration extends RouteBuilder {
                     .end()
                 .end();
 
-        // 通用异常消息发送路由
-        from("publish://send-error")
-                .routeId("direct://send-error")
-                .log("1111")
-                .end();
-
         // 通用正常消息发送路由
         from("publish://send-normal")
                 .routeId("direct://send-normal")
                 .setHeader("normalMessage", body())
                 .setHeader("mappings", simple("${exchange.properties.get(eventInfo).getEventMappings()}"))
-//                .setBody(simple("${body.getContent()}"))
-//                .to("json-mapping://file")
-//                .setHeader("sendContext", body())
-//                .setBody(header("normalMessage"))
-//                .setHeader("content", header("sendContext"))
-//                .to("eventstore://message-set-content")
-//                .setHeader("currentMessage", body())
-//                .to("publish://get-template")
-//                .setHeader("template", body())
                 .setHeader("type", constant("NORMAL"))
                 .setHeader("tracker", exchangeProperty("currentTracker"))
-//                .setBody(header("currentMessage"))
                 .to("publish://sending-message")
                 .end();
 
@@ -230,13 +284,25 @@ public class MessageRouteConfiguration extends RouteBuilder {
         // 发送失败监听路由
         from("publish://error-sending-resolve")
                 .routeId("publish://error-sending-resolve")
-                .log("5555")
+                .transacted()
+                .setHeader("current", body())
+                .bean(ErrorMessageRepository.class, "findFirstByMessageId(${body.messageId})")
+                .choice()
+                    .when(body().isNull())
+                        .to("publish://error-sending-resolve-create")
+                    .endChoice()
+                    .otherwise()
+                        .to("publish://error-sending-resolve-update")
+                    .endChoice()
+                .end()
+                .bean(ErrorMessageRepository.class, "save")
                 .end();
 
-        // 发送成功监听路由,如发送的是异常消息需要移除异常表数据
+        // 发送成功监听路由
         from("publish://success-sending-resolve")
                 .routeId("publish://success-sending-resolve")
-                .log("6666")
+                .transacted()
+                .bean(ErrorMessageRepository.class, "deleteByMessageId")
                 .end();
     }
 
