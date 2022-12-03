@@ -3,6 +3,7 @@ package io.micrc.core.message;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.schibsted.spt.data.jslt.Expression;
 import com.schibsted.spt.data.jslt.Parser;
+import com.sun.nio.sctp.IllegalReceiveException;
 import io.micrc.core.annotations.message.MessageAdapter;
 import io.micrc.core.rpc.Result;
 import io.micrc.lib.JsonUtil;
@@ -27,6 +28,7 @@ import org.springframework.util.StringUtils;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 /**
  * 消息消费路由执行
@@ -39,6 +41,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 @Configuration
 public class MessageConsumeRouterExecution implements Ordered {
+
+    private final Random RANDOM = new Random();
 
     private final ConcurrentHashMap<Long, Integer> map = new ConcurrentHashMap<>();
 
@@ -69,7 +73,7 @@ public class MessageConsumeRouterExecution implements Ordered {
             }
         }
         if (null == consumerRecord || null == acknowledgment) {
-            return null;
+            throw new IllegalArgumentException("sys args error");
         }
 
         // 解析监听器注解参数
@@ -81,10 +85,6 @@ public class MessageConsumeRouterExecution implements Ordered {
         Class<?> adapter = interfaces[0];
         String adapterName = adapter.getSimpleName();
         MessageAdapter annotation = adapter.getAnnotation(MessageAdapter.class);
-        if (annotation == null) {
-            acknowledgment.nack(Duration.ofMillis(0));
-            return null;
-        }
         String servicePath = annotation.commandServicePath();
         String[] servicePathSplit = servicePath.split("\\.");
         String serviceName = servicePathSplit[servicePathSplit.length - 1];
@@ -95,9 +95,18 @@ public class MessageConsumeRouterExecution implements Ordered {
         HashMap<String, Object> messageDetail = new HashMap<>();
         messageDetail.put("servicePath", servicePath);
         transMessageHeaders(consumerRecord, serviceName, messageDetail);
+
+        // todo，test，模拟1/3 * 1/3接收失败情况
+        if (0 == RANDOM.nextInt(3)) {
+            log.warn("接收失败（模拟）: " + messageDetail.get("sequence"));
+            throw new IllegalReceiveException("mock consumer error");
+        }
+
         Object mappingString = messageDetail.get("mappingPath");
         if (null == mappingString || null == eventName || !eventName.equals(messageDetail.get("event"))) {
-            acknowledgment.nack(Duration.ofMillis(0));
+            // 不需要消费
+            acknowledgment.acknowledge();
+            log.warn("接收失败（条件过滤）: " + messageDetail.get("sequence"));
             return null;
         }
         Object content = consumerRecord.value();
@@ -112,53 +121,49 @@ public class MessageConsumeRouterExecution implements Ordered {
         try {
             consumed = template.requestBody("subscribe://idempotent-check", messageDetail, Boolean.class);
         } catch (IllegalStateException e) {
-            log.info("the listener is init....");
             platformTransactionManager.rollback(transactionStatus);
+            // 稍后5秒消费
             acknowledgment.nack(Duration.ofMillis(5 * 1000));
+            log.warn("接收失败（等待启动）: " + messageDetail.get("sequence"));
             return null;
         }
-        log.info("消息已接收: 重复{}, 内容{}", consumed, JsonUtil.writeValueAsString(messageDetail));
         // 转发调度
         if(consumed){
             // 如果是已重复消息 则先进行事务提交,然后进行ack应答
             platformTransactionManager.commit(transactionStatus);
             acknowledgment.acknowledge();
+            log.warn("接收失败（重复消费）: " + messageDetail.get("sequence"));
             return null;
         }
+
         if (custom) {
-            try {
-                Object obj = proceedingJoinPoint.proceed(proceedingJoinPoint.getArgs());
-                platformTransactionManager.commit(transactionStatus);
-                acknowledgment.acknowledge();
-                return obj;
-            } catch (Throwable e) {
-                platformTransactionManager.rollback(transactionStatus);
-                acknowledgment.nack(Duration.ofMillis(0));
-                throw new RuntimeException(e);
-            }
+            Object obj = proceedingJoinPoint.proceed(proceedingJoinPoint.getArgs());
+            platformTransactionManager.commit(transactionStatus);
+            acknowledgment.acknowledge();
+            log.info("接收成功: " + messageDetail.get("sequence"));
+            return obj;
         }
 
         // 如果非已重复消息 转发至相应适配器
         Object resultObj = template.requestBody("message://" + adapterName, messageDetail.get("content"));
-        Result<?> result = null;
+        Result<?> result = new Result<>();
         if(resultObj instanceof String){
             result = JsonUtil.writeValueAsObjectRetainNull((String) resultObj, Result.class);
         } else if(resultObj instanceof Result){
             result = (Result<?>) resultObj;
-        } else {
-            return null;
         }
-
         if(StringUtils.hasText(result.getCode()) && !"200".equals(result.getCode())){
             // 如果有异常 回滚事务 并应答失败进入死信
             platformTransactionManager.rollback(transactionStatus);
-            acknowledgment.nack(Duration.ofMillis(0));
+            log.error("接收失败（真实）: " + messageDetail.get("sequence"));
+            throw new IllegalStateException("sys execute error");
         } else {
             // 如果执行正常则提交事务并应答成功
             platformTransactionManager.commit(transactionStatus);
             acknowledgment.acknowledge();
+            log.info("接收成功: " + messageDetail.get("sequence"));
+            return null;
         }
-        return null;
     }
 
     private void transMessageHeaders(ConsumerRecord<?, ?> consumerRecord, String serviceName, HashMap<String, Object> messageDetail) {

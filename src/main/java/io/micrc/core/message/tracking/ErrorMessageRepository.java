@@ -22,6 +22,7 @@ public interface ErrorMessageRepository extends JpaRepository<ErrorMessage, Long
                    "where " +
                    "topic=:topic " +
                    "and sender=:sender " +
+                   "and error_status='WAITING' " +
                    "order by message_id ASC " +
                    "limit :count ")
     List<ErrorMessage> findErrorMessageByTopicAndSenderLimitByCount(@Param("topic")String topic, @Param("sender")String sender, @Param("count")Integer count);

@@ -143,7 +143,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: error_position
+                  name: error_status
                   type: VARCHAR(500)
                   remarks: send state - NOT_SEND未发送 STOP不发送 SENDING发送中
                   constraints:

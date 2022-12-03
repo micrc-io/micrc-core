@@ -73,8 +73,8 @@ public class ErrorMessage {
     private String errorMessage;
 
     /**
-     * 错误定位
+     * 错误状态
      */
-    private String errorPosition;
+    private String errorStatus;
 
 }

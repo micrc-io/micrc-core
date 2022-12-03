@@ -32,6 +32,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -42,6 +44,12 @@ import java.util.stream.Collectors;
  * @since 0.0.1
  */
 public class MessageRouteConfiguration extends RouteBuilder {
+
+    public static Long startTime;
+
+    public static AtomicInteger count = new AtomicInteger(0);
+
+    private final Random RANDOM = new Random();
 
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;
@@ -113,6 +121,25 @@ public class MessageRouteConfiguration extends RouteBuilder {
         String content = (String) eventObject.get("content");
         Long messageId = (Long) eventObject.get("messageId");
         Map<String, EventsInfo.EventMapping> mappingMap = mappings.stream().collect(Collectors.toMap(EventsInfo.EventMapping::getReceiverAddress, i -> i, (i1, i2) -> i1));
+
+        // todo，test，模拟1/10发送失败情况
+        if (0 == RANDOM.nextInt(10)) {
+            // 发送失败 则 记录错误信息/累加错误次数
+            ErrorMessage errorMessage = new ErrorMessage();
+            errorMessage.setMessageId(messageId);
+            errorMessage.setSender(tracker.getSenderName());
+            errorMessage.setTopic(tracker.getTopicName());
+            errorMessage.setEvent(tracker.getEventName());
+            errorMessage.setMappingMap(JsonUtil.writeValueAsString(mappingMap));
+            errorMessage.setContent(content);
+            errorMessage.setErrorCount(1);
+            errorMessage.setErrorStatus("WAITING");
+            errorMessage.setErrorMessage("mock producer error");
+            producerTemplate.requestBody("publish://error-sending-resolve", errorMessage);
+            log.warn("发送失败（模拟）: " + messageId);
+            return;
+        }
+
         Message<?> objectMessage = MessageBuilder
                 .withPayload(content)
                 .setHeader(KafkaHeaders.TOPIC, tracker.getTopicName())
@@ -122,14 +149,20 @@ public class MessageRouteConfiguration extends RouteBuilder {
                 .setHeader("mappingMap", mappingMap).build();
         ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(objectMessage);
         future.completable().whenCompleteAsync((sendResult, throwable) -> {
-//            Random random = new Random();
-//            boolean b = random.nextBoolean();
-//            if (b) {
-//                throwable = new Throwable("test error");// todo，测试代码，模拟某些失败情况
-//            }
+            // todo，test，记录第一次发送时间，累加发送次数，每100条打印用时
+            if (startTime == null) {
+                startTime = System.currentTimeMillis();
+            }
+            count.getAndIncrement();
+            if (count.get() % 100 == 0) {
+                long usedTime = System.currentTimeMillis() - startTime;
+                log.info("发送速率：用时=" + usedTime + "，次数=" + count);
+            }
+
             if (null == throwable) {
                 // 发送成功 则 删除错误记录
                 producerTemplate.requestBody("publish://success-sending-resolve", messageId);
+                log.info("发送成功: " + messageId);
             } else {
                 // 发送失败 则 记录错误信息/累加错误次数
                 ErrorMessage errorMessage = new ErrorMessage();
@@ -140,9 +173,10 @@ public class MessageRouteConfiguration extends RouteBuilder {
                 errorMessage.setMappingMap(JsonUtil.writeValueAsString(mappingMap));
                 errorMessage.setContent(content);
                 errorMessage.setErrorCount(1);
-                errorMessage.setErrorPosition("SEND");
+                errorMessage.setErrorStatus("WAITING");
                 errorMessage.setErrorMessage(throwable.getLocalizedMessage());
                 producerTemplate.requestBody("publish://error-sending-resolve", errorMessage);
+                log.error("发送失败（真实）: " + messageId);
             }
         });
     }
