@@ -1,5 +1,6 @@
 package io.micrc.core.message;
 
+import io.micrc.core.message.rabbit.tracking.RabbitErrorMessageRepository;
 import io.micrc.core.message.store.EventMessage;
 import io.micrc.core.message.store.EventMessageRepository;
 import io.micrc.core.message.store.IdempotentMessage;
@@ -21,6 +22,7 @@ import org.apache.camel.ProducerTemplate;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.support.ExpressionAdapter;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.SendResult;
@@ -32,7 +34,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -49,13 +50,14 @@ public class MessageRouteConfiguration extends RouteBuilder {
 
     public static AtomicInteger count = new AtomicInteger(0);
 
-    private final Random RANDOM = new Random();
-
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;
 
     @EndpointInject
     private ProducerTemplate producerTemplate;
+
+    @Autowired
+    Environment environment;
 
     /**
      * 组装事件消息
@@ -123,18 +125,10 @@ public class MessageRouteConfiguration extends RouteBuilder {
         Map<String, EventsInfo.EventMapping> mappingMap = mappings.stream().collect(Collectors.toMap(EventsInfo.EventMapping::getReceiverAddress, i -> i, (i1, i2) -> i1));
 
         // todo，test，模拟1/10发送失败情况
-        if (0 == RANDOM.nextInt(10)) {
+        if (0 == System.currentTimeMillis() % 10) {
             // 发送失败 则 记录错误信息/累加错误次数
-            ErrorMessage errorMessage = new ErrorMessage();
-            errorMessage.setMessageId(messageId);
-            errorMessage.setSender(tracker.getSenderName());
-            errorMessage.setTopic(tracker.getTopicName());
-            errorMessage.setEvent(tracker.getEventName());
-            errorMessage.setMappingMap(JsonUtil.writeValueAsString(mappingMap));
-            errorMessage.setContent(content);
-            errorMessage.setErrorCount(1);
-            errorMessage.setErrorStatus("WAITING");
-            errorMessage.setErrorMessage("mock producer error");
+            ErrorMessage errorMessage = constructErrorMessage(tracker, content, messageId,
+                    (Map<String, EventsInfo.EventMapping>) mappingMap, "mock producer error");
             producerTemplate.requestBody("publish://error-sending-resolve", errorMessage);
             log.warn("发送失败（模拟）: " + messageId);
             return;
@@ -143,7 +137,8 @@ public class MessageRouteConfiguration extends RouteBuilder {
         Message<?> objectMessage = MessageBuilder
                 .withPayload(content)
                 .setHeader(KafkaHeaders.TOPIC, tracker.getTopicName())
-                .setHeader("sequence", messageId)
+                .setHeader("context", environment.getProperty("spring.application.name"))
+                .setHeader("messageId", messageId)
                 .setHeader("sender", tracker.getSenderName())
                 .setHeader("event", tracker.getEventName())
                 .setHeader("mappingMap", mappingMap).build();
@@ -165,20 +160,27 @@ public class MessageRouteConfiguration extends RouteBuilder {
                 log.info("发送成功: " + messageId);
             } else {
                 // 发送失败 则 记录错误信息/累加错误次数
-                ErrorMessage errorMessage = new ErrorMessage();
-                errorMessage.setMessageId(messageId);
-                errorMessage.setSender(tracker.getSenderName());
-                errorMessage.setTopic(tracker.getTopicName());
-                errorMessage.setEvent(tracker.getEventName());
-                errorMessage.setMappingMap(JsonUtil.writeValueAsString(mappingMap));
-                errorMessage.setContent(content);
-                errorMessage.setErrorCount(1);
-                errorMessage.setErrorStatus("WAITING");
-                errorMessage.setErrorMessage(throwable.getLocalizedMessage());
+                ErrorMessage errorMessage = constructErrorMessage(tracker, content, messageId,
+                        (Map<String, EventsInfo.EventMapping>) mappingMap, throwable.getLocalizedMessage());
                 producerTemplate.requestBody("publish://error-sending-resolve", errorMessage);
                 log.error("发送失败（真实）: " + messageId);
             }
         });
+    }
+
+    private ErrorMessage constructErrorMessage(MessageTracker tracker, String content, Long messageId,
+                                               Map<String, EventsInfo.EventMapping> mappingMap, String error) {
+        ErrorMessage errorMessage = new ErrorMessage();
+        errorMessage.setMessageId(messageId);
+        errorMessage.setSender(tracker.getSenderName());
+        errorMessage.setTopic(tracker.getTopicName());
+        errorMessage.setEvent(tracker.getEventName());
+        errorMessage.setMappingMap(JsonUtil.writeValueAsString(mappingMap));
+        errorMessage.setContent(content);
+        errorMessage.setErrorCount(1);
+        errorMessage.setErrorStatus("WAITING");
+        errorMessage.setErrorMessage(error);
+        return errorMessage;
     }
 
     /**
@@ -215,7 +217,7 @@ public class MessageRouteConfiguration extends RouteBuilder {
     public IdempotentMessage idempotent(Map<String, Object> messageDetail) {
         IdempotentMessage idempotent = new IdempotentMessage();
         idempotent.setSender((String) messageDetail.get("sender"));
-        idempotent.setSequence(Long.valueOf(messageDetail.get("sequence").toString()));
+        idempotent.setSequence(Long.valueOf(messageDetail.get("messageId").toString()));
         idempotent.setReceiver((String) messageDetail.get("servicePath"));
         return idempotent;
     }
@@ -259,9 +261,7 @@ public class MessageRouteConfiguration extends RouteBuilder {
                         Integer errorMessageCount = (Integer) exchange.getIn().getHeader("errorMessageCount");
                         exchange.getIn().setHeader("normalMessageCount", 1000 - errorMessageCount);
                     })
-                    .bean(EventMessageRepository.class, "findEventMessageByRegionAndCurrentSequenceLimitByCount(" +
-                            "${exchange.properties.get(currentTracker).getEventName()}," +
-                            "${exchange.properties.get(currentTracker).getSequence()}, ${header.normalMessageCount})")
+                    .bean(EventMessageRepository.class, "findEventMessageByRegionAndCurrentSequenceLimitByCount(${exchange.properties.get(currentTracker).getEventName()},${exchange.properties.get(currentTracker).getSequence()}, ${header.normalMessageCount})")
                     .setProperty("normalEvents", body())
                     .choice()
                         .when(simple("${body.size} > 0"))
@@ -312,7 +312,8 @@ public class MessageRouteConfiguration extends RouteBuilder {
         // 死信监听路由
         from("subscribe://dead-message")
                 .routeId("subscribe://dead-message")
-                .log("4444")
+                .transacted()
+                .bean(ErrorMessageRepository.class, "save")
                 .end();
 
         // 发送失败监听路由

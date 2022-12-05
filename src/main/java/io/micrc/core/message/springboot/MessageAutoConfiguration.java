@@ -3,23 +3,35 @@ package io.micrc.core.message.springboot;
 import io.micrc.core.message.MessageConsumeRouterExecution;
 import io.micrc.core.message.MessageRouteConfiguration;
 import io.micrc.core.message.store.MessagePublisherSchedule;
+import io.micrc.core.message.tracking.ErrorMessage;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.camel.EndpointInject;
+import org.apache.camel.ProducerTemplate;
 import org.apache.camel.component.direct.DirectComponent;
 import org.apache.camel.spring.boot.CamelAutoConfiguration;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.header.Header;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.core.env.Environment;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.kafka.annotation.EnableKafka;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.listener.ConsumerRecordRecoverer;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
-import org.springframework.kafka.listener.ErrorHandler;
-import org.springframework.kafka.listener.SeekToCurrentErrorHandler;
-import org.springframework.util.backoff.BackOff;
+import org.springframework.kafka.listener.DefaultErrorHandler;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.util.backoff.FixedBackOff;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Iterator;
 
 
 /**
@@ -29,6 +41,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * @date 2022-09-06 19:29
  * @since 0.0.1
  */
+@Slf4j
 @AutoConfigureAfter(CamelAutoConfiguration.class)
 @Configuration
 @EnableKafka
@@ -40,6 +53,12 @@ import org.springframework.util.backoff.FixedBackOff;
 @EntityScan(basePackages = {"io.micrc.core.message.store", "io.micrc.core.message.tracking"})
 @EnableJpaRepositories(basePackages = {"io.micrc.core.message.store", "io.micrc.core.message.tracking"})
 public class MessageAutoConfiguration {
+
+    @Autowired
+    Environment environment;
+
+    @EndpointInject
+    private ProducerTemplate producerTemplate;
 
     @Bean("publish")
     public DirectComponent publish() {
@@ -61,12 +80,33 @@ public class MessageAutoConfiguration {
 
     @Bean
     @Primary
-    public ErrorHandler kafkaErrorHandler(KafkaTemplate<?, ?> template) {
-        // <1> 创建 DeadLetterPublishingRecoverer 对象
-        ConsumerRecordRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
-        // <2> 创建 FixedBackOff 对象   设置重试间隔 0秒 次数为 1次
-        BackOff backOff = new FixedBackOff(0L, 1L);
-        // <3> 创建 SeekToCurrentErrorHandler 对象
-        return new SeekToCurrentErrorHandler(recoverer, backOff);
+    public DefaultErrorHandler deadLetterPublishingRecoverer(KafkaTemplate<?, ?> template) {
+        DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template,
+                (r, e) -> new TopicPartition("deadLetter", r.partition()));
+        return new DefaultErrorHandler(recoverer, new FixedBackOff(0L, 1));
+    }
+
+    @KafkaListener(topics = "deadLetter", autoStartup = "true", concurrency = "3")
+    public void deadLetter(ConsumerRecord<?, ?> consumerRecord, Acknowledgment acknowledgment) throws IOException {
+        HashMap<String, String> deadLetterDetail = new HashMap<>();
+        Iterator<Header> headerIterator = consumerRecord.headers().iterator();
+        while (headerIterator.hasNext()) {
+            Header header = headerIterator.next();
+            deadLetterDetail.put(header.key(), new String(header.value()));
+        }
+        if (deadLetterDetail.get("context").equals(environment.getProperty("spring.application.name"))) {
+            ErrorMessage errorMessage = new ErrorMessage();
+            errorMessage.setMessageId(Long.valueOf(deadLetterDetail.get("messageId")));
+            errorMessage.setSender(deadLetterDetail.get("sender"));
+            errorMessage.setTopic(deadLetterDetail.get("kafka_dlt-original-topic")); // 原始TOPIC
+            errorMessage.setEvent(deadLetterDetail.get("event"));
+            errorMessage.setMappingMap(deadLetterDetail.get("mappingMap"));
+            errorMessage.setContent(consumerRecord.value().toString());
+            errorMessage.setErrorCount(1);
+            errorMessage.setErrorStatus("STOP");
+            errorMessage.setErrorMessage(deadLetterDetail.get("kafka_dlt-exception-message")); // 异常信息
+            producerTemplate.requestBody("subscribe://dead-message", errorMessage);
+            log.info("死信保存: " + errorMessage);
+        }
     }
 }

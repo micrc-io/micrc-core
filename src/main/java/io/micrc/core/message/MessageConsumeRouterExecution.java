@@ -28,7 +28,6 @@ import org.springframework.util.StringUtils;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 /**
  * 消息消费路由执行
@@ -41,8 +40,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 @Configuration
 public class MessageConsumeRouterExecution implements Ordered {
-
-    private final Random RANDOM = new Random();
 
     private final ConcurrentHashMap<Long, Integer> map = new ConcurrentHashMap<>();
 
@@ -92,25 +89,30 @@ public class MessageConsumeRouterExecution implements Ordered {
         boolean custom = annotation.custom();
 
         // 解析消息详情
-        HashMap<String, Object> messageDetail = new HashMap<>();
+        HashMap<String, String> messageDetail = new HashMap<>();
         messageDetail.put("servicePath", servicePath);
         transMessageHeaders(consumerRecord, serviceName, messageDetail);
 
-        // todo，test，模拟1/3 * 1/3接收失败情况
-        if (0 == RANDOM.nextInt(3)) {
-            log.warn("接收失败（模拟）: " + messageDetail.get("sequence"));
+        // todo，test，模拟1/2 * 1/2接收失败情况
+        if (0 == System.currentTimeMillis() % 2) {
+            log.warn("接收失败（模拟）: " + messageDetail.get("messageId"));
             throw new IllegalReceiveException("mock consumer error");
         }
 
-        Object mappingString = messageDetail.get("mappingPath");
+        String mappingMapString = messageDetail.get("mappingMap");
+        HashMap mappingMap = JsonUtil.writeValueAsObject(mappingMapString, HashMap.class);
+        Object mappingObj = mappingMap.get(serviceName);
+        HashMap mapping = JsonUtil.writeObjectAsObject(mappingObj, HashMap.class);
+        String mappingString = (String) mapping.get("mappingPath");
+
         if (null == mappingString || null == eventName || !eventName.equals(messageDetail.get("event"))) {
             // 不需要消费
             acknowledgment.acknowledge();
-            log.warn("接收失败（条件过滤）: " + messageDetail.get("sequence"));
+            log.warn("接收失败（条件过滤）: " + messageDetail.get("messageId"));
             return null;
         }
         Object content = consumerRecord.value();
-        Expression expression = Parser.compileString((String) mappingString);
+        Expression expression = Parser.compileString(mappingString);
         JsonNode resultNode = expression.apply(JsonUtil.readTree(content));
         messageDetail.put("content", JsonUtil.writeValueAsStringRetainNull(resultNode));
 
@@ -124,7 +126,7 @@ public class MessageConsumeRouterExecution implements Ordered {
             platformTransactionManager.rollback(transactionStatus);
             // 稍后5秒消费
             acknowledgment.nack(Duration.ofMillis(5 * 1000));
-            log.warn("接收失败（等待启动）: " + messageDetail.get("sequence"));
+            log.warn("接收失败（等待启动）: " + messageDetail.get("messageId"));
             return null;
         }
         // 转发调度
@@ -132,7 +134,7 @@ public class MessageConsumeRouterExecution implements Ordered {
             // 如果是已重复消息 则先进行事务提交,然后进行ack应答
             platformTransactionManager.commit(transactionStatus);
             acknowledgment.acknowledge();
-            log.warn("接收失败（重复消费）: " + messageDetail.get("sequence"));
+            log.warn("接收失败（重复消费）: " + messageDetail.get("messageId"));
             return null;
         }
 
@@ -140,7 +142,7 @@ public class MessageConsumeRouterExecution implements Ordered {
             Object obj = proceedingJoinPoint.proceed(proceedingJoinPoint.getArgs());
             platformTransactionManager.commit(transactionStatus);
             acknowledgment.acknowledge();
-            log.info("接收成功: " + messageDetail.get("sequence"));
+            log.info("接收成功: " + messageDetail.get("messageId"));
             return obj;
         }
 
@@ -155,35 +157,22 @@ public class MessageConsumeRouterExecution implements Ordered {
         if(StringUtils.hasText(result.getCode()) && !"200".equals(result.getCode())){
             // 如果有异常 回滚事务 并应答失败进入死信
             platformTransactionManager.rollback(transactionStatus);
-            log.error("接收失败（真实）: " + messageDetail.get("sequence"));
+            log.error("接收失败（真实）: " + messageDetail.get("messageId"));
             throw new IllegalStateException("sys execute error");
         } else {
             // 如果执行正常则提交事务并应答成功
             platformTransactionManager.commit(transactionStatus);
             acknowledgment.acknowledge();
-            log.info("接收成功: " + messageDetail.get("sequence"));
+            log.info("接收成功: " + messageDetail.get("messageId"));
             return null;
         }
     }
 
-    private void transMessageHeaders(ConsumerRecord<?, ?> consumerRecord, String serviceName, HashMap<String, Object> messageDetail) {
+    private void transMessageHeaders(ConsumerRecord<?, ?> consumerRecord, String serviceName, HashMap<String, String> messageDetail) {
         Iterator<Header> headerIterator = consumerRecord.headers().iterator();
-        StringBuilder headerString = new StringBuilder();
         while (headerIterator.hasNext()) {
             Header header = headerIterator.next();
-            String k = header.key();
-            String v = new String(header.value());
-            headerString.append(",").append(k).append("=").append(v);
-            if ("sequence".equals(k)) {
-                messageDetail.put(k, Long.valueOf(v));
-            } else if ("sender".equals(k) || "event".equals(k)) {
-                messageDetail.put(k, v);
-            } else if ("mappingMap".equals(k)) {
-                HashMap mappingMap = JsonUtil.writeValueAsObject(v, HashMap.class);
-                Object mappingObj = mappingMap.get(serviceName);
-                HashMap mapping = JsonUtil.writeObjectAsObject(mappingObj, HashMap.class);
-                messageDetail.put("mappingPath", mapping.get("mappingPath"));
-            }
+            messageDetail.put(header.key(), new String(header.value()));
         }
     }
 
