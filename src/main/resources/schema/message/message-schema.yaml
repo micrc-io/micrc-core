@@ -4,9 +4,6 @@ databaseChangeLog:
       author: micrc
       preConditions:
         - onFail: MARK_RAN
-          not:
-            - tableExists:
-                tableName: message_message_tracker
       changes:
         - createTable:
             tableName: message_message_store
@@ -39,47 +36,9 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: sequence
-                  type: BIGINT(11)
-                  remarks: the message sequence
-                  autoIncrement: true
-                  constraints:
-                    nullable: false
-                    unique: true
-        - createTable:
-            tableName: message_message_tracker
-            remarks: message tracker
-            columns:
-              - column:
-                  name: tracker_id
-                  type: VARCHAR(500)
-                  remarks: the id of tracker
-                  constraints:
-                    nullable: false
-                    primaryKey: true
-                    primaryKeyName: tracker-pk
-              - column:
-                  name: topic_name
-                  type: VARCHAR(500)
-                  remarks: the channel of event
-                  constraints:
-                    nullable: false
-              - column:
-                  name: sender_name
-                  type: VARCHAR(500)
-                  remarks: the event exchange
-                  constraints:
-                    nullable: true
-              - column:
-                  name: event_name
-                  type: VARCHAR(500)
-                  remarks: the event type
-                  constraints:
-                    nullable: false
-              - column:
-                  name: sequence
-                  type: BIGINT(11)
-                  remarks: the event type
+                  name: status
+                  type: VARCHAR(300)
+                  remarks: message status
                   constraints:
                     nullable: false
         - createTable:
@@ -97,7 +56,7 @@ databaseChangeLog:
               - column:
                   name: message_id
                   type: BIGINT(11)
-                  remarks: the event sequence
+                  remarks: the message id
                   constraints:
                     nullable: false
               - column:
@@ -178,7 +137,3 @@ databaseChangeLog:
                   remarks: the event receiver
                   constraints:
                     nullable: false
-        - addAutoIncrement:
-            columnDataType: BIGINT(11)
-            columnName: sequence
-            tableName: message_message_store

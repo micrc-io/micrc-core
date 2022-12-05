@@ -1,4 +1,4 @@
-package io.micrc.core.message.tracking;
+package io.micrc.core.message.error;
 
 import io.micrc.core.persistence.snowflake.SnowFlakeIdentity;
 import lombok.Data;
@@ -73,7 +73,7 @@ public class ErrorMessage {
     private String errorMessage;
 
     /**
-     * 错误状态
+     * 错误状态,WAITING,SENDING,STOP
      */
     private String errorStatus;
 

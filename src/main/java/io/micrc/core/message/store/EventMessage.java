@@ -41,6 +41,8 @@ public class EventMessage implements Serializable {
 
     private String region;
 
+    private String status;
+
     public static EventMessage store(String command, String event) {
         EventMessage eventMessage = new EventMessage();
         eventMessage.setContent(command);

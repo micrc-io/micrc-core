@@ -20,11 +20,9 @@ public interface EventMessageRepository extends JpaRepository<EventMessage, Long
             value = "select ms.* from message_message_store ms " +
                     "where " +
                     "ms.region = :region " +
-                    "and ms.message_id > :currentSequence " +
-                    "order by ms.sequence asc " +
+                    "and ms.status ='WAITING' " +
+                    "order by ms.message_id asc " +
                     "limit :count ")
-    List<EventMessage> findEventMessageByRegionAndCurrentSequenceLimitByCount(
-            @Param(value = "region") String region,
-            @Param(value = "currentSequence") Long currentSequence,
-            @Param(value = "count") Integer count);
+    List<EventMessage> findEventMessageByRegionLimitByCount(
+            @Param(value = "region") String region, @Param(value = "count") Integer count);
 }
