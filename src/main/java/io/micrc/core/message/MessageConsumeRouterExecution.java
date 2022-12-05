@@ -91,7 +91,7 @@ public class MessageConsumeRouterExecution implements Ordered {
         // 解析消息详情
         HashMap<String, String> messageDetail = new HashMap<>();
         messageDetail.put("servicePath", servicePath);
-        transMessageHeaders(consumerRecord, serviceName, messageDetail);
+        transMessageHeaders(consumerRecord, messageDetail);
 
         // todo，test，模拟1/2 * 1/2接收失败情况
         if (0 == System.currentTimeMillis() % 2) {
@@ -168,7 +168,7 @@ public class MessageConsumeRouterExecution implements Ordered {
         }
     }
 
-    private void transMessageHeaders(ConsumerRecord<?, ?> consumerRecord, String serviceName, HashMap<String, String> messageDetail) {
+    private void transMessageHeaders(ConsumerRecord<?, ?> consumerRecord, HashMap<String, String> messageDetail) {
         Iterator<Header> headerIterator = consumerRecord.headers().iterator();
         while (headerIterator.hasNext()) {
             Header header = headerIterator.next();

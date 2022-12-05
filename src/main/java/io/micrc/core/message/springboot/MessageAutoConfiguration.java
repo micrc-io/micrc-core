@@ -4,6 +4,7 @@ import io.micrc.core.message.MessageConsumeRouterExecution;
 import io.micrc.core.message.MessageRouteConfiguration;
 import io.micrc.core.message.store.MessagePublisherSchedule;
 import io.micrc.core.message.tracking.ErrorMessage;
+import io.micrc.lib.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.EndpointInject;
 import org.apache.camel.ProducerTemplate;
@@ -29,7 +30,7 @@ import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.util.backoff.FixedBackOff;
 
-import java.io.IOException;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Iterator;
 
@@ -87,26 +88,31 @@ public class MessageAutoConfiguration {
     }
 
     @KafkaListener(topics = "deadLetter", autoStartup = "true", concurrency = "3")
-    public void deadLetter(ConsumerRecord<?, ?> consumerRecord, Acknowledgment acknowledgment) throws IOException {
-        HashMap<String, String> deadLetterDetail = new HashMap<>();
-        Iterator<Header> headerIterator = consumerRecord.headers().iterator();
-        while (headerIterator.hasNext()) {
-            Header header = headerIterator.next();
-            deadLetterDetail.put(header.key(), new String(header.value()));
-        }
-        if (deadLetterDetail.get("context").equals(environment.getProperty("spring.application.name"))) {
-            ErrorMessage errorMessage = new ErrorMessage();
-            errorMessage.setMessageId(Long.valueOf(deadLetterDetail.get("messageId")));
-            errorMessage.setSender(deadLetterDetail.get("sender"));
-            errorMessage.setTopic(deadLetterDetail.get("kafka_dlt-original-topic")); // 原始TOPIC
-            errorMessage.setEvent(deadLetterDetail.get("event"));
-            errorMessage.setMappingMap(deadLetterDetail.get("mappingMap"));
-            errorMessage.setContent(consumerRecord.value().toString());
-            errorMessage.setErrorCount(1);
-            errorMessage.setErrorStatus("STOP");
-            errorMessage.setErrorMessage(deadLetterDetail.get("kafka_dlt-exception-message")); // 异常信息
-            producerTemplate.requestBody("subscribe://dead-message", errorMessage);
-            log.info("死信保存: " + errorMessage);
+    public void deadLetter(ConsumerRecord<?, ?> consumerRecord, Acknowledgment acknowledgment) {
+        try {
+            HashMap<String, String> deadLetterDetail = new HashMap<>();
+            Iterator<Header> headerIterator = consumerRecord.headers().iterator();
+            while (headerIterator.hasNext()) {
+                Header header = headerIterator.next();
+                deadLetterDetail.put(header.key(), new String(header.value()));
+            }
+            if (deadLetterDetail.get("context").equals(environment.getProperty("spring.application.name"))) {
+                ErrorMessage errorMessage = new ErrorMessage();
+                errorMessage.setMessageId(Long.valueOf(deadLetterDetail.get("messageId")));
+                errorMessage.setSender(deadLetterDetail.get("sender"));
+                errorMessage.setTopic(deadLetterDetail.get("kafka_dlt-original-topic")); // 原始TOPIC
+                errorMessage.setEvent(deadLetterDetail.get("event"));
+                errorMessage.setMappingMap(deadLetterDetail.get("mappingMap"));
+                errorMessage.setContent(consumerRecord.value().toString());
+                errorMessage.setErrorCount(1);
+                errorMessage.setErrorStatus("STOP");
+                errorMessage.setErrorMessage(deadLetterDetail.get("kafka_dlt-exception-message")); // 异常信息
+                producerTemplate.requestBody("subscribe://dead-message", errorMessage);
+                log.info("死信保存: " + JsonUtil.writeValueAsString(deadLetterDetail));
+            }
+            acknowledgment.acknowledge();
+        } catch (Exception e) {
+            acknowledgment.nack(Duration.ofMillis(0L));
         }
     }
 }

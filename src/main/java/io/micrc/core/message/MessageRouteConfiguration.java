@@ -1,6 +1,5 @@
 package io.micrc.core.message;
 
-import io.micrc.core.message.rabbit.tracking.RabbitErrorMessageRepository;
 import io.micrc.core.message.store.EventMessage;
 import io.micrc.core.message.store.EventMessageRepository;
 import io.micrc.core.message.store.IdempotentMessage;
