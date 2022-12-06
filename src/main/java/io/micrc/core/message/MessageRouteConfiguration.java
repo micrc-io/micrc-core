@@ -77,33 +77,32 @@ public class MessageRouteConfiguration extends RouteBuilder {
      *
      * @param object
      * @param mappings
-     * @param type
      */
     @Consume("publish://sending-message")
     public void send(
             @Body Object object,
             @Header("mappings") List<EventsInfo.EventMapping> mappings,
-            @Header("eventInfo") EventsInfo.Event eventInfo,
-            @Header("type") String type
+            @Header("eventInfo") EventsInfo.Event eventInfo
     ) {
         HashMap eventObject = JsonUtil.writeObjectAsObject(object, HashMap.class);
         String content = (String) eventObject.get("content");
         Long messageId = (Long) eventObject.get("messageId");
+        Object groupId = eventObject.get("groupId");
         Map<String, EventsInfo.EventMapping> mappingMap = mappings.stream().collect(Collectors.toMap(EventsInfo.EventMapping::getReceiverAddress, i -> i, (i1, i2) -> i1));
 
-        // todo，test，模拟1/10发送失败情况
-        if (0 == System.currentTimeMillis() % 10) {
-            // 发送失败 则 记录错误信息/累加错误次数
-            ErrorMessage errorMessage = constructErrorMessage(eventInfo, content, messageId, mappingMap, "mock producer error");
-            producerTemplate.requestBody("publish://error-sending-resolve", errorMessage);
-            log.warn("发送失败（模拟）: " + messageId);
-            return;
-        }
+//        // todo，test，模拟1/10发送失败情况
+//        if (0 == System.currentTimeMillis() % 10) {
+//            // 发送失败 则 记录错误信息/累加错误次数
+//            ErrorMessage errorMessage = constructErrorMessage(eventInfo, content, messageId, mappingMap, "mock producer error");
+//            producerTemplate.requestBody("publish://error-sending-resolve", errorMessage);
+//            log.warn("发送失败（模拟）: " + messageId);
+//            return;
+//        }
 
         Message<?> objectMessage = MessageBuilder
                 .withPayload(content)
                 .setHeader(KafkaHeaders.TOPIC, eventInfo.getTopicName())
-//                .setHeader(KafkaHeaders.GROUP_ID, "test") // 死信重发时指定GROUP
+                .setHeader("groupId", "".equals(groupId) ? null : groupId) // 发送错误消息全发，死信重发时指定GROUP
                 .setHeader("context", environment.getProperty("spring.application.name"))
                 .setHeader("messageId", messageId)
                 .setHeader("sender", eventInfo.getSenderAddress())
@@ -123,7 +122,10 @@ public class MessageRouteConfiguration extends RouteBuilder {
 
             if (null == throwable) {
                 // 发送成功 则 删除错误记录
-                producerTemplate.requestBody("publish://success-sending-resolve", messageId);
+                ErrorMessage errorMessage = new ErrorMessage();
+                errorMessage.setMessageId(messageId);
+                errorMessage.setGroupId((String) groupId);
+                producerTemplate.requestBody("publish://success-sending-resolve", errorMessage);
                 log.info("发送成功: " + messageId);
             } else {
                 // 发送失败 则 记录错误信息/累加错误次数
@@ -143,6 +145,7 @@ public class MessageRouteConfiguration extends RouteBuilder {
         errorMessage.setEvent(eventInfo.getEventName());
         errorMessage.setMappingMap(JsonUtil.writeValueAsString(mappingMap));
         errorMessage.setContent(content);
+        errorMessage.setGroupId("");
         errorMessage.setErrorCount(1);
         errorMessage.setErrorStatus("WAITING");
         errorMessage.setErrorMessage(error);
@@ -173,7 +176,7 @@ public class MessageRouteConfiguration extends RouteBuilder {
     }
 
     /**
-     * 标记发送中
+     * 标记已发送
      *
      * @param eventMessage
      * @return
@@ -218,6 +221,7 @@ public class MessageRouteConfiguration extends RouteBuilder {
         // 通用消息存储路由
         from("eventstore://store")
                 .routeId("eventstore://store")
+                .transacted()
                 .setHeader("currentCommandJson", body())
                 .setHeader("pointer", constant("/event/eventName"))
                 .to("json-patch://select")
@@ -231,7 +235,6 @@ public class MessageRouteConfiguration extends RouteBuilder {
         // 调度发送主路由
         from("eventstore://sender")
                 .routeId("eventstore://sender")
-                .transacted()
                 .bean(EventsInfo.class, "getAllEvents")
                 .split(new SplitList()).parallelProcessing()
                     .setProperty("eventInfo", body())
@@ -246,25 +249,34 @@ public class MessageRouteConfiguration extends RouteBuilder {
                     .setProperty("normalEvents", body())
                     .setBody(exchangeProperty("errorEvents"))
                     .split(new SplitList()).parallelProcessing()
-                        .to("publish://error-resolving")
-                        .bean(ErrorMessageRepository.class, "save")
-                        .to("publish://send-normal")
+                        .to("publish://send-error")
                         .end()
                     .setBody(exchangeProperty("normalEvents"))
                     .split(new SplitList()).parallelProcessing()
-                        .to("publish://normal-resolving")
-                        .bean(EventMessageRepository.class, "save")
                         .to("publish://send-normal")
                         .end()
                     .end()
                 .end();
 
-        // 通用正常消息发送路由
         from("publish://send-normal")
+                .transacted()
+                .to("publish://normal-resolving")
+                .bean(EventMessageRepository.class, "save")
+                .to("publish://execute-send")
+                .end();
+
+        from("publish://send-error")
+                .transacted()
+                .to("publish://error-resolving")
+                .bean(ErrorMessageRepository.class, "save")
+                .to("publish://execute-send")
+                .end();
+
+        // 通用正常消息发送路由
+        from("publish://execute-send")
                 .routeId("direct://send-normal")
                 .setHeader("normalMessage", body())
                 .setHeader("mappings", simple("${exchange.properties.get(eventInfo).getEventMappings()}"))
-                .setHeader("type", constant("NORMAL"))
                 .setHeader("eventInfo", exchangeProperty("eventInfo"))
                 .to("publish://sending-message")
                 .end();
@@ -272,6 +284,7 @@ public class MessageRouteConfiguration extends RouteBuilder {
         // 幂等性消费仓库检查
         from("subscribe://idempotent-check")
                 .routeId("subscribe://idempotent-check")
+                .transacted()
                 .setHeader("messageDetail", body())
                 .bean(IdempotentMessageRepository.class, "findFirstBySequenceAndReceiver(${body.get(sequence)}, ${body.get(servicePath)})")
                 .choice()
@@ -298,7 +311,7 @@ public class MessageRouteConfiguration extends RouteBuilder {
                 .routeId("publish://error-sending-resolve")
                 .transacted()
                 .setHeader("current", body())
-                .bean(ErrorMessageRepository.class, "findFirstByMessageId(${body.messageId})")
+                .bean(ErrorMessageRepository.class, "findFirstByMessageIdAndGroupId(${body.messageId}, ${body.groupId})")
                 .choice()
                     .when(body().isNull())
                         .to("publish://error-sending-resolve-create")
@@ -314,7 +327,10 @@ public class MessageRouteConfiguration extends RouteBuilder {
         from("publish://success-sending-resolve")
                 .routeId("publish://success-sending-resolve")
                 .transacted()
-                .bean(ErrorMessageRepository.class, "deleteByMessageId")
+                .choice()
+                    .when(simple("${body.groupId}").isNotNull()) // 说明是错误信息重发的
+                        .bean(ErrorMessageRepository.class, "deleteByMessageIdAndGroupId(${body.messageId}, ${body.groupId})")
+                    .endChoice()
                 .end();
     }
 

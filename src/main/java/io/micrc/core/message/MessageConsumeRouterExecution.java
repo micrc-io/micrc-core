@@ -19,6 +19,7 @@ import org.aspectj.lang.annotation.Pointcut;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
+import org.springframework.core.env.Environment;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -40,6 +41,9 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 @Configuration
 public class MessageConsumeRouterExecution implements Ordered {
+
+    @Autowired
+    private Environment environment;
 
     private final ConcurrentHashMap<Long, Integer> map = new ConcurrentHashMap<>();
 
@@ -93,11 +97,19 @@ public class MessageConsumeRouterExecution implements Ordered {
         messageDetail.put("servicePath", servicePath);
         transMessageHeaders(consumerRecord, messageDetail);
 
-        // todo，test，模拟1/2 * 1/2接收失败情况
-        if (0 == System.currentTimeMillis() % 2) {
-            log.warn("接收失败（模拟）: " + messageDetail.get("messageId"));
-            throw new IllegalReceiveException("mock consumer error");
-        }
+//        // 死信用groupID过滤
+//        String groupId = messageDetail.get("groupId");
+//        if (null != groupId && !"".equals(groupId) && !groupId.equals(environment.getProperty("spring.application.name"))) {
+//            acknowledgment.acknowledge();
+//            log.warn("接收失败（无关死信）: " + messageDetail.get("messageId"));
+//            return null;
+//        }
+
+//        // todo，test，模拟1/4接收失败情况
+//        if (0 == System.currentTimeMillis() % 2) {
+//            log.warn("接收失败（模拟）: " + messageDetail.get("messageId"));
+//            throw new IllegalReceiveException("mock consumer error");
+//        }
 
         String mappingMapString = messageDetail.get("mappingMap");
         HashMap mappingMap = JsonUtil.writeValueAsObject(mappingMapString, HashMap.class);

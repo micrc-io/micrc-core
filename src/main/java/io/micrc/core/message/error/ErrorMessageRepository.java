@@ -27,7 +27,7 @@ public interface ErrorMessageRepository extends JpaRepository<ErrorMessage, Long
                    "limit :count ")
     List<ErrorMessage> findErrorMessageByTopicAndSenderLimitByCount(@Param("topic")String topic, @Param("sender")String sender, @Param("count")Integer count);
 
-    ErrorMessage findFirstByMessageId(@Param("messageId")Long messageId);
+    ErrorMessage findFirstByMessageIdAndGroupId(@Param("messageId")Long messageId, @Param("groupId")String groupId);
 
-    void deleteByMessageId(@Param("messageId")Long messageId);
+    void deleteByMessageIdAndGroupId(@Param("messageId")Long messageId, @Param("groupId")String groupId);
 }

@@ -60,6 +60,12 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: group_id
+                  type: VARCHAR(500)
+                  remarks: the group id
+                  constraints:
+                    nullable: false
+              - column:
                   name: sender
                   type: VARCHAR(500)
                   remarks: the event channel
@@ -104,7 +110,7 @@ databaseChangeLog:
               - column:
                   name: error_status
                   type: VARCHAR(500)
-                  remarks: send state - NOT_SEND未发送 STOP不发送 SENDING发送中
+                  remarks: send state - WAITING未发送 STOP不发送 SENDING发送中
                   constraints:
                     nullable: false
         - createTable:

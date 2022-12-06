@@ -104,8 +104,19 @@ public class MessageAutoConfiguration {
                 errorMessage.setEvent(deadLetterDetail.get("event"));
                 errorMessage.setMappingMap(deadLetterDetail.get("mappingMap"));
                 errorMessage.setContent(consumerRecord.value().toString());
+                errorMessage.setGroupId(deadLetterDetail.get("kafka_dlt-original-consumer-group")); // 原始消费者组ID
                 errorMessage.setErrorCount(1);
                 errorMessage.setErrorStatus("STOP");
+
+//                // todo，test，模拟1/2死信重发
+//                if (System.currentTimeMillis() % 2 == 0) {
+//                    errorMessage.setErrorStatus("WAITING");
+//                    // todo，test，模拟1/2死信重发1/2到无关组
+//                    if (System.currentTimeMillis() % 2 == 0) {
+//                        errorMessage.setGroupId("test");
+//                    }
+//                }
+
                 errorMessage.setErrorMessage(deadLetterDetail.get("kafka_dlt-exception-message")); // 异常信息
                 producerTemplate.requestBody("subscribe://dead-message", errorMessage);
                 log.info("死信保存: " + JsonUtil.writeValueAsString(deadLetterDetail));

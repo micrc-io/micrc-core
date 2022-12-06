@@ -46,6 +46,11 @@ public class ErrorMessage {
     private String topic;
 
     /**
+     * 组ID
+     */
+    private String groupId;
+
+    /**
      * 事件
      */
     private String event;
