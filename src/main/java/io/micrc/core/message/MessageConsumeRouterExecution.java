@@ -97,13 +97,13 @@ public class MessageConsumeRouterExecution implements Ordered {
         messageDetail.put("servicePath", servicePath);
         transMessageHeaders(consumerRecord, messageDetail);
 
-//        // 死信用groupID过滤
-//        String groupId = messageDetail.get("groupId");
-//        if (null != groupId && !"".equals(groupId) && !groupId.equals(environment.getProperty("spring.application.name"))) {
-//            acknowledgment.acknowledge();
-//            log.warn("接收失败（无关死信）: " + messageDetail.get("messageId"));
-//            return null;
-//        }
+        // 死信用groupID过滤
+        String groupId = messageDetail.get("groupId");
+        if (null != groupId && !"".equals(groupId) && !groupId.equals(environment.getProperty("spring.application.name"))) {
+            acknowledgment.acknowledge();
+            log.warn("接收成功（无关死信）: " + messageDetail.get("messageId"));
+            return null;
+        }
 
 //        // todo，test，模拟1/4接收失败情况
 //        if (0 == System.currentTimeMillis() % 2) {
@@ -120,7 +120,7 @@ public class MessageConsumeRouterExecution implements Ordered {
         if (null == mappingString || null == eventName || !eventName.equals(messageDetail.get("event"))) {
             // 不需要消费
             acknowledgment.acknowledge();
-            log.warn("接收失败（条件过滤）: " + messageDetail.get("messageId"));
+            log.warn("接收成功（无需消费）: " + messageDetail.get("messageId"));
             return null;
         }
         Object content = consumerRecord.value();

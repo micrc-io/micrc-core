@@ -126,7 +126,8 @@ public class MessageRouteConfiguration extends RouteBuilder {
                 errorMessage.setMessageId(messageId);
                 errorMessage.setGroupId((String) groupId);
                 producerTemplate.requestBody("publish://success-sending-resolve", errorMessage);
-                log.info("发送成功: " + messageId);
+                String scene = groupId == null || "".equals(groupId) ? "（正常）" : "（死信）";
+                log.info("发送成功" + scene + ": " + messageId);
             } else {
                 // 发送失败 则 记录错误信息/累加错误次数
                 ErrorMessage errorMessage = constructErrorMessage(eventInfo, content, messageId, mappingMap, throwable.getLocalizedMessage());
