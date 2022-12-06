@@ -17,10 +17,19 @@ public class MessagePublisherSchedule {
     @EndpointInject("eventstore://sender")
     private ProducerTemplate sender;
 
+    @EndpointInject("eventstore://clear")
+    private ProducerTemplate clear;
+
     @Scheduled(initialDelay = 10 * 1000, fixedDelay = 1)
     @SchedulerLock(name = "MessagePublisherSchedule")
     public void adapt() {
         sender.sendBody(System.currentTimeMillis());
+    }
+
+    @Scheduled(initialDelay = 10 * 1000, fixedDelay = 1)
+    @SchedulerLock(name = "MessageCleanSchedule")
+    public void clean() {
+        clear.sendBody(System.currentTimeMillis());
     }
 
 }

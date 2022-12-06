@@ -88,7 +88,7 @@ public class MessageRouteConfiguration extends RouteBuilder {
         String content = (String) eventObject.get("content");
         Long messageId = (Long) eventObject.get("messageId");
         Object groupId = eventObject.get("groupId");
-        Map<String, EventsInfo.EventMapping> mappingMap = mappings.stream().collect(Collectors.toMap(EventsInfo.EventMapping::getReceiverAddress, i -> i, (i1, i2) -> i1));
+        Map<String, EventsInfo.EventMapping> mappingMap = mappings.stream().collect(Collectors.toMap(EventsInfo.EventMapping::getMappingKey, i -> i, (i1, i2) -> i1));
 
 //        // todo，test，模拟1/10发送失败情况
 //        if (0 == System.currentTimeMillis() % 10) {
@@ -213,7 +213,7 @@ public class MessageRouteConfiguration extends RouteBuilder {
         IdempotentMessage idempotent = new IdempotentMessage();
         idempotent.setSender((String) messageDetail.get("sender"));
         idempotent.setSequence(Long.valueOf(messageDetail.get("messageId").toString()));
-        idempotent.setReceiver((String) messageDetail.get("servicePath"));
+        idempotent.setReceiver((String) messageDetail.get("serviceName"));
         return idempotent;
     }
 
@@ -256,6 +256,21 @@ public class MessageRouteConfiguration extends RouteBuilder {
                         .to("publish://send-normal")
                         .end()
                     .end()
+                .end();
+
+        from("eventstore://clear")
+                .routeId("eventstore://clear")
+                // 所有发送的事件
+                .bean(EventsInfo.class, "getAllEvents")
+                .split(new SplitList()).parallelProcessing()
+                    .setProperty("eventInfo", body())
+                    // 在消息存储表里查询消息
+                    // 查询所有接收方幂等仓
+                    // 幂等仓数据都存在则执行删除
+                    .end()
+                // 在幂等仓里查询消息
+                // 查询发送方存储表
+                // 存储表数据不存在则执行删除
                 .end();
 
         from("publish://send-normal")

@@ -94,7 +94,7 @@ public class MessageConsumeRouterExecution implements Ordered {
 
         // 解析消息详情
         HashMap<String, String> messageDetail = new HashMap<>();
-        messageDetail.put("servicePath", servicePath);
+        messageDetail.put("serviceName", serviceName);
         transMessageHeaders(consumerRecord, messageDetail);
 
         // 死信用groupID过滤
