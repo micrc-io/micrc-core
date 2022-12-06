@@ -221,7 +221,6 @@ public class MessageRouteConfiguration extends RouteBuilder {
         // 通用消息存储路由
         from("eventstore://store")
                 .routeId("eventstore://store")
-                .transacted()
                 .setHeader("currentCommandJson", body())
                 .setHeader("pointer", constant("/event/eventName"))
                 .to("json-patch://select")
@@ -284,7 +283,6 @@ public class MessageRouteConfiguration extends RouteBuilder {
         // 幂等性消费仓库检查
         from("subscribe://idempotent-check")
                 .routeId("subscribe://idempotent-check")
-                .transacted()
                 .setHeader("messageDetail", body())
                 .bean(IdempotentMessageRepository.class, "findFirstBySequenceAndReceiver(${body.get(sequence)}, ${body.get(servicePath)})")
                 .choice()
@@ -302,7 +300,6 @@ public class MessageRouteConfiguration extends RouteBuilder {
         // 死信监听路由
         from("subscribe://dead-message")
                 .routeId("subscribe://dead-message")
-                .transacted()
                 .bean(ErrorMessageRepository.class, "save")
                 .end();
 
