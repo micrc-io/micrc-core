@@ -217,6 +217,35 @@ public class MessageRouteConfiguration extends RouteBuilder {
         return idempotent;
     }
 
+    /**
+     * 用幂等仓过滤ID
+     *
+     * @param messageIds
+     * @param eventInfo
+     * @return
+     */
+    @Consume("clean://idempotent-consumed-filter")
+    public List<Long> filter(@Body List<Long> messageIds, @Header("eventInfo") EventsInfo.Event eventInfo) {
+        List<Long> result = messageIds;
+        List<EventsInfo.EventMapping> eventMappings = eventInfo.getEventMappings();
+        for (int i = 0; i < eventMappings.size(); i++) {
+            if (result.isEmpty()) {
+                break;
+            }
+            EventsInfo.EventMapping eventMapping = eventMappings.get(i);
+            HashMap<String, Object> body = new HashMap<>();
+            body.put("messageIds", result);
+            body.put("receiver", eventMapping.getMappingKey());
+            String endpoint = "rest://post:/api/check-idempotent-consumed?host=" + eventMapping.receiverAddress;
+            String response = producerTemplate.requestBody(endpoint, JsonUtil.writeValueAsString(body), String.class);
+            result = JsonUtil.writeValueAsList(response, Long.class);
+        }
+        if (!result.isEmpty()) {
+            log.info("消息清理：" + JsonUtil.writeValueAsString(result));
+        }
+        return result;
+    }
+
     @Override
     public void configure() throws Exception {
         // 通用消息存储路由
@@ -260,13 +289,16 @@ public class MessageRouteConfiguration extends RouteBuilder {
 
         from("eventstore://clear")
                 .routeId("eventstore://clear")
-                // 所有发送的事件
                 .bean(EventsInfo.class, "getAllEvents")
                 .split(new SplitList()).parallelProcessing()
                     .setProperty("eventInfo", body())
-                    // 在消息存储表里查询消息
-                    // 查询所有接收方幂等仓
-                    // 幂等仓数据都存在则执行删除
+                    .bean(EventMessageRepository.class, "findSentIdByRegionLimit1000(${exchange.properties.get(eventInfo).getEventName()})")
+                    .setHeader("eventInfo", exchangeProperty("eventInfo"))
+                    .to("clean://idempotent-consumed-filter")
+                    .choice()
+                        .when(simple("${body.size} > 0"))
+                        .bean(EventMessageRepository.class, "deleteAllByIdInBatch")
+                        .endChoice()
                     .end()
                 // 在幂等仓里查询消息
                 // 查询发送方存储表
@@ -344,6 +376,20 @@ public class MessageRouteConfiguration extends RouteBuilder {
                     .when(simple("${body.groupId}").isNotNull()) // 说明是错误信息重发的
                         .bean(ErrorMessageRepository.class, "deleteByMessageIdAndGroupId(${body.messageId}, ${body.groupId})")
                     .endChoice()
+                .end();
+
+        // 检查幂等仓是否已消费
+        from("rest:post:check-idempotent-consumed")
+                .routeId("rest:post:check-idempotent-consumed")
+                .convertBodyTo(String.class).unmarshal().json(HashMap.class)
+                .bean(IdempotentMessageRepository.class, "filterMessageIdByMessageIdsAndReceiver(${body.get(messageIds)}, ${body.get(receiver)})")
+                .marshal().json().convertBodyTo(String.class)
+                .end();
+
+        // 检查消息存储表是否已删除
+        from("rest:post:check-store-removed")
+                .routeId("rest:post:check-store-removed")
+                .log("测试检查存储表已删除")
                 .end();
     }
 

@@ -25,4 +25,13 @@ public interface EventMessageRepository extends JpaRepository<EventMessage, Long
                     "limit :count ")
     List<EventMessage> findEventMessageByRegionLimitByCount(
             @Param(value = "region") String region, @Param(value = "count") Integer count);
+
+    @Query(nativeQuery = true,
+            value = "select ms.message_id from message_message_store ms " +
+                    "where " +
+                    "ms.region = :region " +
+                    "and ms.status ='SENT' " +
+                    "order by ms.message_id asc " +
+                    "limit 1000")
+    List<Long> findSentIdByRegionLimit1000(@Param(value = "region") String region);
 }

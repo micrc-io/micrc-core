@@ -4,7 +4,6 @@ import io.micrc.core.message.MessageConsumeRouterExecution;
 import io.micrc.core.message.MessageRouteConfiguration;
 import io.micrc.core.message.store.MessagePublisherSchedule;
 import io.micrc.core.message.error.ErrorMessage;
-import io.micrc.lib.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.EndpointInject;
 import org.apache.camel.ProducerTemplate;
@@ -60,6 +59,12 @@ public class MessageAutoConfiguration {
 
     @EndpointInject
     private ProducerTemplate producerTemplate;
+
+    @Bean("clean")
+    public DirectComponent clean() {
+        DirectComponent clean = new DirectComponent();
+        return clean;
+    }
 
     @Bean("publish")
     public DirectComponent publish() {
