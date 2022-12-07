@@ -93,21 +93,6 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
 
     private void envForLiquibase(Collection<String> profiles, Properties properties, Environment env) {
         properties.setProperty("spring.liquibase.enabled", "false"); // 默认先关闭
-        // 客户端系统应该在micrc.properties文件中定义application.version=${version}这个属性
-        // 这个version会在gradle处理resources时通过project.properties进行expand，填充为当前build.gradle中的版本号
-        // 这个版本号会带给liquibase使用，在使用内存库时，首选执行snapshot快照，然后执行版本号指定的changeset
-        String appVersion = env.getProperty("application.version");
-        if (!StringUtils.hasText(appVersion)) {
-            throw new IllegalStateException(
-                    "Unable find application version. "
-                            + "application.version=${version} must exists in micrc.properties on classpath");
-        }
-        // 用于master include内存库的changelog的main文件
-        String mem = "";
-        if (profiles.contains("default") || profiles.contains("local")) {
-            log.info("Use Snapshot And Changeset For Memory Database. ");
-            mem = "-mem";
-        }
         // 两种情况下，liquibase在app内打开
         // 1. 系统作为liquibase数据库迁移app时，独立打包成image在init container中初始化数据库
         // 2. 当系统profile为default(本地开发)时，系统自动通过snapshot和当前版本changelog每次启动时初始化数据库
@@ -117,8 +102,6 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
             properties.setProperty("spring.liquibase.enabled", "true");
         }
         properties.setProperty("spring.liquibase.changeLog", "db/master.yaml");
-        properties.setProperty("spring.liquibase.parameters.version", appVersion);
-        properties.setProperty("spring.liquibase.parameters.mem", mem);
         log.debug("Persistence Properties: \n" + properties);
     }
 
