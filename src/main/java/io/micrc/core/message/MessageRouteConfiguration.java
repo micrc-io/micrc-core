@@ -236,7 +236,7 @@ public class MessageRouteConfiguration extends RouteBuilder {
             HashMap<String, Object> body = new HashMap<>();
             body.put("messageIds", result);
             body.put("receiver", eventMapping.getMappingKey());
-            String endpoint = "rest://post:/api/check-idempotent-consumed?host=" + eventMapping.receiverAddress;
+            String endpoint = "rest://post:/api/check-idempotent-consumed?host=" + eventMapping.receiverAddress + ":8080";
             String response = producerTemplate.requestBody(endpoint, JsonUtil.writeValueAsString(body), String.class);
             result = JsonUtil.writeValueAsList(response, Long.class);
         }
