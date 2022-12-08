@@ -241,9 +241,32 @@ public class MessageRouteConfiguration extends RouteBuilder {
             result = JsonUtil.writeValueAsList(response, Long.class);
         }
         if (!result.isEmpty()) {
-            log.info("消息清理：" + JsonUtil.writeValueAsString(result));
+            log.info("消息表清理：" + JsonUtil.writeValueAsString(result));
         }
         return result;
+    }
+
+    /**
+     * 用消息表过滤ID
+     *
+     * @param messageIds
+     * @return
+     */
+    @Consume("clean://store-removed-filter")
+    public List<Long> filter(@Body List<Long> messageIds) {
+        if (messageIds.isEmpty()) {
+            return messageIds;
+        }
+        HashMap<String, Object> body = new HashMap<>();
+        body.put("messageIds", messageIds);
+        String endpoint = "rest://post:/api/check-store-removed?host=localhost:8080";
+        String response = producerTemplate.requestBody(endpoint, JsonUtil.writeValueAsString(body), String.class);
+        List<Long> unRemoveIds = JsonUtil.writeValueAsList(response, Long.class);
+        messageIds.removeAll(unRemoveIds);
+        if (!messageIds.isEmpty()) {
+            log.info("幂等仓清理：" + JsonUtil.writeValueAsString(messageIds));
+        }
+        return messageIds;
     }
 
     @Override
@@ -289,10 +312,11 @@ public class MessageRouteConfiguration extends RouteBuilder {
 
         from("eventstore://clear")
                 .routeId("eventstore://clear")
+                .transacted()
                 .bean(EventsInfo.class, "getAllEvents")
                 .split(new SplitList()).parallelProcessing()
                     .setProperty("eventInfo", body())
-                    .bean(EventMessageRepository.class, "findSentIdByRegionLimit1000(${exchange.properties.get(eventInfo).getEventName()})")
+                    .bean(EventMessageRepository.class, "findSentIdByRegionLimitCount(${exchange.properties.get(eventInfo).getEventName()},1000)")
                     .setHeader("eventInfo", exchangeProperty("eventInfo"))
                     .to("clean://idempotent-consumed-filter")
                     .choice()
@@ -300,9 +324,13 @@ public class MessageRouteConfiguration extends RouteBuilder {
                         .bean(EventMessageRepository.class, "deleteAllByIdInBatch")
                         .endChoice()
                     .end()
-                // 在幂等仓里查询消息
-                // 查询发送方存储表
-                // 存储表数据不存在则执行删除
+                .end()
+                .bean(IdempotentMessageRepository.class, "findMessageIdsLimitCount(1000)")
+                .to("clean://store-removed-filter")
+                .choice()
+                    .when(simple("${body.size} > 0"))
+                        .bean(IdempotentMessageRepository.class, "deleteAllBySequenceIn")
+                    .endChoice()
                 .end();
 
         from("publish://send-normal")
@@ -389,7 +417,9 @@ public class MessageRouteConfiguration extends RouteBuilder {
         // 检查消息存储表是否已删除
         from("rest:post:check-store-removed")
                 .routeId("rest:post:check-store-removed")
-                .log("测试检查存储表已删除")
+                .convertBodyTo(String.class).unmarshal().json(HashMap.class)
+                .bean(EventMessageRepository.class, "findUnRemoveIdsByMessageIds(${body.get(messageIds)})")
+                .marshal().json().convertBodyTo(String.class)
                 .end();
     }
 

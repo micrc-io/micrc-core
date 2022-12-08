@@ -19,9 +19,35 @@ public interface IdempotentMessageRepository extends JpaRepository<IdempotentMes
 
     IdempotentMessage findFirstBySequenceAndReceiver(Long sequence, String receiver);
 
+    /**
+     * 清理入口
+     *
+     * @return
+     */
+    @Query(nativeQuery = true,
+            value = "select sequence from message_idempotent_message " +
+                    "order by sequence asc " +
+                    "limit :count")
+    List<Long> findMessageIdsLimitCount(@Param("count") Integer count);
+
+    /**
+     * 清理检查
+     *
+     * @param messageIds
+     * @param receiver
+     * @return
+     */
     @Query(nativeQuery = true,
             value = "select sequence from message_idempotent_message " +
                     "where sequence in :messageIds " +
                     "and receiver=:receiver ")
     List<Long> filterMessageIdByMessageIdsAndReceiver(@Param("messageIds") List<Long> messageIds, @Param("receiver") String receiver);
+
+    /**
+     * 删除
+     *
+     * @param messageIds
+     * @return
+     */
+    Integer deleteAllBySequenceIn(@Param("messageIds") List<Long> messageIds);
 }
