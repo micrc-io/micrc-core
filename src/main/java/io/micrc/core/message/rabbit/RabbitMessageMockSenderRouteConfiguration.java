@@ -38,7 +38,7 @@ public class RabbitMessageMockSenderRouteConfiguration extends MicrcRouteBuilder
                 .templateParameter("listenerName", null, "the message listener name")
                 .templateParameter("eventName", null, "the message logic name")
                 // 指定service名称为入口端点
-                .from("rest:post:{{listenerName}}?host=localhost:8080")
+                .from("rest:post:{{listenerName}}")
                 .log("测试1")
                 .to("message://{{eventName}}Listener")
                 .log("测试2")

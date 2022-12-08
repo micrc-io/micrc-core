@@ -211,7 +211,7 @@ public class MessageRouteConfiguration extends RouteBuilder {
     @Consume("subscribe://idempotent-message")
     public IdempotentMessage idempotent(Map<String, Object> messageDetail) {
         IdempotentMessage idempotent = new IdempotentMessage();
-        idempotent.setSender((String) messageDetail.get("sender"));
+        idempotent.setSender((String) messageDetail.get("context")); // 发送方上下文名称
         idempotent.setSequence(Long.valueOf(messageDetail.get("messageId").toString()));
         idempotent.setReceiver((String) messageDetail.get("serviceName"));
         return idempotent;
@@ -253,13 +253,13 @@ public class MessageRouteConfiguration extends RouteBuilder {
      * @return
      */
     @Consume("clean://store-removed-filter")
-    public List<Long> filter(@Body List<Long> messageIds) {
+    public List<Long> filter(@Body List<Long> messageIds, @Header("senderAddress") String senderAddress) {
         if (messageIds.isEmpty()) {
             return messageIds;
         }
         HashMap<String, Object> body = new HashMap<>();
         body.put("messageIds", messageIds);
-        String endpoint = "rest://post:/api/check-store-removed?host=localhost:8080";
+        String endpoint = "rest://post:/api/check-store-removed?host=" + senderAddress + ":8080";
         String response = producerTemplate.requestBody(endpoint, JsonUtil.writeValueAsString(body), String.class);
         List<Long> unRemoveIds = JsonUtil.writeValueAsList(response, Long.class);
         messageIds.removeAll(unRemoveIds);
@@ -315,22 +315,25 @@ public class MessageRouteConfiguration extends RouteBuilder {
                 .transacted()
                 .bean(EventsInfo.class, "getAllEvents")
                 .split(new SplitList()).parallelProcessing()
-                    .setProperty("eventInfo", body())
-                    .bean(EventMessageRepository.class, "findSentIdByRegionLimitCount(${exchange.properties.get(eventInfo).getEventName()},1000)")
-                    .setHeader("eventInfo", exchangeProperty("eventInfo"))
+                    .setHeader("eventInfo", body())
+                    .bean(EventMessageRepository.class, "findSentIdByRegionLimitCount(${body.getEventName()},1000)")
                     .to("clean://idempotent-consumed-filter")
                     .choice()
                         .when(simple("${body.size} > 0"))
-                        .bean(EventMessageRepository.class, "deleteAllByIdInBatch")
+                            .bean(EventMessageRepository.class, "deleteAllByIdInBatch")
                         .endChoice()
                     .end()
                 .end()
-                .bean(IdempotentMessageRepository.class, "findMessageIdsLimitCount(1000)")
-                .to("clean://store-removed-filter")
-                .choice()
-                    .when(simple("${body.size} > 0"))
-                        .bean(IdempotentMessageRepository.class, "deleteAllBySequenceIn")
-                    .endChoice()
+                .bean(IdempotentMessageRepository.class, "findSender")
+                .split(new SplitList()).parallelProcessing()
+                    .setHeader("senderAddress", body())
+                    .bean(IdempotentMessageRepository.class, "findMessageIdsBySenderLimitCount(${body},1000)")
+                    .to("clean://store-removed-filter")
+                    .choice()
+                        .when(simple("${body.size} > 0"))
+                            .bean(IdempotentMessageRepository.class, "deleteAllBySequenceIn")
+                        .endChoice()
+                    .end()
                 .end();
 
         from("publish://send-normal")
