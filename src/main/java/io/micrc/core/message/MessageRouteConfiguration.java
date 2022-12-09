@@ -31,7 +31,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -42,10 +41,6 @@ import java.util.stream.Collectors;
  * @since 0.0.1
  */
 public class MessageRouteConfiguration extends RouteBuilder {
-
-    public static Long startTime;
-
-    public static AtomicInteger count = new AtomicInteger(0);
 
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;
@@ -90,15 +85,6 @@ public class MessageRouteConfiguration extends RouteBuilder {
         Object groupId = eventObject.get("groupId");
         Map<String, EventsInfo.EventMapping> mappingMap = mappings.stream().collect(Collectors.toMap(EventsInfo.EventMapping::getMappingKey, i -> i, (i1, i2) -> i1));
 
-//        // todo，test，模拟1/10发送失败情况
-//        if (0 == System.currentTimeMillis() % 10) {
-//            // 发送失败 则 记录错误信息/累加错误次数
-//            ErrorMessage errorMessage = constructErrorMessage(eventInfo, content, messageId, mappingMap, "mock producer error");
-//            producerTemplate.requestBody("publish://error-sending-resolve", errorMessage);
-//            log.warn("发送失败（模拟）: " + messageId);
-//            return;
-//        }
-
         Message<?> objectMessage = MessageBuilder
                 .withPayload(content)
                 .setHeader(KafkaHeaders.TOPIC, eventInfo.getTopicName())
@@ -110,16 +96,6 @@ public class MessageRouteConfiguration extends RouteBuilder {
                 .setHeader("mappingMap", mappingMap).build();
         ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(objectMessage);
         future.completable().whenCompleteAsync((sendResult, throwable) -> {
-            // todo，test，记录第一次发送时间，累加发送次数，每100条打印用时
-            if (startTime == null) {
-                startTime = System.currentTimeMillis();
-            }
-            count.getAndIncrement();
-            if (count.get() % 100 == 0) {
-                long usedTime = System.currentTimeMillis() - startTime;
-                log.info("发送速率：用时=" + usedTime + "，次数=" + count);
-            }
-
             if (null == throwable) {
                 // 发送成功 则 删除错误记录
                 ErrorMessage errorMessage = new ErrorMessage();
@@ -132,7 +108,7 @@ public class MessageRouteConfiguration extends RouteBuilder {
                 // 发送失败 则 记录错误信息/累加错误次数
                 ErrorMessage errorMessage = constructErrorMessage(eventInfo, content, messageId, mappingMap, throwable.getLocalizedMessage());
                 producerTemplate.requestBody("publish://error-sending-resolve", errorMessage);
-                log.error("发送失败（真实）: " + messageId);
+                log.error("发送失败: " + messageId);
             }
         });
     }

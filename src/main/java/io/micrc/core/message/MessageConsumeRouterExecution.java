@@ -101,15 +101,9 @@ public class MessageConsumeRouterExecution implements Ordered {
         String groupId = messageDetail.get("groupId");
         if (null != groupId && !"".equals(groupId) && !groupId.equals(environment.getProperty("spring.application.name"))) {
             acknowledgment.acknowledge();
-            log.warn("接收成功（无关死信）: " + messageDetail.get("messageId"));
+            log.info("接收成功（无关死信）: " + messageDetail.get("messageId"));
             return null;
         }
-
-//        // todo，test，模拟1/4接收失败情况
-//        if (0 == System.currentTimeMillis() % 2) {
-//            log.warn("接收失败（模拟）: " + messageDetail.get("messageId"));
-//            throw new IllegalReceiveException("mock consumer error");
-//        }
 
         String mappingMapString = messageDetail.get("mappingMap");
         HashMap mappingMap = JsonUtil.writeValueAsObject(mappingMapString, HashMap.class);
@@ -120,7 +114,7 @@ public class MessageConsumeRouterExecution implements Ordered {
         if (null == mappingString || null == eventName || !eventName.equals(messageDetail.get("event"))) {
             // 不需要消费
             acknowledgment.acknowledge();
-            log.warn("接收成功（无需消费）: " + messageDetail.get("messageId"));
+            log.info("接收成功（无需消费）: " + messageDetail.get("messageId"));
             return null;
         }
         Object content = consumerRecord.value();
@@ -169,7 +163,7 @@ public class MessageConsumeRouterExecution implements Ordered {
         if(StringUtils.hasText(result.getCode()) && !"200".equals(result.getCode())){
             // 如果有异常 回滚事务 并应答失败进入死信
             platformTransactionManager.rollback(transactionStatus);
-            log.error("接收失败（真实）: " + messageDetail.get("messageId"));
+            log.error("接收失败: " + messageDetail.get("messageId"));
             throw new IllegalStateException("sys execute error");
         } else {
             // 如果执行正常则提交事务并应答成功
