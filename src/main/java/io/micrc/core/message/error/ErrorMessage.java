@@ -75,6 +75,7 @@ public class ErrorMessage {
     /**
      * 错误信息
      */
+    @Column(columnDefinition = "LONGTEXT")
     private String errorMessage;
 
     /**

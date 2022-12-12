@@ -103,7 +103,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: error_message
-                  type: VARCHAR(500)
+                  type: LONGTEXT
                   remarks: the error message error frequency
                   constraints:
                     nullable: false
