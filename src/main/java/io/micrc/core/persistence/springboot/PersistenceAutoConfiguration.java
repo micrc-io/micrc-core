@@ -57,7 +57,6 @@ public class PersistenceAutoConfiguration {
         return factory;
     }
 
-
     @Bean("memoryDbTemplate")
     public RedisTemplate<Object, Object> memoryDbTemplate() {
         RedisTemplate<Object, Object> template = new RedisTemplate<>();

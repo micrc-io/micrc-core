@@ -4,11 +4,10 @@ plugins {
     id 'maven-publish'
     id 'org.springframework.boot' version '2.7.3' apply false
     id 'io.spring.dependency-management' version '1.0.13.RELEASE'
-    id 'io.github.gradle-nexus.publish-plugin' version '1.1.0'
 }
 
 group = 'io.micrc.core'
-version = '0.0.1'
+version = 'v0.0.1'
 sourceCompatibility = '11'
 targetCompatibility = '11'
 
@@ -36,14 +35,10 @@ configurations {
 
 repositories {
     mavenLocal()
-    mavenCentral()
     maven {
-        url "${colibri_nexus}"
-        credentials {
-            username "${colibri_nexus_user}"
-            password "${colibri_nexus_pass}"
-        }
+        url "${ouxxa_nexus}"
     }
+    mavenCentral()
 }
 
 dependencyManagement {
@@ -54,7 +49,7 @@ dependencyManagement {
 
 dependencies {
     // annotation - micrc-annotations: gradle task - publishToMavenLocal
-    implementation "io.micrc.core:micrc-annotations:0.0.1"
+    implementation "io.micrc.core:micrc-annotations:v0.0.1"
 
     // springboot basic
     implementation "org.springframework.boot:spring-boot-starter"
@@ -150,17 +145,16 @@ publishing {
             artifact sourcesJar
         }
     }
-}
 
-nexusPublishing {
     repositories {
-        create("colibri") {
-            nexusUrl.set(uri("${colibri_nexus}"))
-            snapshotRepositoryUrl.set(uri("${colibri_nexus}"))
-            username.set("${colibri_nexus_user}")
-            password.set("${colibri_nexus_pass}")
-        }
-        create("central") {
+        maven {
+            name = 'colibriNexus'
+            url = uri("${colibri_nexus}")
+            println 'publish to ' + url
+            credentials {
+                username = "${colibri_nexus_user}"
+                password = "${colibri_nexus_pass}"
+            }
         }
     }
 }
