@@ -1,4 +1,4 @@
-package io.micrc.core.message;
+package io.micrc.core.message.rabbit;
 
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
@@ -14,11 +14,11 @@ import lombok.experimental.SuperBuilder;
  * @date 2022-09-19 11:23
  * @since 0.0.1
  */
-public class MessageMockSenderRouteConfiguration extends MicrcRouteBuilder {
+public class RabbitMessageMockSenderRouteConfiguration extends MicrcRouteBuilder {
 
     // 路由模版ID
     public static final String ROUTE_TMPL_MESSAGE_SENDER =
-            MessageMockSenderRouteConfiguration.class.getName() + ".messageSender";
+            RabbitMessageMockSenderRouteConfiguration.class.getName() + ".messageSender";
 
     /**
      * 配置消息MOCK发送路由模板
@@ -38,7 +38,7 @@ public class MessageMockSenderRouteConfiguration extends MicrcRouteBuilder {
                 .templateParameter("listenerName", null, "the message listener name")
                 .templateParameter("eventName", null, "the message logic name")
                 // 指定service名称为入口端点
-                .from("rest:post:{{listenerName}}?host=localhost:8080")
+                .from("rest:post:{{listenerName}}")
                 .log("测试1")
                 .to("message://{{eventName}}Listener")
                 .log("测试2")

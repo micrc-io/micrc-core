@@ -4,14 +4,17 @@ databaseChangeLog:
       author: micrc
       preConditions:
         - onFail: MARK_RAN
+          not:
+            - tableExists:
+                tableName: rabbit_message_message_tracker
       changes:
         - createTable:
-            tableName: message_message_store
+            tableName: rabbit_message_message_store
             remarks: message store
             columns:
               - column:
                   name: message_id
-                  type: BIGINT(11)
+                  type: VARCHAR(255)
                   remarks: id of message
                   constraints:
                     nullable: false
@@ -36,90 +39,122 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: status
-                  type: VARCHAR(300)
-                  remarks: message status
+                  name: sequence
+                  type: BIGINT(11)
+                  remarks: the message sequence
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    unique: true
+        - createTable:
+            tableName: rabbit_message_message_tracker
+            remarks: message tracker
+            columns:
+              - column:
+                  name: tracker_id
+                  type: VARCHAR(500)
+                  remarks: the id of tracker
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: tracker-pk
+              - column:
+                  name: channel
+                  type: VARCHAR(500)
+                  remarks: the channel of event
+                  constraints:
+                    nullable: false
+              - column:
+                  name: exchange
+                  type: VARCHAR(500)
+                  remarks: the event exchange
+                  constraints:
+                    nullable: true
+              - column:
+                  name: region
+                  type: VARCHAR(500)
+                  remarks: the event type
+                  constraints:
+                    nullable: false
+              - column:
+                  name: sequence
+                  type: BIGINT(11)
+                  remarks: the event type
                   constraints:
                     nullable: false
         - createTable:
-            tableName: message_error_message
+            tableName: rabbit_message_error_message
             remarks: store send error or dead message
             columns:
               - column:
                   name: error_message_id
-                  type: BIGINT(11)
+                  type: VARCHAR(255)
                   remarks: the id of error event
                   constraints:
                     nullable: false
                     primaryKey: true
                     primaryKeyName: error_event-pk
               - column:
-                  name: message_id
+                  name: sequence
                   type: BIGINT(11)
-                  remarks: the message id
+                  remarks: the event sequence
                   constraints:
                     nullable: false
               - column:
-                  name: group_id
-                  type: VARCHAR(500)
-                  remarks: the group id
-                  constraints:
-                    nullable: false
-              - column:
-                  name: sender
+                  name: channel
                   type: VARCHAR(500)
                   remarks: the event channel
                   constraints:
                     nullable: false
               - column:
-                  name: topic
-                  type: VARCHAR(500)
-                  remarks: the event channel
-                  constraints:
-                    nullable: false
-              - column:
-                  name: event
+                  name: exchange
                   type: VARCHAR(500)
                   remarks: the event exchange
                   constraints:
                     nullable: false
               - column:
-                  name: mapping_map
-                  type: LONGTEXT
+                  name: region
+                  type: VARCHAR(500)
                   remarks: the event type
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reason
+                  type: VARCHAR(500)
+                  remarks: send error reason - the SEND is in send step error, the DEAD_MESSAGE is on consumer can not consumer error
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_error_time
+                  type: BIGINT(11)
+                  remarks: the last error time
+                  constraints:
+                    nullable: false
+              - column:
+                  name: error_frequency
+                  type: INT(11)
+                  remarks: the error message error frequency
+                  constraints:
+                    nullable: false
+              - column:
+                  name: state
+                  type: VARCHAR(500)
+                  remarks: send state - NOT_SEND未发送 STOP不发送 SENDING发送中
                   constraints:
                     nullable: false
               - column:
                   name: content
                   type: LONGTEXT
-                  remarks: send error reason - the SEND is in send step error, the DEAD_MESSAGE is on consumer can not consumer error
-                  constraints:
-                    nullable: false
-              - column:
-                  name: error_count
-                  type: INT(11)
-                  remarks: the last error time
-                  constraints:
-                    nullable: false
-              - column:
-                  name: error_message
-                  type: LONGTEXT
-                  remarks: the error message error frequency
-                  constraints:
-                    nullable: false
-              - column:
-                  name: error_status
-                  type: VARCHAR(500)
-                  remarks: send state - WAITING未发送 STOP不发送 SENDING发送中
+                  remarks: message content
                   constraints:
                     nullable: false
         - createTable:
-            tableName: message_idempotent_message
+            tableName: rabbit_message_idempotent_message
             remarks: the message idempotent repository
             columns:
               - column:
                   name: idempotent_message_id
-                  type: BIGINT(11)
+                  type: VARCHAR(255)
                   remarks: the id of idempotent event
                   constraints:
                     nullable: false
@@ -132,14 +167,24 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: sender
+                  name: channel
                   type: VARCHAR(500)
-                  remarks: the event sender
+                  remarks: the event channel
                   constraints:
                     nullable: false
               - column:
-                  name: receiver
+                  name: exchange
                   type: VARCHAR(500)
-                  remarks: the event receiver
+                  remarks: the event exchange
                   constraints:
                     nullable: false
+              - column:
+                  name: region
+                  type: VARCHAR(500)
+                  remarks: the event type
+                  constraints:
+                    nullable: false
+        - addAutoIncrement:
+            columnDataType: BIGINT(11)
+            columnName: sequence
+            tableName: rabbit_message_message_store
