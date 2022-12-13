@@ -1,19 +1,18 @@
 package io.micrc.core.message.store;
 
+import io.micrc.core.persistence.snowflake.SnowFlakeIdentity;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.apache.camel.Consume;
 
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
-import java.util.Map;
 
 /**
  * 幂等消息
  *
- * @author tengwang
- * @date 2022/9/29 11:00
+ * @author hyosunghan
+ * @date 2022/12/2 11:00
  * @since 0.0.1
  */
 @Data
@@ -26,7 +25,7 @@ public class IdempotentMessage {
      * 幂等消息ID
      */
     @Id
-    private String idempotentMessageId = System.currentTimeMillis() + java.util.UUID.randomUUID().toString().replaceAll("-", "");
+    private Long idempotentMessageId = SnowFlakeIdentity.getInstance().nextId();
 
     /**
      * 序列号
@@ -34,27 +33,12 @@ public class IdempotentMessage {
     private Long sequence;
 
     /**
-     * 发送通道
+     * 发送方
      */
-    private String channel;
+    private String sender;
 
     /**
-     * 发送交换区
+     * 接收方
      */
-    private String exchange;
-
-    /**
-     * 消息类型
-     */
-    private String region;
-
-    @Consume("subscribe://idempotent-message")
-    public IdempotentMessage idempotent(Map<String, Object> messageDetail) {
-        IdempotentMessage idempotent = new IdempotentMessage();
-        idempotent.setChannel((String) messageDetail.get("channel"));
-        idempotent.setSequence(Long.valueOf(messageDetail.get("sequence").toString()));
-        idempotent.setExchange((String) messageDetail.get("exchange"));
-        idempotent.setRegion((String) messageDetail.get("region"));
-        return idempotent;
-    }
+    private String receiver;
 }

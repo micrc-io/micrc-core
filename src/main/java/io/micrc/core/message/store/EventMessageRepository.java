@@ -15,18 +15,40 @@ import java.util.List;
  * @date 2022/1/12 9:11 PM
  */
 @Repository
-public interface EventMessageRepository extends JpaRepository<EventMessage, String> {
-
+public interface EventMessageRepository extends JpaRepository<EventMessage, Long> {
     @Query(nativeQuery = true,
-           value = "select ms.* from message_message_store ms " +
-                   "where " +
-                   "ms.region = :region " +
-                   "and " +
-                   "ms.sequence > :currentSequence " +
-                   "order by ms.sequence asc " +
-                   "limit :count ")
-    List<EventMessage> findEventMessageByRegionAndCurrentSequenceLimitByCount(
-            @Param(value = "region") String region, @Param(value = "currentSequence") Long currentSequence, @Param(value = "count") Integer count);
+            value = "select ms.* from message_message_store ms " +
+                    "where " +
+                    "ms.region = :region " +
+                    "and ms.status ='WAITING' " +
+                    "order by ms.message_id asc " +
+                    "limit :count ")
+    List<EventMessage> findEventMessageByRegionLimitByCount(
+            @Param(value = "region") String region, @Param(value = "count") Integer count);
 
-    EventMessage findEventMessageBySequence(@Param(value = "sequence") Long sequence);
+    /**
+     * 清理入口，已发送的事件1000条
+     *
+     * @param region
+     * @return
+     */
+    @Query(nativeQuery = true,
+            value = "select ms.message_id from message_message_store ms " +
+                    "where " +
+                    "ms.region = :region " +
+                    "and ms.status ='SENT' " +
+                    "order by ms.message_id asc " +
+                    "limit :count")
+    List<Long> findSentIdByRegionLimitCount(@Param(value = "region") String region, @Param("count") Integer count);
+
+    /**
+     * 清理检查
+     *
+     * @param messageIds
+     * @return
+     */
+    @Query(nativeQuery = true,
+            value = "select ms.message_id from message_message_store ms " +
+                    "where ms.message_id in :messageIds")
+    List<Long> findUnRemoveIdsByMessageIds(@Param(value = "messageIds") List<Long> messageIds);
 }

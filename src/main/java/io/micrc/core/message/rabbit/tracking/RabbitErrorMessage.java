@@ -1,8 +1,8 @@
-package io.micrc.core.message.tracking;
+package io.micrc.core.message.rabbit.tracking;
 
 import com.rabbitmq.client.Channel;
-import io.micrc.core.message.springboot.MessageAutoConfiguration;
-import io.micrc.core.message.store.EventMessage;
+import io.micrc.core.message.rabbit.springboot.RabbitMessageAutoConfiguration;
+import io.micrc.core.message.rabbit.store.RabbitEventMessage;
 import io.micrc.lib.ClassCastUtils;
 import io.micrc.lib.JsonUtil;
 import lombok.Data;
@@ -35,8 +35,8 @@ import java.util.concurrent.RejectedExecutionException;
 @Data
 @Entity
 @NoArgsConstructor
-@Table(name = "message_error_message")
-public class ErrorMessage {
+@Table(name = "rabbit_message_error_message")
+public class RabbitErrorMessage {
 
     /**
      * 失败消息ID
@@ -90,7 +90,7 @@ public class ErrorMessage {
     @Column(columnDefinition = "LONGTEXT")
     private String content;
 
-    public ErrorMessage(EventMessage eventMessage, Map<String, Object> eventDetail, String reason, String state) {
+    public RabbitErrorMessage(RabbitEventMessage rabbitEventMessage, Map<String, Object> eventDetail, String reason, String state) {
         this.sequence = Long.valueOf(eventDetail.get("sequence").toString());
         this.channel = (String) eventDetail.get("channel");
         this.exchange = (String) eventDetail.get("exchange");
@@ -98,53 +98,53 @@ public class ErrorMessage {
         this.reason = reason;
         this.errorFrequency = this.errorFrequency + 1;
         this.state = state;
-        if(null != eventMessage){
-            this.content = eventMessage.getContent();
+        if(null != rabbitEventMessage){
+            this.content = rabbitEventMessage.getContent();
         }
     }
 
     @Consume("eventstore://error-message-sending")
-    public ErrorMessage sending(@Body ErrorMessage errorMessage) {
-        errorMessage.setState("SENDING");
-        return errorMessage;
+    public RabbitErrorMessage sending(@Body RabbitErrorMessage rabbitErrorMessage) {
+        rabbitErrorMessage.setState("SENDING");
+        return rabbitErrorMessage;
     }
 
     @Consume("eventstore://dead-message-store")
-    public ErrorMessage deadMessageStore(@Body EventMessage eventMessage, @Header("eventDetail") String eventDetailJson) {
+    public RabbitErrorMessage deadMessageStore(@Body RabbitEventMessage rabbitEventMessage, @Header("eventDetail") String eventDetailJson) {
         Object object = JsonUtil.writeValueAsObject(eventDetailJson, Object.class);
         Map<String, Object> eventDetail = ClassCastUtils.castHashMap(object, String.class, Object.class);
-        ErrorMessage errorMessage = new ErrorMessage(eventMessage, eventDetail, "DEAD_MESSAGE", "STOP");
-        return errorMessage;
+        RabbitErrorMessage rabbitErrorMessage = new RabbitErrorMessage(rabbitEventMessage, eventDetail, "DEAD_MESSAGE", "STOP");
+        return rabbitErrorMessage;
     }
 
     @Consume("eventstore://send-error-error-message-store")
-    public ErrorMessage sendErrorMessageStore(@Body ErrorMessage errorMessage) {
-        errorMessage.setErrorFrequency(errorMessage.getErrorFrequency() + 1);
-        errorMessage.setLastErrorTime(System.currentTimeMillis());
-        errorMessage.setReason("SEND");
-        errorMessage.setState("NOT_SEND");
-        return errorMessage;
+    public RabbitErrorMessage sendErrorMessageStore(@Body RabbitErrorMessage rabbitErrorMessage) {
+        rabbitErrorMessage.setErrorFrequency(rabbitErrorMessage.getErrorFrequency() + 1);
+        rabbitErrorMessage.setLastErrorTime(System.currentTimeMillis());
+        rabbitErrorMessage.setReason("SEND");
+        rabbitErrorMessage.setState("NOT_SEND");
+        return rabbitErrorMessage;
     }
 
     @Consume("eventstore://send-error-return-message-store")
-    public ErrorMessage sendErrorReturnMessageStore(@Body ErrorMessage errorMessage) {
-        errorMessage.setErrorFrequency(errorMessage.getErrorFrequency() + 1);
-        errorMessage.setLastErrorTime(System.currentTimeMillis());
-        errorMessage.setReason("SEND");
-        errorMessage.setState("STOP");
-        return errorMessage;
+    public RabbitErrorMessage sendErrorReturnMessageStore(@Body RabbitErrorMessage rabbitErrorMessage) {
+        rabbitErrorMessage.setErrorFrequency(rabbitErrorMessage.getErrorFrequency() + 1);
+        rabbitErrorMessage.setLastErrorTime(System.currentTimeMillis());
+        rabbitErrorMessage.setReason("SEND");
+        rabbitErrorMessage.setState("STOP");
+        return rabbitErrorMessage;
     }
 
     @Consume("eventstore://send-normal-error-message-store")
-    public ErrorMessage errorNormalMessageStore(@Body Map<String, Object> eventDetail, @Header("eventMessage") EventMessage eventMessage) {
-        ErrorMessage errorMessage = new ErrorMessage(eventMessage, eventDetail, "SEND", "NOT_SEND");
-        return errorMessage;
+    public RabbitErrorMessage errorNormalMessageStore(@Body Map<String, Object> eventDetail, @Header("eventMessage") RabbitEventMessage rabbitEventMessage) {
+        RabbitErrorMessage rabbitErrorMessage = new RabbitErrorMessage(rabbitEventMessage, eventDetail, "SEND", "NOT_SEND");
+        return rabbitErrorMessage;
     }
 
     @Consume("eventstore://send-normal-return-message-store")
-    public ErrorMessage errorNormalReturnMessageStore(@Body Map<String, Object> eventDetail, @Header("eventMessage") EventMessage eventMessage) {
-        ErrorMessage errorMessage = new ErrorMessage(eventMessage, eventDetail, "SEND", "STOP");
-        return errorMessage;
+    public RabbitErrorMessage errorNormalReturnMessageStore(@Body Map<String, Object> eventDetail, @Header("eventMessage") RabbitEventMessage rabbitEventMessage) {
+        RabbitErrorMessage rabbitErrorMessage = new RabbitErrorMessage(rabbitEventMessage, eventDetail, "SEND", "STOP");
+        return rabbitErrorMessage;
     }
 
     @Component("DeadMessageResolver")
@@ -156,15 +156,15 @@ public class ErrorMessage {
         @SneakyThrows
         @RabbitListener(
                 bindings = @QueueBinding(
-                        value = @Queue(value = MessageAutoConfiguration.DEAD_LETTER_QUEUE_NAME),
-                        exchange = @Exchange(value = MessageAutoConfiguration.DEAD_LETTER_EXCHANGE_NAME),
-                        key = MessageAutoConfiguration.DEAD_LETTER_ROUTING_KEY
+                        value = @Queue(value = RabbitMessageAutoConfiguration.DEAD_LETTER_QUEUE_NAME),
+                        exchange = @Exchange(value = RabbitMessageAutoConfiguration.DEAD_LETTER_EXCHANGE_NAME),
+                        key = RabbitMessageAutoConfiguration.DEAD_LETTER_ROUTING_KEY
                 )
         )
-        public void adapt(EventMessage eventMessage, Channel channel, Message message) {
+        public void adapt(RabbitEventMessage rabbitEventMessage, Channel channel, Message message) {
             try {
                 log.info("落盘死信消息-{}", message);
-                template.sendBodyAndHeader(eventMessage, "eventDetail", message.getMessageProperties().getHeader("spring_returned_message_correlation"));
+                template.sendBodyAndHeader(rabbitEventMessage, "eventDetail", message.getMessageProperties().getHeader("spring_returned_message_correlation"));
                 channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
             } catch (RejectedExecutionException e) {
                 log.info("死信队列处理器初始化中....");

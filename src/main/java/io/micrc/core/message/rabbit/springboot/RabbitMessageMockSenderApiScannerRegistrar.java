@@ -1,9 +1,9 @@
-package io.micrc.core.message.springboot;
+package io.micrc.core.message.rabbit.springboot;
 
 import io.micrc.core.EnableMicrcSupport;
-import io.micrc.core.annotations.integration.message.MessageAdapter;
-import io.micrc.core.message.MessageMockSenderRouteConfiguration;
-import io.micrc.core.message.MessageMockSenderRouteTemplateParameterSource;
+import io.micrc.core.annotations.message.rabbit.RabbitMessageAdapter;
+import io.micrc.core.message.rabbit.RabbitMessageMockSenderRouteConfiguration;
+import io.micrc.core.message.rabbit.RabbitMessageMockSenderRouteTemplateParameterSource;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
@@ -39,7 +39,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @since 0.0.1
  */
 @Slf4j
-public class MessageMockSenderApiScannerRegistrar implements ImportBeanDefinitionRegistrar, EnvironmentAware {
+public class RabbitMessageMockSenderApiScannerRegistrar implements ImportBeanDefinitionRegistrar, EnvironmentAware {
 
     private Environment env;
 
@@ -65,19 +65,19 @@ public class MessageMockSenderApiScannerRegistrar implements ImportBeanDefinitio
         if (basePackages.length == 0) {
             return;
         }
-        MessageMockSenderRouteTemplateParameterSource source =
-                new MessageMockSenderRouteTemplateParameterSource();
+        RabbitMessageMockSenderRouteTemplateParameterSource source =
+                new RabbitMessageMockSenderRouteTemplateParameterSource();
 
         // message mock sender scanner
-        MessageMockSenderApiScanner messageMockSenderApiScanner =
-                new MessageMockSenderApiScanner(registry, source);
+        RabbitMessageMockSenderApiScanner messageMockSenderApiScanner =
+                new RabbitMessageMockSenderApiScanner(registry, source);
         messageMockSenderApiScanner.setResourceLoader(resourceLoader);
         messageMockSenderApiScanner.doScan(basePackages);
 
         // registering
         BeanDefinition beanDefinition = BeanDefinitionBuilder
                 .genericBeanDefinition(
-                        (Class<MessageMockSenderRouteTemplateParameterSource>) source.getClass(),
+                        (Class<RabbitMessageMockSenderRouteTemplateParameterSource>) source.getClass(),
                         () -> source)
                 .getRawBeanDefinition();
         registry.registerBeanDefinition(importBeanNameGenerator.generateBeanName(beanDefinition, registry),
@@ -92,20 +92,20 @@ public class MessageMockSenderApiScannerRegistrar implements ImportBeanDefinitio
 }
 
 /**
- * 消息MOCK发送器扫描器，用于扫描@MessageAdapter注解
+ * 消息MOCK发送器扫描器，用于扫描@RabbitMessageAdapter注解
  * 获取注解中的声明逻辑的属性，构造路由模版源，最终注入camel context用于构造执行路由
  *
  * @author hyosunghan
  * @date 2022-11-19 14:16
  * @since 0.0.1
  */
-class MessageMockSenderApiScanner extends ClassPathBeanDefinitionScanner {
+class RabbitMessageMockSenderApiScanner extends ClassPathBeanDefinitionScanner {
 
     private static final AtomicInteger INDEX = new AtomicInteger();
-    private final MessageMockSenderRouteTemplateParameterSource sourceDefinition;
+    private final RabbitMessageMockSenderRouteTemplateParameterSource sourceDefinition;
 
-    public MessageMockSenderApiScanner(BeanDefinitionRegistry registry,
-                                                MessageMockSenderRouteTemplateParameterSource source) {
+    public RabbitMessageMockSenderApiScanner(BeanDefinitionRegistry registry,
+                                                RabbitMessageMockSenderRouteTemplateParameterSource source) {
         super(registry, false);
         this.sourceDefinition = source;
     }
@@ -119,16 +119,16 @@ class MessageMockSenderApiScanner extends ClassPathBeanDefinitionScanner {
     @SneakyThrows
     @Override
     protected Set<BeanDefinitionHolder> doScan(String... basePackages) {
-        this.addIncludeFilter(new AnnotationTypeFilter(MessageAdapter.class));
+        this.addIncludeFilter(new AnnotationTypeFilter(RabbitMessageAdapter.class));
         Set<BeanDefinitionHolder> holders = super.doScan(basePackages);
         for (BeanDefinitionHolder holder : holders) {
             GenericBeanDefinition beanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
             beanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
-            MessageAdapter messageAdapter = beanDefinition.getBeanClass().getAnnotation(MessageAdapter.class);
-            // 获取MessageAdapter注解参数
+            RabbitMessageAdapter messageAdapter = beanDefinition.getBeanClass().getAnnotation(RabbitMessageAdapter.class);
+            // 获取RabbitMessageAdapter注解参数
             String listenerName = beanDefinition.getBeanClass().getSimpleName();
-            MessageMockSenderRouteConfiguration.MessageMockSenderDefinition build = MessageMockSenderRouteConfiguration.MessageMockSenderDefinition.builder()
-                    .templateId(MessageMockSenderRouteConfiguration.ROUTE_TMPL_MESSAGE_SENDER)
+            RabbitMessageMockSenderRouteConfiguration.MessageMockSenderDefinition build = RabbitMessageMockSenderRouteConfiguration.MessageMockSenderDefinition.builder()
+                    .templateId(RabbitMessageMockSenderRouteConfiguration.ROUTE_TMPL_MESSAGE_SENDER)
                     .listenerName(listenerName)
                     .eventName(messageAdapter.eventName())
                     .build();
@@ -148,6 +148,6 @@ class MessageMockSenderApiScanner extends ClassPathBeanDefinitionScanner {
         if (!StringUtils.hasText(routeId)) {
             routeId = String.valueOf(INDEX.getAndIncrement());
         }
-        return MessageMockSenderRouteConfiguration.ROUTE_TMPL_MESSAGE_SENDER + "-" + routeId;
+        return RabbitMessageMockSenderRouteConfiguration.ROUTE_TMPL_MESSAGE_SENDER + "-" + routeId;
     }
 }

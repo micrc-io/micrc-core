@@ -1,6 +1,6 @@
 package io.micrc.core.integration.message.springboot;
 
-import io.micrc.core.annotations.integration.message.MessageAdapter;
+import io.micrc.core.annotations.message.MessageAdapter;
 import io.micrc.core.integration.message.EnableMessageAdapter;
 import io.micrc.core.integration.message.MessageAdapterRouteConfiguration;
 import io.micrc.core.integration.message.MessageAdapterRouteConfiguration.ApplicationMessageRouteTemplateParamDefinition;
@@ -133,9 +133,8 @@ class ApplicationMessageAdapterScanner extends ClassPathBeanDefinitionScanner {
                         + " need extends MessageIntegrationAdapter. please check");
             }
             MessageAdapter messageAdapter = beanDefinition.getBeanClass().getAnnotation(MessageAdapter.class);
-            String serviceName = messageAdapter.logicName() + "Service";
-            String servicePath = basePackages[0] + ".application.businesses."
-                    + messageAdapter.rootEntityName().toLowerCase() + "." + serviceName;
+            String servicePath = messageAdapter.commandServicePath();
+            String[] servicePathSplit = servicePath.split("\\.");
             Class<?> service = Class.forName(servicePath);
             if (null == service) {
                 throw new ClassNotFoundException(
@@ -147,26 +146,26 @@ class ApplicationMessageAdapterScanner extends ClassPathBeanDefinitionScanner {
                     .filter(method -> "execute".equals(method.getName()) && !method.isBridge())
                     .collect(Collectors.toList());
             if (haveExecuteMethod.size() != 1) {
-                throw new MethodAdapterDesignException(" the application service interface " + serviceName
+                throw new MethodAdapterDesignException(" the application service interface " + servicePath
                         + " need extends ApplicationBusinessesService. please check");
             }
             Class<?>[] serviceMethodParameterTypes = serviceMethods[0].getParameterTypes();
             if (serviceMethodParameterTypes.length != 1) {
-                throw new MethodAdapterDesignException(" the message endpoint service interface " + serviceName
+                throw new MethodAdapterDesignException(" the message endpoint service interface " + servicePath
                         + " method execute param only can use command and only one param. please check");
             }
             String commandPath = serviceMethodParameterTypes[0].getName();
 
             sourceDefinition.addParameter(
-                    routeId(serviceName),
+                    routeId(servicePath),
                     ApplicationMessageRouteTemplateParamDefinition.builder()
                             .templateId(MessageAdapterRouteConfiguration.ROUTE_TMPL_MESSAGE)
                             .name(name)
                             .commandPath(commandPath)
-                            .serviceName(serviceName)
+                            .serviceName(servicePathSplit[servicePathSplit.length - 1])
                             .event(messageAdapter.eventName())
-                            .ordered(messageAdapter.ordered())
-                            .receiveEntityName(messageAdapter.rootEntityName())
+//                            .ordered(messageAdapter.ordered())
+//                            .receiveEntityName(messageAdapter.rootEntityName())
                             .build());
         }
         holders.clear();

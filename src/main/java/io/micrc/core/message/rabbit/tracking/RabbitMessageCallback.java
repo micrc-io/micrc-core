@@ -1,6 +1,6 @@
-package io.micrc.core.message.tracking;
+package io.micrc.core.message.rabbit.tracking;
 
-import io.micrc.core.message.store.EventMessage;
+import io.micrc.core.message.rabbit.store.RabbitEventMessage;
 import io.micrc.lib.ClassCastUtils;
 import io.micrc.lib.JsonUtil;
 import lombok.SneakyThrows;
@@ -25,7 +25,7 @@ import java.util.Map;
  * @since 0.0.1
  */
 @Component
-public class MessageCallback implements ConfirmCallback, ReturnsCallback {
+public class RabbitMessageCallback implements ConfirmCallback, ReturnsCallback {
 
     @EndpointInject
     private ProducerTemplate template;
@@ -53,12 +53,12 @@ public class MessageCallback implements ConfirmCallback, ReturnsCallback {
             // 异常消息且失败--修改异常表,记录发送次数
             // 正常消息且失败--添加异常消息并记录原因为发送失败
             Map<String, Object> headers = new HashMap<>();
-            EventMessage eventMessage = null;
+            RabbitEventMessage rabbitEventMessage = null;
             if(null != correlationData.getReturned()){
                 // 当交换区不存在的时候,消息体为空
-                eventMessage = (EventMessage) toObject(correlationData.getReturned().getMessage().getBody());
+                rabbitEventMessage = (RabbitEventMessage) toObject(correlationData.getReturned().getMessage().getBody());
             }
-            headers.put("eventMessage", eventMessage);
+            headers.put("eventMessage", rabbitEventMessage);
             headers.put("type", messageType);
             template.sendBodyAndHeaders("publish://error-sending-resolve", messageDetail, headers);
         }
@@ -74,9 +74,9 @@ public class MessageCallback implements ConfirmCallback, ReturnsCallback {
         Object object = JsonUtil.writeValueAsObject(returned.getMessage().getMessageProperties().getHeader("spring_returned_message_correlation").toString(), Object.class);
         Map<String, Object> messageDetail = ClassCastUtils.castHashMap(object, String.class, Object.class);
         String messageType = (String) messageDetail.get("type");
-        EventMessage eventMessage = (EventMessage) toObject(returned.getMessage().getBody());
+        RabbitEventMessage rabbitEventMessage = (RabbitEventMessage) toObject(returned.getMessage().getBody());
         Map<String, Object> headers = new HashMap<>();
-        headers.put("eventMessage", eventMessage);
+        headers.put("eventMessage", rabbitEventMessage);
         headers.put("type", messageType);
         template.sendBodyAndHeaders("publish://error-return-resolve", messageDetail, headers);
     }

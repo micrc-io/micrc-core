@@ -1,7 +1,7 @@
-package io.micrc.core.message.tracking;
+package io.micrc.core.message.rabbit.tracking;
 
-import io.micrc.core.message.MessageRouteConfiguration.EventsInfo.Event;
-import io.micrc.core.message.store.EventMessage;
+import io.micrc.core.message.rabbit.RabbitMessageRouteConfiguration.EventsInfo.Event;
+import io.micrc.core.message.rabbit.store.RabbitEventMessage;
 import io.micrc.lib.JsonUtil;
 import lombok.Data;
 import org.apache.camel.Body;
@@ -26,8 +26,8 @@ import java.util.Map;
  */
 @Data
 @Entity
-@Table(name = "message_message_tracker")
-public class MessageTracker {
+@Table(name = "rabbit_message_message_tracker")
+public class RabbitMessageTracker {
 
     @Id
     private String trackerId;
@@ -53,8 +53,8 @@ public class MessageTracker {
     private Long sequence;
 
     @Consume("eventstore://create-tracker")
-    public MessageTracker create(Event event) {
-        MessageTracker tracker = new MessageTracker();
+    public RabbitMessageTracker create(Event event) {
+        RabbitMessageTracker tracker = new RabbitMessageTracker();
         tracker.setChannel(event.getChannel());
         tracker.setRegion(event.getEventName());
         tracker.setExchange(event.getExchangeName());
@@ -64,25 +64,25 @@ public class MessageTracker {
     }
 
     @Consume("eventstore://tracker-move")
-    public MessageTracker move(@Body MessageTracker tracker, @Header("eventMessages") List<EventMessage> eventMessages) {
-        tracker.setSequence(eventMessages.get(eventMessages.size() - 1).getSequence());
+    public RabbitMessageTracker move(@Body RabbitMessageTracker tracker, @Header("eventMessages") List<RabbitEventMessage> rabbitEventMessages) {
+        tracker.setSequence(rabbitEventMessages.get(rabbitEventMessages.size() - 1).getSequence());
         return tracker;
     }
 
     @Consume("publish://sending")
     public void send(
-            @Body EventMessage eventMessage,
+            @Body RabbitEventMessage rabbitEventMessage,
             @Header("template") RabbitTemplate template,
-            @Header("tracker") MessageTracker tracker,
+            @Header("tracker") RabbitMessageTracker tracker,
             @Header("type") String type
     ) {
         Map<String, Object> messageDetail = new HashMap<>();
         messageDetail.put("exchange", tracker.getExchange());
         messageDetail.put("channel", tracker.getChannel());
         messageDetail.put("region", tracker.getRegion());
-        messageDetail.put("sequence", eventMessage.getSequence());
+        messageDetail.put("sequence", rabbitEventMessage.getSequence());
         messageDetail.put("type", type);
         CorrelationData correlationData = new CorrelationData(JsonUtil.writeValueAsString(messageDetail));
-        template.convertAndSend(tracker.getExchange(), tracker.getChannel(), eventMessage, correlationData);
+        template.convertAndSend(tracker.getExchange(), tracker.getChannel(), rabbitEventMessage, correlationData);
     }
 }

@@ -1,4 +1,4 @@
-package io.micrc.core.message.tracking;
+package io.micrc.core.message.rabbit.tracking;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -15,7 +15,7 @@ import java.util.List;
  * @date 2022/1/12 9:11 PM
  */
 @Repository
-public interface ErrorMessageRepository extends JpaRepository<ErrorMessage, String> {
+public interface RabbitErrorMessageRepository extends JpaRepository<RabbitErrorMessage, String> {
 
     @Query(nativeQuery = true,
            value = "select mem.* from message_error_message mem " +
@@ -25,7 +25,7 @@ public interface ErrorMessageRepository extends JpaRepository<ErrorMessage, Stri
                    "mem.channel= :channel " +
                    "and mem.state='NOT_SEND' order by mem.sequence ASC " +
                    "limit :count ")
-    List<ErrorMessage> findErrorMessageByExchangeAndChannelLimitByCount(
+    List<RabbitErrorMessage> findErrorMessageByExchangeAndChannelLimitByCount(
             @Param(value = "exchange") String exchange,
             @Param(value = "channel") String channel,
             @Param(value = "count") Integer count
@@ -38,7 +38,7 @@ public interface ErrorMessageRepository extends JpaRepository<ErrorMessage, Stri
             @Param(value = "region") String region
     );
 
-    ErrorMessage findFirstByExchangeAndChannelAndSequenceAndRegion(
+    RabbitErrorMessage findFirstByExchangeAndChannelAndSequenceAndRegion(
             @Param(value = "exchange") String exchange,
             @Param(value = "channel") String channel,
             @Param(value = "sequence") Long sequence,

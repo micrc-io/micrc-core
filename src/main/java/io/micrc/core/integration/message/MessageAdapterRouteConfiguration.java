@@ -81,13 +81,13 @@ public class MessageAdapterRouteConfiguration extends MicrcRouteBuilder {
          * @return
          */
         String serviceName;
-
-        /**
-         * 接收实体名称
-         *
-         * @return
-         */
-        String receiveEntityName;
+//
+//        /**
+//         * 接收实体名称
+//         *
+//         * @return
+//         */
+//        String receiveEntityName;
 
         /**
          * 事件名称
@@ -95,12 +95,12 @@ public class MessageAdapterRouteConfiguration extends MicrcRouteBuilder {
          * @return
          */
         String event;
-
-        /**
-         * 是否顺序消费
-         *
-         * @return
-         */
-        Boolean ordered;
+//
+//        /**
+//         * 是否顺序消费
+//         *
+//         * @return
+//         */
+//        Boolean ordered;
     }
 }

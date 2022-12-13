@@ -1,10 +1,9 @@
-package io.micrc.core.message.springboot;
+package io.micrc.core.message.rabbit.springboot;
 
 import io.micrc.core.EnableMicrcSupport;
-import io.micrc.core.annotations.message.DomainEvents;
-import io.micrc.core.message.MessageRouteConfiguration;
-import io.micrc.core.message.MessageRouteConfiguration.EventsInfo;
-import io.micrc.core.message.MessageRouteConfiguration.EventsInfo.Event;
+import io.micrc.core.annotations.message.rabbit.RabbitDomainEvents;
+import io.micrc.core.message.rabbit.RabbitMessageRouteConfiguration.EventsInfo;
+import io.micrc.core.message.rabbit.RabbitMessageRouteConfiguration.EventsInfo.Event;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -23,9 +22,7 @@ import org.springframework.core.type.StandardAnnotationMetadata;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
 
 import java.util.Arrays;
-import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * 消息监听适配器扫描，注入路由参数bean，用于每个适配器生成路由
@@ -34,7 +31,7 @@ import java.util.stream.Collectors;
  * @date 2022-09-13 05:30
  * @since 0.0.1
  */
-public class ClassPathMessageScannerRegistrar implements ImportBeanDefinitionRegistrar, ResourceLoaderAware {
+public class RabbitClassPathMessageScannerRegistrar implements ImportBeanDefinitionRegistrar, ResourceLoaderAware {
 
     private ResourceLoader resourceLoader;
 
@@ -50,7 +47,7 @@ public class ClassPathMessageScannerRegistrar implements ImportBeanDefinitionReg
             return;
         }
 
-        MessageRouteConfiguration.EventsInfo eventsInfo = new EventsInfo();
+        EventsInfo eventsInfo = new EventsInfo();
         /**
          * 发送器注解扫描
          */
@@ -88,30 +85,23 @@ class MessagePublisherScanner extends ClassPathBeanDefinitionScanner {
     @SneakyThrows
     @Override
     protected Set<BeanDefinitionHolder> doScan(String... basePackages) {
-        this.addIncludeFilter(new AnnotationTypeFilter(DomainEvents.class));
+        this.addIncludeFilter(new AnnotationTypeFilter(RabbitDomainEvents.class));
         Set<BeanDefinitionHolder> holders = super.doScan(basePackages);
         for (BeanDefinitionHolder holder : holders) {
             GenericBeanDefinition beanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
             beanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
-            String serviceName = beanDefinition.getBeanClass().getSimpleName();
-            DomainEvents domainEvents = beanDefinition.getBeanClass().getAnnotation(DomainEvents.class);
-            Arrays.stream(domainEvents.events()).forEach(eventInfo -> {
-                // 事件对应接收方各自映射
-                List<EventsInfo.EventMapping> mappingList = Arrays.stream(eventInfo.mappings())
-                        .map(mapping -> EventsInfo.EventMapping.builder()
-                                .mappingKey(mapping.mappingKey())
-                                .mappingPath(mapping.mappingPath())
-                                .receiverAddress(mapping.receiverAddress()).build())
-                        .collect(Collectors.toList());
-                // 事件信息
+            // 构造全局EventsInfo
+            RabbitDomainEvents RabbitDomainEvents = beanDefinition.getBeanClass().getAnnotation(RabbitDomainEvents.class);
+            Arrays.stream(RabbitDomainEvents.events()).forEach(eventInfo -> {
+                String channel = eventInfo.eventName() + "-" + eventInfo.channel();
                 Event event = Event.builder()
-                        .topicName(eventInfo.topicName())
                         .eventName(eventInfo.eventName())
-                        .senderAddress(serviceName)
-                        .eventMappings(mappingList)
+                        .exchangeName(eventInfo.aggregationName())
+                        .channel(channel)
+                        .mappingPath(eventInfo.mappingPath())
+                        .ordered(eventInfo.ordered())
                         .build();
-                // 注册事件信息
-                eventsInfo.put(serviceName + "-" + event.getTopicName(), event);
+                eventsInfo.put(channel, event);
             });
         }
         holders.clear();
