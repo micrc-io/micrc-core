@@ -66,13 +66,11 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .templateParameter("logicIntegrationJson", null, "the logic integration params")
                 .templateParameter("embeddedIdentityFullClassName", null, "embedded identity full class name")
                 .templateParameter("timePathsJson", null, "time path list json")
-                .templateParameter("targetIdPath", null, "target id path")
                 .templateParameter("batchPropertyPath", null, "batch property path")
                 .from("businesses:{{serviceName}}")
                 .setProperty("repositoryName", simple("{{repositoryName}}"))
                 .setProperty("embeddedIdentityFullClassName", simple("{{embeddedIdentityFullClassName}}"))
                 .setProperty("commandParamIntegrationsJson", simple("{{commandParamIntegrationsJson}}"))
-                .setProperty("targetIdPath", simple("{{targetIdPath}}"))
                 .setProperty("logicName", simple("{{logicName}}"))
                 .setProperty("batchPropertyPath", simple("{{batchPropertyPath}}"))
                 .setProperty("aggregationPath", simple("{{aggregationPath}}"))
@@ -105,17 +103,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .setBody(exchangeProperty("commandJson"));
 
         from("direct://dynamic-integration")
-                .dynamicRouter(method(IntegrationCommandParams.class, "integrate"))
-                .choice()
-                    .when(constant("").isEqualTo(simple("${exchange.properties.get(targetIdPath)}")))
-                    .bean(SnowFlakeIdentity.class, "getInstance")
-                    .bean(SnowFlakeIdentity.class, "nextId")
-                    .setHeader("path", constant("/source/identity/id"))
-                    .setHeader("value", body())
-                    .setBody(exchangeProperty("commandJson"))
-                    .to("json-patch://add")
-                    .setProperty("commandJson", body())
-                .end();
+                .dynamicRouter(method(IntegrationCommandParams.class, "integrate"));
 
         from("direct://parse-time")
                 .setBody(exchangeProperty("timePathsJson"))
@@ -138,6 +126,14 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .setProperty("commandJson", body());
 
         from("direct://save-entity")
+                .process(exchange -> {
+                    String commandJson = (String) exchange.getProperties().get("commandJson");
+                    Object id = JsonUtil.readPath(commandJson, "/target/identity/id");
+                    if (null == id) {
+                        commandJson = JsonUtil.add(commandJson, "/target/identity/id", String.valueOf(SnowFlakeIdentity.getInstance().nextId()));
+                        exchange.getProperties().put("commandJson", commandJson);
+                    }
+                })
                 .setBody(exchangeProperty("commandJson"))
                 .setHeader("pointer", constant("/target"))
                 .to("json-patch://select")
@@ -175,10 +171,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .end();
 
         from("direct://integration-params")
-                // 得到需要集成的集成参数
-                .bean(IntegrationCommandParams.class,
-                        "executableIntegrationInfo(${exchange.properties.get(unIntegrateParams)}, ${exchange.properties.get(commandJson)})")
-                .setProperty("currentIntegrateParam", body())
+                .setBody(exchangeProperty("currentIntegrateParam"))
                 .choice()
                 .when(constant("").isEqualTo(simple("${exchange.properties.get(currentIntegrateParam).get(protocol)}")))
                     .setBody(simple("${in.body.get(integrateParams).get(id)}"))
@@ -294,11 +287,6 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
          * 所有时间路径
          */
         protected String timePathsJson;
-
-        /**
-         * 获取ID值的路径
-         */
-        protected String targetIdPath;
     }
 
     @Data
@@ -312,9 +300,9 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
         private String paramName;
 
         /**
-         * 参数所在对象图(Patch回去用,以/分割) - 注解输入
+         * 参数缺失则忽略此次集成
          */
-        private String objectTreePath;
+        private boolean ignoreIfParamAbsent;
 
         /**
          * 参数映射
@@ -424,11 +412,12 @@ class IntegrationCommandParams {
                     .collect(Collectors.toMap(CommandParamIntegration::getParamName, integrate -> integrate));
             properties.put("unIntegrateParams", unIntegrateParams);
         }
-        Map<String, Object> unIntegrateParams = ClassCastUtils.castHashMap(
-                properties.get("unIntegrateParams"), String.class, Object.class);
+        Map<String, CommandParamIntegration> unIntegrateParams = ClassCastUtils.castHashMap(
+                properties.get("unIntegrateParams"), String.class, CommandParamIntegration.class);
         properties.put("unIntegrateParams", unIntegrateParams);
-        log.info("业务未集成：{}", String.join(",", unIntegrateParams.keySet()));
-        if (unIntegrateParams.size() == 0) {
+
+        Map<String, Object> currentIntegration = executableIntegrationInfo(unIntegrateParams, (String) properties.get("commandJson"));
+        if (null == currentIntegration) {
             // 清除中间变量
             properties.remove("currentIntegrateParam");
             properties.remove("unIntegrateParams");
@@ -436,6 +425,7 @@ class IntegrationCommandParams {
             properties.remove("commandParamIntegrations");
             return null;
         }
+        properties.put("currentIntegrateParam", currentIntegration);
         return "direct://integration-params";
     }
 
@@ -461,7 +451,7 @@ class IntegrationCommandParams {
             body = JsonUtil.readPath((String) body, "/data");
         }
         log.info("业务已集成：{}，结果：{}", name, JsonUtil.writeValueAsString(body));
-        commandJson = JsonUtil.patch(commandJson, unIntegrateParams.get(name).getObjectTreePath(), JsonUtil.writeValueAsString(body));
+        commandJson = JsonUtil.patch(commandJson, "/" + name, JsonUtil.writeValueAsString(body));
         exchange.getProperties().put("commandJson", commandJson);
         unIntegrateParams.remove(name);
         exchange.getProperties().put("currentIntegrateParam", current);
@@ -476,6 +466,10 @@ class IntegrationCommandParams {
      */
     public static Map<String, Object> executableIntegrationInfo(Map<String, CommandParamIntegration> unIntegrateParams,
                                                                 String commandJson) {
+        if (unIntegrateParams.isEmpty()) {
+            return null;
+        }
+        log.info("业务未集成：{}", String.join(",", unIntegrateParams.keySet()));
         Map<String, Object> executableIntegrationInfo = new HashMap<>();
         integrates: for (String key : unIntegrateParams.keySet()) {
             CommandParamIntegration commandParamIntegration = unIntegrateParams.get(key);
@@ -514,6 +508,11 @@ class IntegrationCommandParams {
             break;
         }
         if (null == executableIntegrationInfo.get("paramName")) {
+            // 是否只剩下了可选集成
+            if (unIntegrateParams.values().stream().map(CommandParamIntegration::isIgnoreIfParamAbsent).anyMatch(i -> true)) {
+                log.info("业务忽略集成：{}", String.join(",", unIntegrateParams.keySet()));
+                return null;
+            }
             throw new RuntimeException(
                     "the integration file have error, command need integrate, but the param can not use... ");
         }

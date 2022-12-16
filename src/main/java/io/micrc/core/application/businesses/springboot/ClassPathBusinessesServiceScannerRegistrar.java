@@ -179,32 +179,26 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
             LogicIntegration logicIntegration = LogicIntegration.builder().enterMappings(enterMappingMap).outMappings(outMappingMap).build();
             // 获取Command身上的参数的服务集成注解
             List<CommandParamIntegration> commandParamIntegrations = new ArrayList<>();
-            // 仓库集成
-            String targetIdPath = commandLogic.targetIdPath();
-            if (!"".equals(targetIdPath)) {
-                HashMap<String, String> map = new HashMap<>();
-                map.put("id", targetIdPath);
-                CommandParamIntegration commandParamIntegration = CommandParamIntegration.builder()
-                        .paramName("source")
-                        .objectTreePath("/source")
-                        .paramMappings(map)
-                        .protocol("")
-                        .build();
-                commandParamIntegrations.add(commandParamIntegration);
-            }
             // 其他集成
             Arrays.stream(commandFields).forEach(field -> {
+                RepositoryIntegration repositoryIntegration = field.getAnnotation(RepositoryIntegration.class);
+                if (null != repositoryIntegration) {
+                    HashMap<String, String> map = new HashMap<>();
+                    map.put("id", repositoryIntegration.idPath());
+                    CommandParamIntegration commandParamIntegration = CommandParamIntegration.builder()
+                            .paramName(field.getName())
+                            .paramMappings(map)
+                            .ignoreIfParamAbsent(repositoryIntegration.ignoreIfParamAbsent())
+                            .protocol("")
+                            .build();
+                    commandParamIntegrations.add(commandParamIntegration);
+                }
                 DeriveIntegration deriveIntegration = field.getAnnotation(DeriveIntegration.class);
                 if (null != deriveIntegration) {
-                    String objectTreePath = deriveIntegration.objectTreePath();
-                    if ("/".equals(objectTreePath)) {
-                        objectTreePath = objectTreePath + field.getName();
-                    }
                     // 参数映射
                     Map<String, String> paramMappings = Arrays.stream(deriveIntegration.integrationMapping()).collect(Collectors.toMap(IntegrationMapping::name, IntegrationMapping::mapping));
                     CommandParamIntegration commandParamIntegration = CommandParamIntegration.builder()
                             .paramName(field.getName())
-                            .objectTreePath(objectTreePath)
                             .paramMappings(paramMappings)
                             .protocol(deriveIntegration.protocolPath())
                             .build();
@@ -232,7 +226,6 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
                             .embeddedIdentityFullClassName(embeddedIdentityFullClassName)
                             .commandParamIntegrationsJson(JsonUtil.writeValueAsString(commandParamIntegrations))
                             .timePathsJson(JsonUtil.writeValueAsString(timePaths))
-                            .targetIdPath(targetIdPath)
                             .build());
         }
         holders.clear();
