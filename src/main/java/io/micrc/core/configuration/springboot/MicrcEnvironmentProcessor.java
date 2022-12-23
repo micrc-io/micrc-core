@@ -48,7 +48,7 @@ public class MicrcEnvironmentProcessor implements EnvironmentPostProcessor {
             properties.setProperty("embedded.containers.enabled", "false");
         }
         envForKubernetes(profiles, properties);
-        //envForActuator(profiles, properties);
+        envForActuator(profiles, properties);
         envForGracefulShutdown(properties);
 
         // TODO 处理banner: springboot版本，micrc版本，应用版本；micrc logo，应用logo；当前profile及描述

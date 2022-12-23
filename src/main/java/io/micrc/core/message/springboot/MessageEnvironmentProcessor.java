@@ -54,9 +54,8 @@ public class MessageEnvironmentProcessor implements EnvironmentPostProcessor {
 
         } else {
             // k8s集群中读取的secret中的host，port和passwd
-            properties.setProperty("spring.kafka.bootstrap-servers", "${kafka.broker-list}");
-            properties.setProperty("spring.kafka.sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"${kafka.user}\" password=\"${kafka.password}\"");
-
+            properties.setProperty("spring.kafka.bootstrap-servers", "${broker.host}:${broker.port}");
+            //properties.setProperty("spring.kafka.sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"${kafka.user}\" password=\"${kafka.password}\"");
         }
         // use plaintext
         // properties.setProperty("spring.kafka.security.protocol", "SASL_PLAINTEXT");

@@ -108,12 +108,8 @@ dependencies {
     implementation "org.mock-server:mockserver-netty-no-dependencies:${property('mockserver.version')}"
     // message endpoints for consuming and producing - message producer and consumer adapter
     implementation "org.springframework.boot:spring-boot-starter-amqp"
-    // embedded rabbitmq
-    implementation "com.playtika.testcontainers:embedded-rabbitmq:${property('testcontainers.version')}"
     // embedded kafka
     implementation "com.playtika.testcontainers:embedded-kafka:${property('testcontainers.version')}"
-    // mock memory db
-    // implementation "com.playtika.testcontainers:embedded-redis:${property('testcontainers.version')}"
     // JIT runtime
     implementation "org.kie.kogito:kogito-dmn:1.29.0.Final"
 
@@ -133,7 +129,7 @@ dependencies {
 
 processTestResources {
     filesMatching('micrc.properties') {
-        expand([version: '0.0.1'])
+        expand([version: 'v0.0.1'])
     }
 }
 
@@ -155,7 +151,6 @@ publishing {
         maven {
             name = 'colibriNexus'
             url = uri("${colibri_nexus}")
-            println 'publish to ' + url
             credentials {
                 username = "${colibri_nexus_user}"
                 password = "${colibri_nexus_pass}"
