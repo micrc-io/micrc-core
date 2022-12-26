@@ -6,7 +6,6 @@ import org.springframework.boot.env.EnvironmentPostProcessor;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.PropertiesPropertySource;
-import org.springframework.util.StringUtils;
 
 import java.util.*;
 
@@ -67,9 +66,9 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
         } else {
             // k8s集群中按约定名称读取的secret中的host, port, user, pass属性
             properties.setProperty("spring.datasource.url",
-                "jdbc:mysql://${database.host}:${database.port}/${spring.application.name}");
-            properties.setProperty("spring.datasource.username", "${database.user}");
-            properties.setProperty("spring.datasource.password", "${database.pass}");
+                "jdbc:mysql://${database.host}:${database.port}/${database.dbname}");
+            properties.setProperty("spring.datasource.username", "${database.username}");
+            properties.setProperty("spring.datasource.password", "${database.password}");
         }
         properties.setProperty("spring.datasource.driver-class-name", "com.mysql.cj.jdbc.Driver");
         // 数据源和连接池通用配置 https://github.com/brettwooldridge/HikariCP
@@ -127,7 +126,7 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
             // k8s集群中读取的configmap中的host，port和passwd
             properties.setProperty("micrc.spring.memory-db.host", "${memory-db.host}");
             properties.setProperty("micrc.spring.memory-db.port", "${memory-db.port}");
-            properties.setProperty("micrc.spring.memory-db.password", "${memory-db.pass}");
+            properties.setProperty("micrc.spring.memory-db.password", "${memory-db.password}");
         }
         // 任何环境使用统一的连接配置
         properties.setProperty("micrc.spring.memory-db.database", "15");
