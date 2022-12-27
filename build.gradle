@@ -7,7 +7,7 @@ plugins {
 }
 
 group = 'io.micrc.core'
-version = 'v0.0.1-20221226'
+version = 'v0.0.1-20221226-4'
 sourceCompatibility = '11'
 targetCompatibility = '11'
 
@@ -108,6 +108,9 @@ dependencies {
     implementation "org.mock-server:mockserver-netty-no-dependencies:${property('mockserver.version')}"
     // message endpoints for consuming and producing - message producer and consumer adapter
     implementation "org.springframework.boot:spring-boot-starter-amqp"
+    // embedded rabbitmq
+    implementation "com.playtika.testcontainers:embedded-rabbitmq:${property('testcontainers.version')}"
+
     // embedded kafka
     implementation "com.playtika.testcontainers:embedded-kafka:${property('testcontainers.version')}"
     // JIT runtime

@@ -15,7 +15,7 @@ import org.springframework.context.annotation.Profile;
 @Configuration
 public class RpcMockServerAutoConfiguration {
 
-    @Autowired
+    @Autowired(required = false)
     private IntegrationsInfo integrationsInfo;
 
     @Bean("rest-openapi-executor")
