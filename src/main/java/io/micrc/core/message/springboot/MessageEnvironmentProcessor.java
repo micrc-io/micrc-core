@@ -47,8 +47,8 @@ public class MessageEnvironmentProcessor implements EnvironmentPostProcessor {
         if (profiles.contains("default")) {
             // default kafka config
             // use plaintext
-            // properties.setProperty("spring.kafka.bootstrap-servers", "${embedded.kafka.brokerList}");
-            properties.setProperty("spring.kafka.bootstrap-servers", "10.0.0.101:9092");
+            properties.setProperty("spring.kafka.bootstrap-servers", "${embedded.kafka.brokerList}");
+            // properties.setProperty("spring.kafka.bootstrap-servers", "10.0.0.101:9092");
             // use saslPlaintext
             // properties.setProperty("spring.kafka.bootstrap.servers", "${embedded.kafka.saslPlaintext.brokerList}");
             // properties.setProperty("spring.kafka.sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"${embedded.kafka.saslPlaintext.user}\" password=\"${embedded.kafka.saslPlaintext.password}\"");
