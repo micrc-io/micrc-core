@@ -30,9 +30,16 @@ import java.util.Map;
  */
 @Configuration
 @EnableAutoConfiguration(
-        exclude = {RestOpenApiComponentAutoConfiguration.class, RestComponentAutoConfiguration.class}
+        exclude = {
+                RestOpenApiComponentAutoConfiguration.class,
+                RestComponentAutoConfiguration.class
+        }
 )
-@Import({RpcRestRouteConfiguration.class})
+@Import(
+        {
+                RpcRestRouteConfiguration.class,
+        }
+)
 public class RpcAutoConfiguration {
 
     @Bean("req")

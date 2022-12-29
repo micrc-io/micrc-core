@@ -32,19 +32,17 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * rpc调用在default，local环境下的mock服务端
- * 扫描所有rpc集成请求的注解，获取其openapi spec，以创建Expectation用于校验request并fake response
+ * 扫描所有集成请求的注解，获取其openapi地址 用于衍生服务调用时协议交换
  *
  * @author weiguan
  * @date 2022-09-08 21:45
  * @since 0.0.1
  */
-public class RpcMockServerScannerRegistrar implements ImportBeanDefinitionRegistrar, EnvironmentAware {
+public class IntegrationInfoScannerRegistrar implements ImportBeanDefinitionRegistrar, EnvironmentAware {
 
     private Environment env;
 
@@ -52,11 +50,6 @@ public class RpcMockServerScannerRegistrar implements ImportBeanDefinitionRegist
     public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata,
                                         BeanDefinitionRegistry registry,
                                         BeanNameGenerator importBeanNameGenerator) {
-        Optional<String> profileStr = Optional.ofNullable(env.getProperty("application.profiles"));
-        List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
-        if (!profiles.contains("local") && !profiles.contains("default")) {
-            return;
-        }
         AnnotationAttributes attributes = AnnotationAttributes
                 .fromMap(importingClassMetadata.getAnnotationAttributes(EnableMicrcSupport.class.getName()));
         assert attributes != null;

@@ -1,21 +1,16 @@
 package io.micrc.core.message;
 
+import io.micrc.core.message.error.ErrorMessage;
+import io.micrc.core.message.error.ErrorMessageRepository;
 import io.micrc.core.message.store.EventMessage;
 import io.micrc.core.message.store.EventMessageRepository;
 import io.micrc.core.message.store.IdempotentMessage;
 import io.micrc.core.message.store.IdempotentMessageRepository;
-import io.micrc.core.message.error.ErrorMessage;
-import io.micrc.core.message.error.ErrorMessageRepository;
 import io.micrc.lib.JsonUtil;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
-import org.apache.camel.Body;
-import org.apache.camel.Consume;
-import org.apache.camel.EndpointInject;
-import org.apache.camel.Exchange;
-import org.apache.camel.Header;
-import org.apache.camel.ProducerTemplate;
+import org.apache.camel.*;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.support.ExpressionAdapter;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -212,7 +207,8 @@ public class MessageRouteConfiguration extends RouteBuilder {
             HashMap<String, Object> body = new HashMap<>();
             body.put("messageIds", result);
             body.put("receiver", eventMapping.getMappingKey());
-            String endpoint = "rest://post:/api/check-idempotent-consumed?host=" + eventMapping.receiverAddress + ":8080";
+            // String endpoint = "rest://post:/api/check-idempotent-consumed?host=" + eventMapping.receiverAddress + ":8080";
+            String endpoint = "rest://post:/api/check-idempotent-consumed?host=" + eventMapping.receiverAddress;
             String response = producerTemplate.requestBody(endpoint, JsonUtil.writeValueAsString(body), String.class);
             result = JsonUtil.writeValueAsList(response, Long.class);
         }
@@ -235,7 +231,8 @@ public class MessageRouteConfiguration extends RouteBuilder {
         }
         HashMap<String, Object> body = new HashMap<>();
         body.put("messageIds", messageIds);
-        String endpoint = "rest://post:/api/check-store-removed?host=" + senderAddress + ":8080";
+        // String endpoint = "rest://post:/api/check-store-removed?host=" + senderAddress + ":8080";
+        String endpoint = "rest://post:/api/check-store-removed?host=" + senderAddress;
         String response = producerTemplate.requestBody(endpoint, JsonUtil.writeValueAsString(body), String.class);
         List<Long> unRemoveIds = JsonUtil.writeValueAsList(response, Long.class);
         messageIds.removeAll(unRemoveIds);
