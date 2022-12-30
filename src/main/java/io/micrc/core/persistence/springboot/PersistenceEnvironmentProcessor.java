@@ -39,30 +39,30 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
     }
 
     private void envForEmbeddedMysql(Collection<String> profiles, Properties properties) {
-        if (!profiles.contains("default")) {
+//        if (!profiles.contains("default")) {
             properties.setProperty("embedded.mysql.enabled", "false");
-        }
-        if (profiles.contains("default")) {
-            log.info("Embedded mysql server configuration for profile: 'default'");
-            // embedded mysql
-            properties.setProperty("embedded.mysql.enabled", "true");
-            properties.setProperty("embedded.mysql.reuseContainer", "true");
-            properties.setProperty("embedded.mysql.dockerImage", "mysql:8.0.13");
-            properties.setProperty("embedded.mysql.waitTimeoutInSeconds", "60");
-            properties.setProperty("embedded.mysql.encoding", "utf8mb4");
-            properties.setProperty("embedded.mysql.collation", "utf8mb4_unicode_ci");
-
-            properties.setProperty("micrc.embedded.mysql.host", "${embedded.mysql.host}");
-            properties.setProperty("micrc.embedded.mysql.port", "${embedded.mysql.port}");
-        }
+//        }
+//        if (profiles.contains("default")) {
+//            log.info("Embedded mysql server configuration for profile: 'default'");
+//            // embedded mysql
+//            properties.setProperty("embedded.mysql.enabled", "true");
+//            properties.setProperty("embedded.mysql.reuseContainer", "true");
+//            properties.setProperty("embedded.mysql.dockerImage", "mysql:8.0.13");
+//            properties.setProperty("embedded.mysql.waitTimeoutInSeconds", "60");
+//            properties.setProperty("embedded.mysql.encoding", "utf8mb4");
+//            properties.setProperty("embedded.mysql.collation", "utf8mb4_unicode_ci");
+//
+//            properties.setProperty("micrc.embedded.mysql.host", "${embedded.mysql.host}");
+//            properties.setProperty("micrc.embedded.mysql.port", "${embedded.mysql.port}");
+//        }
         //
         if (profiles.contains("default")) {
             // default mysql connection
             properties.setProperty("spring.datasource.url",
-                    "jdbc:mysql://${embedded.mysql.host}:${embedded.mysql.port}/${embedded.mysql.schema}" +
+                    "jdbc:mysql://10.0.0.101:3306/test" +
                             "?useunicode=true&characterencoding=utf8&servertimezone=utc");
-            properties.setProperty("spring.datasource.username", "${embedded.mysql.user}");
-            properties.setProperty("spring.datasource.password", "${embedded.mysql.password}");
+            properties.setProperty("spring.datasource.username", "root");
+            properties.setProperty("spring.datasource.password", "wsx1qaz@WSX");
         } else {
             // k8s集群中按约定名称读取的secret中的host, port, user, pass属性
             properties.setProperty("spring.datasource.url",
@@ -117,11 +117,14 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
     }
 
     private void bootstrapEmbeddedMemoryDb(List<String> profiles, Properties properties) {
+        //        if (!profiles.contains("default")) {
+        properties.setProperty("embedded.redistack.enabled", "false");
+        //        }
         if (profiles.contains("default")) {
             // default redis connection
-            properties.setProperty("micrc.spring.memory-db.host", "${embedded.redistack.host}");
-            properties.setProperty("micrc.spring.memory-db.port", "${embedded.redistack.port}");
-            properties.setProperty("micrc.spring.memory-db.password", "${embedded.redistack.password}");
+            properties.setProperty("micrc.spring.memory-db.host", "10.0.0.101");
+            properties.setProperty("micrc.spring.memory-db.port", "6379");
+            properties.setProperty("micrc.spring.memory-db.password", "passw");
         } else {
             // k8s集群中读取的configmap中的host，port和passwd
             properties.setProperty("micrc.spring.memory-db.host", "${memory-db.host}");

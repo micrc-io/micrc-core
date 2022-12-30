@@ -36,30 +36,30 @@ public class CacheEnvironmentProcessor implements EnvironmentPostProcessor {
     }
 
     private void bootstrapEmbeddedCache(List<String> profiles, Properties properties) {
-        if (!profiles.contains("default")) {
+//        if (!profiles.contains("default")) {
             properties.setProperty("embedded.redistack.enabled", "false");
-        }
+//        }
         // 目前redis-stack不支持cluster，也不使用客户端直连cluster的方式
         // default使用单机redis
         // dev，verify，production(ack)集群环境中，额外部署redis-cluster-proxy对集群进行代理，云redis自带代理
         // 客户端连接方式保持一致，均为单机连接方式
-        if (profiles.contains("default")) {
-            log.info("Embedded redis server configuration for profile: 'default'");
-            // embedded redis
-            properties.setProperty("embedded.redistack.enabled", "true");
-            properties.setProperty("embedded.redistack.reuseContainer", "true");
-            properties.setProperty("embedded.redistack.dockerImage", "redis/redis-stack:6.2.4-v2");
-            properties.setProperty("embedded.redistack.waitTimeoutInSeconds", "60");
-            properties.setProperty("embedded.redistack.clustered", "false");
-            properties.setProperty("embedded.redistack.requirepass", "true");
-
-            properties.setProperty("micrc.spring.redis.httpPort", "${embedded.redistack.httpPort}");
-        }
+//        if (profiles.contains("default")) {
+//            log.info("Embedded redis server configuration for profile: 'default'");
+//            // embedded redis
+//            properties.setProperty("embedded.redistack.enabled", "true");
+//            properties.setProperty("embedded.redistack.reuseContainer", "true");
+//            properties.setProperty("embedded.redistack.dockerImage", "redis/redis-stack:6.2.4-v2");
+//            properties.setProperty("embedded.redistack.waitTimeoutInSeconds", "60");
+//            properties.setProperty("embedded.redistack.clustered", "false");
+//            properties.setProperty("embedded.redistack.requirepass", "true");
+//
+//            properties.setProperty("micrc.spring.redis.httpPort", "${embedded.redistack.httpPort}");
+//        }
         if (profiles.contains("default")) {
             // default redis connection
-            properties.setProperty("spring.redis.host", "${embedded.redistack.host}");
-            properties.setProperty("spring.redis.port", "${embedded.redistack.port}");
-            properties.setProperty("spring.redis.password", "${embedded.redistack.password}");
+            properties.setProperty("spring.redis.host", "10.0.0.101");
+            properties.setProperty("spring.redis.port", "6379");
+            properties.setProperty("spring.redis.password", "passw");
 
         } else {
             // k8s集群中读取的configmap中的host，port和passwd

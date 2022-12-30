@@ -33,22 +33,22 @@ public class MessageEnvironmentProcessor implements EnvironmentPostProcessor {
     }
 
     private void envForKafka(List<String> profiles, Properties properties) {
-        if (!profiles.contains("default")) {
+//        if (!profiles.contains("default")) {
             properties.setProperty("embedded.kafka.enabled", "false");
-        }
+//        }
 
-        if (profiles.contains("default")) {
-            // embedded kafka
-            properties.setProperty("embedded.kafka.enabled", "true");
-            properties.setProperty("embedded.kafka.reuseContainer", "true");
-            // properties.setProperty("embedded.kafka.dockerImageVersion", "cp-kafka:7.2.1");
-            properties.setProperty("embedded.kafka.waitTimeoutInSeconds", "60");
-        }
+//        if (profiles.contains("default")) {
+//            // embedded kafka
+//            properties.setProperty("embedded.kafka.enabled", "true");
+//            properties.setProperty("embedded.kafka.reuseContainer", "true");
+//            // properties.setProperty("embedded.kafka.dockerImageVersion", "cp-kafka:7.2.1");
+//            properties.setProperty("embedded.kafka.waitTimeoutInSeconds", "60");
+//        }
         if (profiles.contains("default")) {
             // default kafka config
             // use plaintext
-            properties.setProperty("spring.kafka.bootstrap-servers", "${embedded.kafka.brokerList}");
-            // properties.setProperty("spring.kafka.bootstrap-servers", "10.0.0.101:9092");
+            // properties.setProperty("spring.kafka.bootstrap-servers", "${embedded.kafka.brokerList}");
+            properties.setProperty("spring.kafka.bootstrap-servers", "10.0.0.101:9092");
             // use saslPlaintext
             // properties.setProperty("spring.kafka.bootstrap.servers", "${embedded.kafka.saslPlaintext.brokerList}");
             // properties.setProperty("spring.kafka.sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"${embedded.kafka.saslPlaintext.user}\" password=\"${embedded.kafka.saslPlaintext.password}\"");
