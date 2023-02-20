@@ -2,9 +2,10 @@ package io.micrc.core.application.derivations.springboot;
 
 import io.micrc.core.annotations.application.TimeParam;
 import io.micrc.core.annotations.application.derivations.DerivationsService;
-import io.micrc.core.annotations.application.derivations.Execution;
+import io.micrc.core.annotations.application.derivations.GeneralTechnology;
 import io.micrc.core.annotations.application.derivations.Operation;
 import io.micrc.core.annotations.application.derivations.QueryLogic;
+import io.micrc.core.annotations.application.derivations.SpecialTechnology;
 import io.micrc.core.application.derivations.ApplicationDerivationsServiceRouteConfiguration;
 import io.micrc.core.application.derivations.ApplicationDerivationsServiceRouteConfiguration.ApplicationDerivationsServiceDefinition;
 import io.micrc.core.application.derivations.ApplicationDerivationsServiceRouteTemplateParameterSource;
@@ -140,7 +141,11 @@ class ApplicationDerivationsServiceScanner extends ClassPathBeanDefinitionScanne
                 continue;
             }
             // 解析参数所有集成
-            List<ParamIntegration> paramIntegrations = getParamIntegrations(derivationsService.queryLogics(), derivationsService.operations(), derivationsService.executions());
+            List<ParamIntegration> paramIntegrations = getParamIntegrations(
+                    derivationsService.queryLogics(),
+                    derivationsService.operations(),
+                    derivationsService.generalTechnologies(),
+                    derivationsService.specialTechnologies());
             // 获取明确的时间路径，并查找所有标记MicrcTime的路径
             ArrayList<String> timePaths = new ArrayList<>();
             TimeParam timeParam = beanDefinition.getBeanClass().getAnnotation(TimeParam.class);
@@ -172,10 +177,11 @@ class ApplicationDerivationsServiceScanner extends ClassPathBeanDefinitionScanne
      *
      * @param queryLogics
      * @param operations
-     * @param executions
+     * @param generalTechnologies
+     * @param specialTechnologies
      * @return
      */
-    private List<ParamIntegration> getParamIntegrations(QueryLogic[] queryLogics, Operation[] operations, Execution[] executions) {
+    private List<ParamIntegration> getParamIntegrations(QueryLogic[] queryLogics, Operation[] operations, GeneralTechnology[] generalTechnologies, SpecialTechnology[] specialTechnologies) {
         List<ParamIntegration> paramIntegrations = new ArrayList<>();
         // 查询逻辑解析
         Arrays.stream(queryLogics).forEach(logic -> {
@@ -196,15 +202,23 @@ class ApplicationDerivationsServiceScanner extends ClassPathBeanDefinitionScanne
             Arrays.stream(operation.operateParams()).forEach(param -> {
                 map.put(param.name(), param.path());
             });
-            paramIntegrations.add(new ParamIntegration(operation.name(), map, operation.logicName(), operation.order()));
+            paramIntegrations.add(new ParamIntegration(operation.name(), map, operation.logicName(), operation.order(), ParamIntegration.Type.OPERATE));
         });
-        // 执行解析
-        Arrays.stream(executions).forEach(execution -> {
+        // 专用技术解析
+        Arrays.stream(specialTechnologies).forEach(specialTechnology -> {
             HashMap<String, String> map = new HashMap<>();
-            Arrays.stream(execution.executeParams()).forEach(param -> {
+            Arrays.stream(specialTechnology.technologyParams()).forEach(param -> {
                 map.put(param.name(), param.path());
             });
-            paramIntegrations.add(new ParamIntegration(execution.name(), map, execution.order(), execution.routeContentPath(), execution.routeIdPath()));
+            paramIntegrations.add(new ParamIntegration(specialTechnology.name(), map, specialTechnology.routeProtocol(), specialTechnology.order(), ParamIntegration.Type.SPECIAL_TECHNOLOGY));
+        });
+        // 通用技术解析
+        Arrays.stream(generalTechnologies).forEach(generalTechnology -> {
+            HashMap<String, String> map = new HashMap<>();
+            Arrays.stream(generalTechnology.technologyParams()).forEach(param -> {
+                map.put(param.name(), param.path());
+            });
+            paramIntegrations.add(new ParamIntegration(generalTechnology.name(), map, generalTechnology.routeContentPath(), generalTechnology.order(), ParamIntegration.Type.GENERAL_TECHNOLOGY));
         });
         // 按照优先级排序
         paramIntegrations.sort(Comparator.comparing(ParamIntegration::getOrder));

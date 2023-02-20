@@ -100,13 +100,15 @@ public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteB
                 .when(constant("QUERY").isEqualTo(simple("${exchange.properties.get(current).get(type)}")))
                     .bean(IntegrationParams.class, "executeQuery")
                 .endChoice()
-                .when(constant("EXECUTE").isEqualTo(simple("${exchange.properties.get(current).get(type)}")))
+                .when(constant("GENERAL_TECHNOLOGY").isEqualTo(simple("${exchange.properties.get(current).get(type)}")))
                     .setHeader("from", simple("${exchange.properties.get(current).get(routeName)}"))
-                    .setHeader("script", simple("${exchange.properties.get(current).get(routeContent)}"))
+                    .setHeader("script", simple("${exchange.properties.get(current).get(logic)}"))
                     .setHeader("executeType", constant("ROUTE"))
                     .setBody(simple("${exchange.properties.get(current).get(params)}"))
                     .toD("dynamic-executor://execute")
-                .endChoice()
+                .when(constant("SPECIAL_TECHNOLOGY").isEqualTo(simple("${exchange.properties.get(current).get(type)}")))
+                    .setBody(simple("${exchange.properties.get(current).get(params)}"))
+                    .toD("${exchange.properties.get(current).get(logic)}")
                 .otherwise()
                     .setBody(simple("${exchange.properties.get(current).get(params)}"))
                     .setHeader("logic", simple("${exchange.properties.get(current).get(logic)}"))
@@ -200,7 +202,9 @@ class IntegrationParams {
         ParamIntegration.Type currentIntegrateType = (ParamIntegration.Type) current.get("type");
         if (ParamIntegration.Type.QUERY.equals(currentIntegrateType) && body instanceof Optional) {
             body = ((Optional<?>) body).orElseThrow();
-        } else if (ParamIntegration.Type.OPERATE.equals(currentIntegrateType) || ParamIntegration.Type.EXECUTE.equals(currentIntegrateType)) {
+        } else if (ParamIntegration.Type.OPERATE.equals(currentIntegrateType)
+                || ParamIntegration.Type.GENERAL_TECHNOLOGY.equals(currentIntegrateType)
+                || ParamIntegration.Type.SPECIAL_TECHNOLOGY.equals(currentIntegrateType)) {
             body = JsonUtil.readPath((String) body, "");
         }
         log.info("衍生已集成：{}，结果：{}", name, JsonUtil.writeValueAsString(body));
@@ -265,14 +269,15 @@ class IntegrationParams {
             } else if (ParamIntegration.Type.OPERATE.equals(paramIntegration.getType())) {
                 executableIntegrationInfo.put("logic", paramIntegration.getLogicName());
                 executableIntegrationInfo.put("params", JsonUtil.writeValueAsString(paramMap));
-            } else if (ParamIntegration.Type.EXECUTE.equals(paramIntegration.getType())) {
-                String routeContent = (String) JsonUtil.readPath(param, paramIntegration.getRouteContentPath());
+            } else if (ParamIntegration.Type.SPECIAL_TECHNOLOGY.equals(paramIntegration.getType())) {
+                executableIntegrationInfo.put("logic", paramIntegration.getLogicName());
+                executableIntegrationInfo.put("params", JsonUtil.writeValueAsString(paramMap));
+            } else if (ParamIntegration.Type.GENERAL_TECHNOLOGY.equals(paramIntegration.getType())) {
+                String routeContent = (String) JsonUtil.readPath(param, paramIntegration.getLogicName());
                 if (null == routeContent) {
                     continue;
                 }
-                executableIntegrationInfo.put("routeContent", routeContent);
-                String routeId = (String) JsonUtil.readPath(param, paramIntegration.getRouteIdPath());
-                executableIntegrationInfo.put("routeId", routeId);
+                executableIntegrationInfo.put("logic", routeContent);
                 DocumentBuilder db = DocumentBuilderFactory.newInstance().newDocumentBuilder();
                 XPath xPath = XPathFactory.newInstance().newXPath();
                 Document document = db.parse(new ByteArrayInputStream(routeContent.getBytes()));
