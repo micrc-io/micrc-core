@@ -14,6 +14,7 @@ import org.apache.camel.Exchange;
 import org.apache.camel.ExchangeProperties;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.util.StringUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.xml.sax.SAXException;
@@ -25,8 +26,11 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
@@ -273,7 +277,12 @@ class IntegrationParams {
                 executableIntegrationInfo.put("logic", paramIntegration.getLogicName());
                 executableIntegrationInfo.put("params", JsonUtil.writeValueAsString(paramMap));
             } else if (ParamIntegration.Type.GENERAL_TECHNOLOGY.equals(paramIntegration.getType())) {
-                String routeContent = (String) JsonUtil.readPath(param, paramIntegration.getLogicName());
+                String routeContent = null;
+                if (null != paramIntegration.getFilePath() && !paramIntegration.getFilePath().isEmpty()) {
+                    routeContent = fileReader(paramIntegration.getFilePath());
+                } else if (null != paramIntegration.getLogicName() && !paramIntegration.getLogicName().isEmpty()) {
+                    routeContent = (String) JsonUtil.readPath(param, paramIntegration.getLogicName());
+                }
                 if (null == routeContent) {
                     continue;
                 }
@@ -292,6 +301,31 @@ class IntegrationParams {
         return executableIntegrationInfo;
     }
 
+    /**
+     * 读取文件
+     *
+     * @param filePath
+     * @return
+     */
+    private static String fileReader(String filePath) {
+        if (!StringUtils.hasText(filePath) || !filePath.endsWith(".xml")) {
+            throw new RuntimeException("the route file invalid...");
+        }
+        StringBuffer fileContent = new StringBuffer();
+        try {
+            InputStream stream = Thread.currentThread().getContextClassLoader()
+                    .getResourceAsStream(filePath);
+            BufferedReader in = new BufferedReader(new InputStreamReader(stream, "UTF-8"));
+            String str = null;
+            while ((str = in.readLine()) != null) {
+                fileContent.append(str);
+            }
+            in.close();
+        } catch (IOException e) {
+            throw new RuntimeException(filePath + " file not found or can`t resolve...");
+        }
+        return fileContent.toString();
+    }
 
     /**
      * 执行查询

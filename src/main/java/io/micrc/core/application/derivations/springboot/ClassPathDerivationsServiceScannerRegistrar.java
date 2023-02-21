@@ -202,7 +202,8 @@ class ApplicationDerivationsServiceScanner extends ClassPathBeanDefinitionScanne
             Arrays.stream(operation.operateParams()).forEach(param -> {
                 map.put(param.name(), param.path());
             });
-            paramIntegrations.add(new ParamIntegration(operation.name(), map, operation.logicName(), operation.order(), ParamIntegration.Type.OPERATE));
+            paramIntegrations.add(new ParamIntegration(operation.name(), map, operation.logicName(),
+                    null, operation.order(), ParamIntegration.Type.OPERATE));
         });
         // 专用技术解析
         Arrays.stream(specialTechnologies).forEach(specialTechnology -> {
@@ -210,7 +211,8 @@ class ApplicationDerivationsServiceScanner extends ClassPathBeanDefinitionScanne
             Arrays.stream(specialTechnology.technologyParams()).forEach(param -> {
                 map.put(param.name(), param.path());
             });
-            paramIntegrations.add(new ParamIntegration(specialTechnology.name(), map, specialTechnology.routeProtocol(), specialTechnology.order(), ParamIntegration.Type.SPECIAL_TECHNOLOGY));
+            paramIntegrations.add(new ParamIntegration(specialTechnology.name(), map, specialTechnology.routeProtocol(),
+                    null, specialTechnology.order(), ParamIntegration.Type.SPECIAL_TECHNOLOGY));
         });
         // 通用技术解析
         Arrays.stream(generalTechnologies).forEach(generalTechnology -> {
@@ -218,7 +220,8 @@ class ApplicationDerivationsServiceScanner extends ClassPathBeanDefinitionScanne
             Arrays.stream(generalTechnology.technologyParams()).forEach(param -> {
                 map.put(param.name(), param.path());
             });
-            paramIntegrations.add(new ParamIntegration(generalTechnology.name(), map, generalTechnology.routeContentPath(), generalTechnology.order(), ParamIntegration.Type.GENERAL_TECHNOLOGY));
+            paramIntegrations.add(new ParamIntegration(generalTechnology.name(), map, generalTechnology.routeContentPath(),
+                    generalTechnology.routeXmlFilePath(), generalTechnology.order(), ParamIntegration.Type.GENERAL_TECHNOLOGY));
         });
         // 按照优先级排序
         paramIntegrations.sort(Comparator.comparing(ParamIntegration::getOrder));

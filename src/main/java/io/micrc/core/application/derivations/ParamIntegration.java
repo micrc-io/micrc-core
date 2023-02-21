@@ -65,6 +65,8 @@ public class ParamIntegration {
      */
     private String logicName;
 
+    private String filePath;
+
     /**
      * 该参数是否已经集成
      */
@@ -80,11 +82,12 @@ public class ParamIntegration {
      */
     private Type type;
 
-    public ParamIntegration(String concept, HashMap<String, String> queryParams, String logicName, int order, Type type) {
+    public ParamIntegration(String concept, HashMap<String, String> queryParams, String logicName, String filePath, int order, Type type) {
         this.concept = concept;
         this.queryParams = queryParams;
         this.order = order;
         this.logicName = logicName;
+        this.filePath = filePath;
         this.type = type;
     }
 
