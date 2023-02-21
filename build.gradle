@@ -49,7 +49,7 @@ dependencyManagement {
 
 dependencies {
     // annotation - micrc-annotations: gradle task - publishToMavenLocal
-    implementation "io.micrc.core:micrc-annotations:v0.0.1-20230220-4"
+    implementation "io.micrc.core:micrc-annotations:v0.0.1-20230221-1"
 
     // springboot basic
     implementation "org.springframework.boot:spring-boot-starter"
