@@ -29,11 +29,7 @@ import org.springframework.core.type.filter.AnnotationTypeFilter;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
+import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -159,6 +155,10 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
             if (null == commandLogic) {
                 throw new RuntimeException("the " + parameters[0].getType().getSimpleName() + "not have CommandLogic annotation, please check this command");
             }
+            // 获取Command身上的执行类型
+            LogicType logicType = commandLogic.logicType();
+            String logicPath = commandLogic.logicPath();
+
             // 获取明确的时间路径，并查找所有标记MicrcTime的路径
             ArrayList<String> timePaths = new ArrayList<>();
             TimeParam timeParam = beanDefinition.getBeanClass().getAnnotation(TimeParam.class);
@@ -219,6 +219,8 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
                             .batchPropertyPath(batchPropertyPath.get())
                             .serviceName(serviceName)
                             .logicName(logicName)
+                            .logicType(logicType.name())
+                            .logicPath(logicPath)
                             .repositoryName(repositoryName)
                             .aggregationPath(aggregationPath)
                             .logicName(logicName)
