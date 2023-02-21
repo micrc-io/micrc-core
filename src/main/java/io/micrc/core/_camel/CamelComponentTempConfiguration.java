@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.github.fge.jsonpatch.JsonPatch;
 import com.schibsted.spt.data.jslt.Expression;
 import com.schibsted.spt.data.jslt.Parser;
+import groovy.lang.Binding;
+import groovy.lang.GroovyShell;
 import io.micrc.core._camel.jit.JITDMNResult;
 import io.micrc.core._camel.jit.JITDMNService;
 import io.micrc.core.rpc.ErrorInfo;
@@ -36,8 +38,10 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * 使用路由和direct组件，临时实现各种没有的camel组件
@@ -156,6 +160,37 @@ public class CamelComponentTempConfiguration {
                             exchange.getIn().setBody(JsonUtil.writeValueAsStringRetainNull(executeResult.get().getResult()));
                             exchange.getIn().removeHeader("dmn");
                             exchange.getIn().removeHeader("decision");
+                        })
+                        .end();
+            }
+        };
+    }
+
+    @Bean
+    public RoutesBuilder dynamicGroovyComp() {
+        return new RouteBuilder() {
+            @Override
+            @SneakyThrows
+            public void configure() throws Exception {
+                from("dynamic-groovy://execute")
+                        .routeId("dynamic-groovy-execute")
+                        .process(exchange -> {
+                            String script = exchange.getIn().getHeader("groovy", String.class);
+                            Map<String, Object> params = exchange.getIn().getBody(HashMap.class);
+                            if (!StringUtils.hasText(script)) {
+                                throw new RuntimeException("the script not have value, please check script....");
+                            }
+                            Binding binding = new Binding();
+                            if (params != null) {
+                                Set<String> keys = params.keySet();
+                                keys.stream().forEach(key -> {
+                                            binding.setProperty(key, params.get(key));
+                                        }
+                                );
+                            }
+                            Object retVal = new GroovyShell(binding).evaluate(script);
+                            exchange.getIn().setBody(retVal);
+                            exchange.getIn().removeHeader("groovy");
                         })
                         .end();
             }

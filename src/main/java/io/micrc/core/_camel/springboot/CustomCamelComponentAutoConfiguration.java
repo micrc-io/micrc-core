@@ -45,4 +45,9 @@ public class CustomCamelComponentAutoConfiguration {
     public DirectComponent dynamicRoute() {
         return new DirectComponent();
     }
+
+    @Bean("dynamic-groovy")
+    public DirectComponent dynamicRoute() {
+        return new DirectComponent();
+    }
 }

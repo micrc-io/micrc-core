@@ -17,7 +17,7 @@ public class DynamicExecutorRouteConfiguration extends MicrcRouteBuilder {
                 .handled(false)
                 .end();
         /**
-        header: executeType 执行类型 可选类型为DMN - ROUTE - JSLT
+        header: executeType 执行类型 可选类型为DMN - ROUTE - JSLT - GROOVY
                 script 执行脚本
                 from 动态端点-仅针对ROUTE类型
                 decision 决策结果节点-仅针对DMN-默认为result
@@ -34,12 +34,16 @@ public class DynamicExecutorRouteConfiguration extends MicrcRouteBuilder {
                     .when(header("executeType").isEqualTo("JSLT"))
                         .setHeader("mappingContent", header("script"))
                         .to("json-mapping://content")
+                    .when(header("executeType").isEqualTo("GROOVY"))
+                        .setHeader("groovy", header("script"))
+                        .to("dynamic-groovy://execute")
                     .endChoice()
                 .end()
                 .removeHeader("executeType")
                 .removeHeader("script")
                 .removeHeader("decision")
                 .removeHeader("dmn")
+                .removeHeader("groovy")
                 .removeHeader("from")
                 .removeHeader("route")
                 .removeHeader("mappingContent")
