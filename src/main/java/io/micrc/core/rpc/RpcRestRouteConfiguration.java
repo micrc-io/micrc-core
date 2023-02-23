@@ -58,7 +58,8 @@ public class RpcRestRouteConfiguration extends MicrcRouteBuilder {
                 .setProperty("integrationInfo", body())
                 .setBody(exchangeProperty("requestBody"))
                 .removeProperty("requestBody")
-                .toD("rest-openapi://${exchange.properties.get(integrationInfo).getProtocolFilePath()}#${exchange.properties.get(integrationInfo).getOperationId()}?host=${exchange.properties.get(integrationInfo).getHost()}")
+                // 因衍生服务提供端会自行添加/api的基础路径,故在集成衍生时,则使用自行协议,添加/api头
+                .toD("rest-openapi-derive://${exchange.properties.get(integrationInfo).getProtocolFilePath()}#${exchange.properties.get(integrationInfo).getOperationId()}?host=${exchange.properties.get(integrationInfo).getHost()}")
                 .convertBodyTo(String.class)
                 .end();
 

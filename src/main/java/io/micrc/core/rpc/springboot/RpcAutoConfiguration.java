@@ -81,6 +81,16 @@ public class RpcAutoConfiguration {
         return component;
     }
 
+    @Bean("rest-openapi-derive")
+    public RestOpenApiComponent restOpenapiDeriveComponent() {
+        RestOpenApiComponent component = new RestOpenApiComponent();
+        component.setComponentName("undertow");
+        component.setBasePath("/api");
+        // 桥接错误
+        component.setBridgeErrorHandler(true);
+        return component;
+    }
+
     private class TrustALLManager implements X509TrustManager {
         @Override
         public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
