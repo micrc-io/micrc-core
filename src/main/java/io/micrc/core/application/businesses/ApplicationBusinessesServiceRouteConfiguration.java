@@ -423,11 +423,16 @@ class LogicInParamsResolve {
     }
 
     public String toTargetParams(Map<String, Object> logicResult, String commandJson, String logicIntegrationJson, List<String[]> timePathList, String logicType) {
+        Object angle = logicResult.get("angle");
         LogicIntegration logicIntegration = JsonUtil.writeValueAsObject(logicIntegrationJson, LogicIntegration.class);
         String resultJson = JsonUtil.writeValueAsString(logicResult);
         for (Map.Entry<String, String> entry : logicIntegration.getEnterMappings().entrySet()) {
             String targetPath = entry.getKey();
             String resultPath = entry.getValue();
+            // 需要赋值状态执行结果含纬度信息，则状态赋值到对应纬度
+            if ("/target/state".equals(targetPath) && null != angle && angle.toString().length() > 0) {
+                targetPath = targetPath + "/" + angle;
+            }
             Object value = JsonUtil.readPath(resultJson, resultPath.startsWith("/") ? resultPath : "/" + resultPath);
             if (null == value) {
                 continue;
