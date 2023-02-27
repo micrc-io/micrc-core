@@ -300,11 +300,11 @@ class IntegrationParams {
                 (!filePath.endsWith(".xml") && !filePath.endsWith(".yaml") && !filePath.endsWith(".json"))) {
             throw new RuntimeException("the openapi protocol file invalid...");
         }
-        StringBuilder fileContent = new StringBuilder();
+        StringBuffer fileContent = new StringBuffer();
         try {
-            InputStream stream = Thread.currentThread().getContextClassLoader().getResourceAsStream(filePath);
-            assert stream != null;
-            BufferedReader in = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
+            InputStream stream = Thread.currentThread().getContextClassLoader()
+                    .getResourceAsStream(filePath);
+            BufferedReader in = new BufferedReader(new InputStreamReader(stream, "UTF-8"));
             String str = null;
             while ((str = in.readLine()) != null) {
                 fileContent.append(str);

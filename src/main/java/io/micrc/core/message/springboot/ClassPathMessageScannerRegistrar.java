@@ -22,6 +22,10 @@ import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.core.type.StandardAnnotationMetadata;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -100,7 +104,7 @@ class MessagePublisherScanner extends ClassPathBeanDefinitionScanner {
                 List<EventsInfo.EventMapping> mappingList = Arrays.stream(eventInfo.mappings())
                         .map(mapping -> EventsInfo.EventMapping.builder()
                                 .mappingKey(mapping.mappingKey())
-                                .mappingPath(mapping.mappingPath())
+                                .mappingPath(fileReader(mapping.mappingPath()))
                                 .receiverAddress(mapping.receiverAddress()).build())
                         .collect(Collectors.toList());
                 // 事件信息
@@ -121,5 +125,28 @@ class MessagePublisherScanner extends ClassPathBeanDefinitionScanner {
     @Override
     protected void registerBeanDefinition(BeanDefinitionHolder definitionHolder, BeanDefinitionRegistry beanDefinitionRegistry) {
         // nothing to do.
+    }
+
+    /**
+     * 读取文件
+     *
+     * @param filePath
+     * @return
+     */
+    private static String fileReader(String filePath) {
+        StringBuffer fileContent = new StringBuffer();
+        try {
+            InputStream stream = Thread.currentThread().getContextClassLoader()
+                    .getResourceAsStream(filePath);
+            BufferedReader in = new BufferedReader(new InputStreamReader(stream, "UTF-8"));
+            String str = null;
+            while ((str = in.readLine()) != null) {
+                fileContent.append(str);
+            }
+            in.close();
+        } catch (IOException e) {
+            throw new RuntimeException(filePath + " file not found or can`t resolve...");
+        }
+        return fileContent.toString();
     }
 }
