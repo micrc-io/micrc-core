@@ -39,6 +39,13 @@ public class ParamIntegration {
     private String queryMethod;
 
     /**
+     * 请求头路径
+     *
+     * @return
+     */
+    private Map<String, String> headerParams;
+
+    /**
      * 查询参数路径
      *
      * @return
@@ -82,13 +89,23 @@ public class ParamIntegration {
      */
     private Type type;
 
-    public ParamIntegration(String concept, HashMap<String, String> queryParams, String logicName, String filePath, int order, Type type) {
+    public ParamIntegration(String concept,HashMap<String, String> headers, HashMap<String, String> queryParams, String logicName, int order) {
         this.concept = concept;
+        this.headerParams = headers;
+        this.queryParams = queryParams;
+        this.order = order;
+        this.logicName = logicName;
+        this.type = Type.SPECIAL_TECHNOLOGY;
+    }
+
+    public ParamIntegration(String concept,HashMap<String, String> headers, HashMap<String, String> queryParams, String logicName, String filePath, int order) {
+        this.concept = concept;
+        this.headerParams = headers;
         this.queryParams = queryParams;
         this.order = order;
         this.logicName = logicName;
         this.filePath = filePath;
-        this.type = type;
+        this.type = Type.GENERAL_TECHNOLOGY;
     }
 
     public ParamIntegration(String concept, String aggregation, String queryMethod,
@@ -113,10 +130,6 @@ public class ParamIntegration {
          * 查库
          */
         QUERY,
-        /**
-         * 运行DMN
-         */
-        OPERATE,
 
         /**
          * 通用技术
