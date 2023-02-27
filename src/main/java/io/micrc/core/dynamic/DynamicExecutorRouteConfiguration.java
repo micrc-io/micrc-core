@@ -37,6 +37,8 @@ public class DynamicExecutorRouteConfiguration extends MicrcRouteBuilder {
                     .when(header("executeType").isEqualTo("GROOVY"))
                         .setHeader("groovy", header("script"))
                         .to("dynamic-groovy://execute")
+                    .when(header("executeType").isEqualTo("TEST"))
+                        .to("direct://test")
                     .endChoice()
                 .end()
                 .removeHeader("executeType")

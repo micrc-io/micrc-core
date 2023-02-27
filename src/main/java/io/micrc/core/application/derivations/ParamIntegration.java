@@ -1,5 +1,6 @@
 package io.micrc.core.application.derivations;
 
+import io.micrc.core.annotations.application.derivations.TechnologyType;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -37,13 +38,6 @@ public class ParamIntegration {
      * @return
      */
     private String queryMethod;
-
-    /**
-     * 请求头路径
-     *
-     * @return
-     */
-    private Map<String, String> headerParams;
 
     /**
      * 查询参数路径
@@ -89,23 +83,16 @@ public class ParamIntegration {
      */
     private Type type;
 
-    public ParamIntegration(String concept,HashMap<String, String> headers, HashMap<String, String> queryParams, String logicName, int order) {
-        this.concept = concept;
-        this.headerParams = headers;
-        this.queryParams = queryParams;
-        this.order = order;
-        this.logicName = logicName;
-        this.type = Type.SPECIAL_TECHNOLOGY;
-    }
+    private TechnologyType technologyType;
 
-    public ParamIntegration(String concept,HashMap<String, String> headers, HashMap<String, String> queryParams, String logicName, String filePath, int order) {
+    public ParamIntegration(String concept, HashMap<String, String> queryParams, String logicName, String filePath, int order, Type type, TechnologyType technologyType) {
         this.concept = concept;
-        this.headerParams = headers;
         this.queryParams = queryParams;
         this.order = order;
         this.logicName = logicName;
         this.filePath = filePath;
-        this.type = Type.GENERAL_TECHNOLOGY;
+        this.type = type;
+        this.technologyType = technologyType;
     }
 
     public ParamIntegration(String concept, String aggregation, String queryMethod,

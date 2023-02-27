@@ -1,6 +1,5 @@
 package io.micrc.core.application.derivations.springboot;
 
-import io.micrc.core.annotations.application.derivations.TechnologyType;
 import io.micrc.core.application.derivations.ApplicationDerivationsServiceRouteTemplateParameterSource;
 import org.apache.camel.CamelContext;
 import org.apache.camel.component.direct.DirectComponent;
@@ -8,9 +7,6 @@ import org.apache.camel.spi.RouteTemplateParameterSource;
 import org.apache.camel.spring.boot.CamelContextConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * 衍生服务支持springboot自动配置
@@ -21,16 +17,6 @@ import java.util.Map;
  */
 @Configuration
 public class DerivationsServiceAutoConfiguration {
-
-    public static final Map<TechnologyType, String> TECHNOLOGY_PROTOCOL_MAP = new HashMap<>();
-
-    static {
-        TECHNOLOGY_PROTOCOL_MAP.put(TechnologyType.DMN, "dynamic-dmn://execute");
-        TECHNOLOGY_PROTOCOL_MAP.put(TechnologyType.JSLT, "json-mapping://content");
-        TECHNOLOGY_PROTOCOL_MAP.put(TechnologyType.ROUTE, "dynamic-route://execute");
-        TECHNOLOGY_PROTOCOL_MAP.put(TechnologyType.GROOVY, "dynamic-groovy://execute");
-        TECHNOLOGY_PROTOCOL_MAP.put(TechnologyType.TEST, "direct://test");
-    }
 
     /**
      * camel context config

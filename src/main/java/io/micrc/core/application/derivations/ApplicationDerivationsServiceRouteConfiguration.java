@@ -100,10 +100,6 @@ public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteB
                 // 得到需要集成的集成参数，todo,封装进动态路由
                 .bean(IntegrationParams.class, "findExecutable(${exchange.properties.get(unIntegrateParams)}, ${exchange.properties.get(param)}, ${exchange.properties.get(timePaths)})")
                 .setProperty("current", body())
-                // 填充头信息
-                .process(exchange -> {
-                    exchange.getIn().setHeaders((Map) ((Map) exchange.getProperties().get("current")).get("headers"));
-                })
                 // 构造发送
                 .choice()
                 .when(constant("QUERY").isEqualTo(simple("${exchange.properties.get(current).get(type)}")))
@@ -111,12 +107,16 @@ public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteB
                 .endChoice()
                 .when(constant("GENERAL_TECHNOLOGY").isEqualTo(simple("${exchange.properties.get(current).get(type)}")))
                     .setHeader("from", simple("${exchange.properties.get(current).get(routeName)}"))
-                    .setHeader("route", simple("${exchange.properties.get(current).get(logic)}"))
+                    .setHeader("script", simple("${exchange.properties.get(current).get(logic)}"))
+                    .setHeader("executeType", constant("ROUTE"))
                     .setBody(simple("${exchange.properties.get(current).get(params)}"))
-                    .to("dynamic-route://execute")
+                    .to("dynamic-executor://execute")
                 .when(constant("SPECIAL_TECHNOLOGY").isEqualTo(simple("${exchange.properties.get(current).get(type)}")))
+                    .setHeader("from", simple("${exchange.properties.get(current).get(routeName)}"))
+                    .setHeader("script", simple("${exchange.properties.get(current).get(logic)}"))
+                    .setHeader("executeType", simple("${exchange.properties.get(current).get(technologyType)}"))
                     .setBody(simple("${exchange.properties.get(current).get(params)}"))
-                    .toD("${exchange.properties.get(current).get(logic)}")
+                    .to("dynamic-executor://execute")
                 .end()
                   // 处理返回
                 .bean(IntegrationParams.class, "processResult");
@@ -219,7 +219,7 @@ class IntegrationParams {
         find.setIntegrationComplete(true);
         String path = "/" + find.getConcept();
         String value = JsonUtil.writeValueAsString(body);
-        if (DerivationsServiceAutoConfiguration.TECHNOLOGY_PROTOCOL_MAP.get(TechnologyType.DMN).equals(current.get("logic"))) {
+        if (TechnologyType.DMN.equals(current.get("technologyType"))) {
             value = TimeReplaceUtil.matchTimePathAndReplaceTime(timePathList, path, value, Long.class);
         }
         param = JsonUtil.add(param, path, value);
@@ -248,17 +248,17 @@ class IntegrationParams {
             // 转换请求参数
             LinkedHashMap<String, Object> paramMap = new LinkedHashMap<>();
             paramIntegration.getQueryParams().forEach((name, path) -> {
-                transPathValue(param, timePathList, paramIntegration, paramMap, name, path);
+                Object value = JsonUtil.readPath(param, path);
+                // 需要执行DMN的时候，时间格式需要转换
+                if (TechnologyType.DMN.equals(paramIntegration.getTechnologyType())) {
+                    String valueString = JsonUtil.writeValueAsString(value);
+                    valueString = TimeReplaceUtil.matchTimePathAndReplaceTime(timePathList, path, valueString, String.class);
+                    value = JsonUtil.writeValueAsObject(valueString, Object.class);
+                }
+                paramMap.put(name, value);
             });
-            // 转换请求头
-            LinkedHashMap<String, Object> headers = new LinkedHashMap<>();
-            if (paramIntegration.getHeaderParams() != null && !paramIntegration.getHeaderParams().isEmpty()) {
-                paramIntegration.getHeaderParams().forEach((name, path) -> {
-                    transPathValue(param, timePathList, paramIntegration, headers, name, path);
-                });
-            }
             // 检查当前查询是否可执行
-            if (paramMap.values().stream().anyMatch(Objects::isNull) || headers.values().stream().anyMatch(Objects::isNull)) {
+            if (paramMap.values().stream().anyMatch(Objects::isNull)) {
                 continue;
             }
             if (ParamIntegration.Type.QUERY.equals(paramIntegration.getType())) {
@@ -269,12 +269,19 @@ class IntegrationParams {
                 executableIntegrationInfo.put("pageNumberPath", paramIntegration.getPageNumberPath());
                 executableIntegrationInfo.put("params", paramMap);
             } else if (ParamIntegration.Type.SPECIAL_TECHNOLOGY.equals(paramIntegration.getType())) {
-                executableIntegrationInfo.put("logic", paramIntegration.getLogicName());
-                if (DerivationsServiceAutoConfiguration.TECHNOLOGY_PROTOCOL_MAP.get(TechnologyType.ROUTE).equals(paramIntegration.getLogicName())) {
-                    headers.put("from", findRouteName((String) headers.get("route")));
+                String routeContent = null;
+                if (null != paramIntegration.getFilePath() && !paramIntegration.getFilePath().isEmpty()) {
+                    routeContent = fileReader(paramIntegration.getFilePath());
+                } else if (null != paramIntegration.getLogicName() && !paramIntegration.getLogicName().isEmpty()) {
+                    routeContent = (String) JsonUtil.readPath(param, paramIntegration.getLogicName());
                 }
-                executableIntegrationInfo.put("headers", headers);
+                executableIntegrationInfo.put("logic", routeContent);
                 executableIntegrationInfo.put("params", JsonUtil.writeValueAsString(paramMap));
+                executableIntegrationInfo.put("technologyType", paramIntegration.getTechnologyType());
+                if (TechnologyType.ROUTE.equals(paramIntegration.getTechnologyType())) {
+                    String routeName = findRouteName(routeContent);
+                    executableIntegrationInfo.put("routeName", routeName);
+                }
             } else if (ParamIntegration.Type.GENERAL_TECHNOLOGY.equals(paramIntegration.getType())) {
                 String routeContent = null;
                 if (null != paramIntegration.getFilePath() && !paramIntegration.getFilePath().isEmpty()) {
@@ -286,15 +293,14 @@ class IntegrationParams {
                     continue;
                 }
                 executableIntegrationInfo.put("logic", routeContent);
+                executableIntegrationInfo.put("params", JsonUtil.writeValueAsString(paramMap));
                 String routeName = findRouteName(routeContent);
                 executableIntegrationInfo.put("routeName", routeName);
-                executableIntegrationInfo.put("headers", headers);
-                executableIntegrationInfo.put("params", JsonUtil.writeValueAsString(paramMap));
             }
             executableIntegrationInfo.put("name", paramIntegration.getConcept());
             executableIntegrationInfo.put("type", paramIntegration.getType());
         } while (null == executableIntegrationInfo.get("name"));
-        log.info("衍生可集成：{}，参数：{}, 头{}", executableIntegrationInfo.get("name"), executableIntegrationInfo.get("params"), executableIntegrationInfo.get("headers"));
+        log.info("衍生可集成：{}，参数：{}", executableIntegrationInfo.get("name"), executableIntegrationInfo.get("params"));
         return executableIntegrationInfo;
     }
 
@@ -304,17 +310,6 @@ class IntegrationParams {
         Document document = db.parse(new ByteArrayInputStream(routeContent.getBytes()));
         String routeName = ((Node) xPath.evaluate("/routes/route[1]/from/@uri", document, XPathConstants.NODE)).getTextContent();
         return routeName;
-    }
-
-    private static void transPathValue(String param, List<String[]> timePathList, ParamIntegration paramIntegration, LinkedHashMap<String, Object> headers, String name, String path) {
-        Object value = JsonUtil.readPath(param, path);
-        // 需要执行DMN的时候，时间格式需要转换
-        if (DerivationsServiceAutoConfiguration.TECHNOLOGY_PROTOCOL_MAP.get(TechnologyType.DMN).equals(paramIntegration.getLogicName())) {
-            String valueString = JsonUtil.writeValueAsString(value);
-            valueString = TimeReplaceUtil.matchTimePathAndReplaceTime(timePathList, path, valueString, String.class);
-            value = JsonUtil.writeValueAsObject(valueString, Object.class);
-        }
-        headers.put(name, value);
     }
 
     /**
