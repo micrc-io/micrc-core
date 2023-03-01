@@ -3,6 +3,7 @@ package io.micrc.core.persistence.springboot;
 import io.micrc.core.persistence.snowflake.SnowFlakeIdentity;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.data.redis.core.RedisTemplate;
 
 import javax.annotation.Resource;
@@ -15,6 +16,7 @@ import java.util.concurrent.TimeUnit;
  * @date 2022-09-02 20:40
  * @since 0.0.1
  */
+@Order(value = -1)
 public class PersistenceAutoRunner implements ApplicationRunner {
 
     /**
