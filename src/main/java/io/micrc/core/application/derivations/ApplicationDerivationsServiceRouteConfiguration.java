@@ -26,11 +26,7 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
@@ -308,7 +304,7 @@ class IntegrationParams {
      * @return
      */
     private static String fileReader(String filePath) {
-        if (!StringUtils.hasText(filePath) || !filePath.endsWith(".xml")) {
+        if (!StringUtils.hasText(filePath)) {
             throw new RuntimeException("the route file invalid...");
         }
         StringBuffer fileContent = new StringBuffer();
