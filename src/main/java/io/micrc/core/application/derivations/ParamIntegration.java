@@ -1,5 +1,6 @@
 package io.micrc.core.application.derivations;
 
+import io.micrc.core.annotations.application.derivations.TechnologyType;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -82,13 +83,16 @@ public class ParamIntegration {
      */
     private Type type;
 
-    public ParamIntegration(String concept, HashMap<String, String> queryParams, String logicName, String filePath, int order, Type type) {
+    private TechnologyType technologyType;
+
+    public ParamIntegration(String concept, HashMap<String, String> queryParams, String logicName, String filePath, int order, Type type, TechnologyType technologyType) {
         this.concept = concept;
         this.queryParams = queryParams;
         this.order = order;
         this.logicName = logicName;
         this.filePath = filePath;
         this.type = type;
+        this.technologyType = technologyType;
     }
 
     public ParamIntegration(String concept, String aggregation, String queryMethod,
@@ -113,10 +117,6 @@ public class ParamIntegration {
          * 查库
          */
         QUERY,
-        /**
-         * 运行DMN
-         */
-        OPERATE,
 
         /**
          * 通用技术

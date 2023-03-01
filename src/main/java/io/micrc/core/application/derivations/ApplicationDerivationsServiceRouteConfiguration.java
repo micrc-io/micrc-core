@@ -2,7 +2,8 @@ package io.micrc.core.application.derivations;
 
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
-import io.micrc.core.rpc.LogicRequest;
+import io.micrc.core.annotations.application.derivations.TechnologyType;
+import io.micrc.core.application.derivations.springboot.DerivationsServiceAutoConfiguration;
 import io.micrc.lib.ClassCastUtils;
 import io.micrc.lib.JsonUtil;
 import io.micrc.lib.TimeReplaceUtil;
@@ -105,15 +106,13 @@ public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteB
                     .setHeader("script", simple("${exchange.properties.get(current).get(logic)}"))
                     .setHeader("executeType", constant("ROUTE"))
                     .setBody(simple("${exchange.properties.get(current).get(params)}"))
-                    .toD("dynamic-executor://execute")
+                    .to("dynamic-executor://execute")
                 .when(constant("SPECIAL_TECHNOLOGY").isEqualTo(simple("${exchange.properties.get(current).get(type)}")))
+                    .setHeader("from", simple("${exchange.properties.get(current).get(routeName)}"))
+                    .setHeader("script", simple("${exchange.properties.get(current).get(logic)}"))
+                    .setHeader("executeType", simple("${exchange.properties.get(current).get(technologyType)}"))
                     .setBody(simple("${exchange.properties.get(current).get(params)}"))
-                    .toD("${exchange.properties.get(current).get(logic)}")
-                .otherwise()
-                    .setBody(simple("${exchange.properties.get(current).get(params)}"))
-                    .setHeader("logic", simple("${exchange.properties.get(current).get(logic)}"))
-                    .bean(LogicRequest.class, "request")
-                .endChoice()
+                    .to("dynamic-executor://execute")
                 .end()
                   // 处理返回
                 .bean(IntegrationParams.class, "processResult");
@@ -202,8 +201,7 @@ class IntegrationParams {
         ParamIntegration.Type currentIntegrateType = (ParamIntegration.Type) current.get("type");
         if (ParamIntegration.Type.QUERY.equals(currentIntegrateType) && body instanceof Optional) {
             body = ((Optional<?>) body).orElseThrow();
-        } else if (ParamIntegration.Type.OPERATE.equals(currentIntegrateType)
-                || ParamIntegration.Type.GENERAL_TECHNOLOGY.equals(currentIntegrateType)
+        } else if (ParamIntegration.Type.GENERAL_TECHNOLOGY.equals(currentIntegrateType)
                 || ParamIntegration.Type.SPECIAL_TECHNOLOGY.equals(currentIntegrateType)) {
             body = JsonUtil.readPath((String) body, "");
         }
@@ -217,7 +215,7 @@ class IntegrationParams {
         find.setIntegrationComplete(true);
         String path = "/" + find.getConcept();
         String value = JsonUtil.writeValueAsString(body);
-        if (ParamIntegration.Type.OPERATE.equals(currentIntegrateType)) {
+        if (TechnologyType.DMN.equals(current.get("technologyType"))) {
             value = TimeReplaceUtil.matchTimePathAndReplaceTime(timePathList, path, value, Long.class);
         }
         param = JsonUtil.add(param, path, value);
@@ -243,12 +241,12 @@ class IntegrationParams {
                 throw new IllegalStateException("the integration file have error, command need integrate, but the param can not use... ");
             }
             ParamIntegration paramIntegration = JsonUtil.writeObjectAsObject(unIntegrateParams.get(checkNumber), ParamIntegration.class);
+            // 转换请求参数
             LinkedHashMap<String, Object> paramMap = new LinkedHashMap<>();
-            // 获取当前查询的每个参数
             paramIntegration.getQueryParams().forEach((name, path) -> {
                 Object value = JsonUtil.readPath(param, path);
                 // 需要执行DMN的时候，时间格式需要转换
-                if (ParamIntegration.Type.OPERATE.equals(paramIntegration.getType())) {
+                if (TechnologyType.DMN.equals(paramIntegration.getTechnologyType())) {
                     String valueString = JsonUtil.writeValueAsString(value);
                     valueString = TimeReplaceUtil.matchTimePathAndReplaceTime(timePathList, path, valueString, String.class);
                     value = JsonUtil.writeValueAsObject(valueString, Object.class);
@@ -266,12 +264,20 @@ class IntegrationParams {
                 executableIntegrationInfo.put("pageSizePath", paramIntegration.getPageSizePath());
                 executableIntegrationInfo.put("pageNumberPath", paramIntegration.getPageNumberPath());
                 executableIntegrationInfo.put("params", paramMap);
-            } else if (ParamIntegration.Type.OPERATE.equals(paramIntegration.getType())) {
-                executableIntegrationInfo.put("logic", paramIntegration.getLogicName());
-                executableIntegrationInfo.put("params", JsonUtil.writeValueAsString(paramMap));
             } else if (ParamIntegration.Type.SPECIAL_TECHNOLOGY.equals(paramIntegration.getType())) {
-                executableIntegrationInfo.put("logic", paramIntegration.getLogicName());
+                String routeContent = null;
+                if (null != paramIntegration.getFilePath() && !paramIntegration.getFilePath().isEmpty()) {
+                    routeContent = fileReader(paramIntegration.getFilePath());
+                } else if (null != paramIntegration.getLogicName() && !paramIntegration.getLogicName().isEmpty()) {
+                    routeContent = (String) JsonUtil.readPath(param, paramIntegration.getLogicName());
+                }
+                executableIntegrationInfo.put("logic", routeContent);
                 executableIntegrationInfo.put("params", JsonUtil.writeValueAsString(paramMap));
+                executableIntegrationInfo.put("technologyType", paramIntegration.getTechnologyType());
+                if (TechnologyType.ROUTE.equals(paramIntegration.getTechnologyType())) {
+                    String routeName = findRouteName(routeContent);
+                    executableIntegrationInfo.put("routeName", routeName);
+                }
             } else if (ParamIntegration.Type.GENERAL_TECHNOLOGY.equals(paramIntegration.getType())) {
                 String routeContent = null;
                 if (null != paramIntegration.getFilePath() && !paramIntegration.getFilePath().isEmpty()) {
@@ -283,18 +289,23 @@ class IntegrationParams {
                     continue;
                 }
                 executableIntegrationInfo.put("logic", routeContent);
-                DocumentBuilder db = DocumentBuilderFactory.newInstance().newDocumentBuilder();
-                XPath xPath = XPathFactory.newInstance().newXPath();
-                Document document = db.parse(new ByteArrayInputStream(routeContent.getBytes()));
-                String routeName = ((Node) xPath.evaluate("/routes/route[1]/from/@uri", document, XPathConstants.NODE)).getTextContent();
-                executableIntegrationInfo.put("routeName", routeName);
                 executableIntegrationInfo.put("params", JsonUtil.writeValueAsString(paramMap));
+                String routeName = findRouteName(routeContent);
+                executableIntegrationInfo.put("routeName", routeName);
             }
             executableIntegrationInfo.put("name", paramIntegration.getConcept());
             executableIntegrationInfo.put("type", paramIntegration.getType());
         } while (null == executableIntegrationInfo.get("name"));
         log.info("衍生可集成：{}，参数：{}", executableIntegrationInfo.get("name"), executableIntegrationInfo.get("params"));
         return executableIntegrationInfo;
+    }
+
+    private static String findRouteName(String routeContent) throws ParserConfigurationException, SAXException, IOException, XPathExpressionException {
+        DocumentBuilder db = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+        XPath xPath = XPathFactory.newInstance().newXPath();
+        Document document = db.parse(new ByteArrayInputStream(routeContent.getBytes()));
+        String routeName = ((Node) xPath.evaluate("/routes/route[1]/from/@uri", document, XPathConstants.NODE)).getTextContent();
+        return routeName;
     }
 
     /**

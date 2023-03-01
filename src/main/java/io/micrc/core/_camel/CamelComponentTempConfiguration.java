@@ -12,7 +12,9 @@ import io.micrc.core.rpc.ErrorInfo;
 import io.micrc.core.rpc.Result;
 import io.micrc.lib.JsonUtil;
 import lombok.SneakyThrows;
+import org.apache.camel.Body;
 import org.apache.camel.CamelContext;
+import org.apache.camel.Consume;
 import org.apache.camel.ExtendedCamelContext;
 import org.apache.camel.Route;
 import org.apache.camel.RoutesBuilder;
@@ -246,6 +248,12 @@ public class CamelComponentTempConfiguration {
                         .end();
             }
         };
+    }
+
+    @Consume("direct://test")
+    public Object test(@Body Object body) {
+        System.out.println("测试" + JsonUtil.writeValueAsString(body));
+        return body;
     }
 
     @Bean("error-handle")
