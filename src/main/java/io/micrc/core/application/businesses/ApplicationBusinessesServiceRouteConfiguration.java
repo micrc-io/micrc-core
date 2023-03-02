@@ -241,7 +241,6 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .setBody(exchangeProperty("logicIntegrationJson"))
                 .unmarshal().json(LogicIntegration.class)
                 .bean(LogicInParamsResolve.class, "toLogicParams(${body}, ${exchange.properties.get(commandJson)}, ${exchange.properties.get(timePaths)}, ${exchange.properties.get(logicType)})")
-                .unmarshal().json().bean(HashMap.class)
                 .setHeader("groovy", simple("${exchange.properties.get(logicPath)}"))
                 .to("dynamic-groovy://execute")
                 .unmarshal().json(HashMap.class)
