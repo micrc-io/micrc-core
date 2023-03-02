@@ -12,12 +12,7 @@ import io.micrc.core.rpc.ErrorInfo;
 import io.micrc.core.rpc.Result;
 import io.micrc.lib.JsonUtil;
 import lombok.SneakyThrows;
-import org.apache.camel.Body;
-import org.apache.camel.CamelContext;
-import org.apache.camel.Consume;
-import org.apache.camel.ExtendedCamelContext;
-import org.apache.camel.Route;
-import org.apache.camel.RoutesBuilder;
+import org.apache.camel.*;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.direct.DirectComponent;
 import org.apache.camel.support.ResourceHelper;
@@ -40,10 +35,8 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 /**
  * 使用路由和direct组件，临时实现各种没有的camel组件
@@ -178,18 +171,11 @@ public class CamelComponentTempConfiguration {
                         .routeId("dynamic-groovy-execute")
                         .process(exchange -> {
                             String script = exchange.getIn().getHeader("groovy", String.class);
-                            Map<String, Object> params = exchange.getIn().getBody(HashMap.class);
                             if (!StringUtils.hasText(script)) {
                                 throw new RuntimeException("the script not have value, please check script....");
                             }
                             Binding binding = new Binding();
-                            if (params != null) {
-                                Set<String> keys = params.keySet();
-                                keys.stream().forEach(key -> {
-                                            binding.setProperty(key, params.get(key));
-                                        }
-                                );
-                            }
+                            binding.setProperty("params", exchange.getIn().getBody());
                             Object retVal = new GroovyShell(binding).evaluate(script);
                             exchange.getIn().setBody(retVal);
                             exchange.getIn().removeHeader("groovy");

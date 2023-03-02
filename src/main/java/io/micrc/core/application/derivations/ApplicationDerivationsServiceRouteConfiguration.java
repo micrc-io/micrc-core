@@ -3,7 +3,6 @@ package io.micrc.core.application.derivations;
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.core.annotations.application.derivations.TechnologyType;
-import io.micrc.core.application.derivations.springboot.DerivationsServiceAutoConfiguration;
 import io.micrc.lib.ClassCastUtils;
 import io.micrc.lib.JsonUtil;
 import io.micrc.lib.TimeReplaceUtil;
@@ -325,7 +324,7 @@ class IntegrationParams {
             BufferedReader in = new BufferedReader(new InputStreamReader(stream, "UTF-8"));
             String str = null;
             while ((str = in.readLine()) != null) {
-                fileContent.append(str);
+                fileContent.append(str + "\n");
             }
             in.close();
         } catch (IOException e) {
