@@ -126,7 +126,6 @@ public class RpcAutoConfiguration {
                         .end();
 
                 for (Map.Entry<String, String> entry : RpcEnvironmentProcessor.APIDOCS.entrySet()) {
-                    System.out.println(entry.getKey() + "--->" + entry.getValue());
                     templatedRoute("apiDocRest")
                             .routeId(entry.getKey())
                             .parameter("apidoc-path", entry.getKey());
