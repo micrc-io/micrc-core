@@ -259,7 +259,7 @@ public class CamelComponentTempConfiguration {
                             log.error(exchange.getIn().getBody(String.class));
                             ErrorInfo errorInfo = new ErrorInfo();
                             errorInfo.setErrorCode("999999999");
-                            errorInfo.setErrorMessage("system error");
+                            errorInfo.setErrorMessage(exchange.getIn().getBody(String.class));
                             exchange.getIn().setBody(new Result<>().result(errorInfo, null));
                         })
                         .marshal().json().convertBodyTo(String.class)
@@ -271,7 +271,7 @@ public class CamelComponentTempConfiguration {
                             log.error(exchange.getIn().getBody(String.class));
                             ErrorInfo errorInfo = new ErrorInfo();
                             errorInfo.setErrorCode("888888888");
-                            errorInfo.setErrorMessage("command error");
+                            errorInfo.setErrorMessage(exchange.getIn().getBody(String.class));
                             String body = exchange.getIn().getBody(String.class);
                             exchange.getIn().setBody(new Result<>().result(errorInfo, JsonUtil.writeValueAsObject(body, Object.class)));
                         })

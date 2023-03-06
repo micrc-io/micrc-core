@@ -3,6 +3,7 @@ package io.micrc.core.integration.derivations;
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.core.rpc.Result;
+import io.micrc.lib.JsonUtil;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
@@ -33,8 +34,18 @@ public class DerivationsAdapterRouteConfiguration extends MicrcRouteBuilder {
                 .from("operate:{{name}}")
                 .routeId("operate-{{name}}")
                 .toD("bean://{{serviceName}}?method=execute")
+                .process(exchange -> {
+                    String body = (String) exchange.getIn().getBody();
+                    Object code = JsonUtil.readPath(body, "/code");
+                    exchange.setProperty("code", code);
+                    Object message = JsonUtil.readPath(body, "/message");
+                    exchange.setProperty("message", message);
+                })
                 .unmarshal().json(Object.class)
-                .bean(Result.class, "result(${in.body})")
+                .choice()
+                    .when(simple("${exchange.properties.get(code)} == null || ${exchange.properties.get(message)} == null"))
+                        .bean(Result.class, "result(${in.body})")
+                    .endChoice()
                 .end();
     }
 

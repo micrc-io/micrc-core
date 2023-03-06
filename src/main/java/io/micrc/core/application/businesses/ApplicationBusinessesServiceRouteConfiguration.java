@@ -379,16 +379,16 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
         public static void check(HashMap<String, Object> checkResult, Exchange exchange) {
             ErrorInfo errorInfo = new ErrorInfo();
             if (null == checkResult.get("checkResult")) {
-                errorInfo.setErrorCode("888888888");
+                errorInfo.setErrorCode("System-DMN-notfound");
             } else if (!(Boolean) checkResult.get("checkResult")) {
                 errorInfo.setErrorCode((String) checkResult.get("errorCode"));
             }
             if (null != errorInfo.getErrorCode()) {
-                String commandJson = JsonUtil.patch((String) exchange.getProperties().get("commandJson"),
-                        "/error",
-                        JsonUtil.writeValueAsString(errorInfo));
-                exchange.getProperties().put("commandJson", commandJson);
-                exchange.getIn().setBody(commandJson);
+//                String commandJson = JsonUtil.patch((String) exchange.getProperties().get("commandJson"),
+//                        "/error",
+//                        JsonUtil.writeValueAsString(errorInfo));
+//                exchange.getProperties().put("commandJson", commandJson);
+//                exchange.getIn().setBody(commandJson);
                 throw new IllegalStateException(errorInfo.getErrorCode());
             }
         }
@@ -502,6 +502,9 @@ class IntegrationCommandParams {
         if ("".equals(protocol)) {
             body = ((Optional<?>) body).orElseThrow();
         } else {
+            if (!"200".equals(JsonUtil.readPath((String) body, "/code"))) {
+                throw new IllegalArgumentException("Integrate [" + name + "] error: " + JsonUtil.readPath((String) body, "/message"));
+            }
             body = JsonUtil.readPath((String) body, "/data");
         }
         log.info("业务已集成：{}，结果：{}", name, JsonUtil.writeValueAsString(body));
