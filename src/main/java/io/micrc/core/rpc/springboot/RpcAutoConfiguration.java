@@ -116,16 +116,20 @@ public class RpcAutoConfiguration {
             public void configure() throws Exception {
                 routeTemplate("apiDocRest")
                         .templateParameter("apidoc-path")
-                        .templateParameter("apidoc")
+                        //.templateParameter("apidoc")
                         .from("rest:get:{{apidoc-path}}")
-                        .setBody().constant("{{apidoc}}")
+                        .setProperty("key", constant("{{apidoc-path}}"))
+                        .process(exchange -> {
+                            exchange.getIn().setBody(RpcEnvironmentProcessor.APIDOCS.get(exchange.getProperty("key", String.class)));
+                        })
+                        //.setBody().constant("{{apidoc}}")
                         .end();
 
                 for (Map.Entry<String, String> entry : RpcEnvironmentProcessor.APIDOCS.entrySet()) {
                     templatedRoute("apiDocRest")
                             .routeId(entry.getKey())
-                            .parameter("apidoc-path", entry.getKey())
-                            .parameter("apidoc", entry.getValue());
+                            .parameter("apidoc-path", entry.getKey());
+                    //.parameter("apidoc", JsonUtil.writeValueAsString(entry.getValue()));
                 }
             }
         };

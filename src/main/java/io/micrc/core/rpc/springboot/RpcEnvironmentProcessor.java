@@ -1,5 +1,6 @@
 package io.micrc.core.rpc.springboot;
 
+import io.micrc.lib.JsonUtil;
 import org.apache.commons.logging.Log;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.env.EnvironmentPostProcessor;
@@ -71,12 +72,25 @@ public class RpcEnvironmentProcessor implements EnvironmentPostProcessor {
         try {
             Resource[] resources = new PathMatchingResourcePatternResolver()
                     .getResources(ResourceUtils.CLASSPATH_URL_PREFIX + APIDOC_BASE_PATH + "/**/*.json");
+            // swagger config  read https://springdoc.org/v2/
             for (int i = 0; i < resources.length; i++) {
                 Resource resource = resources[i];
                 String apidocUrl = base.getURI().relativize(resource.getURI()).getPath()
                         .replace(".json", "");
+                String openApiBodyContent = StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8);
+                Map<String, Object> pathsMap = JsonUtil.writeObjectAsObject(JsonUtil.readTree(openApiBodyContent).at("/paths"), HashMap.class);
+                Map<String, Object> apiPathsMap = new HashMap<>();
+                pathsMap.keySet().forEach(key -> {
+                    if (!key.contains("/api/")) {
+                        apiPathsMap.put("/api" + key, pathsMap.get(key));
+                    }
+                    if (key.contains("/api/")) {
+                        apiPathsMap.put(key, pathsMap.get(key));
+                    }
+                });
+                openApiBodyContent = JsonUtil.patch(openApiBodyContent, "/paths", JsonUtil.writeValueAsStringRetainNull(apiPathsMap));
                 APIDOCS.put(APIDOC_BASE_URI + apidocUrl,
-                        StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8));
+                        openApiBodyContent);
                 properties.setProperty("springdoc.swagger-ui.urls[" + i + "].url",
                         REST_CONTEXT_PATH + APIDOC_BASE_URI + apidocUrl);
                 properties.setProperty("springdoc.swagger-ui.urls[" + i + "].name", apidocUrl);
