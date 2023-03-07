@@ -21,7 +21,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -57,22 +56,18 @@ public class ApplicationPresentationsServiceRouteConfiguration extends MicrcRout
                 .to("error-handle://system");
 
         routeTemplate(ROUTE_TMPL_PRESENTATIONS_SERVICE)
-                // 设置模板参数
                 .templateParameter("serviceName", null, "the presentations service name")
                 .templateParameter("paramIntegrationsJson", null, "the command integration params")
                 .templateParameter("assembler", null, "assembler")
-                // 指定service名称为入口端点
                 .from("presentations:{{serviceName}}")
                 .setProperty("paramIntegrationsJson", simple("{{paramIntegrationsJson}}"))
-                .setProperty("param", simple("${in.body}")) // 存储入参到交换区，动态处理及结果汇编需要
-                // 动态路由解析
+                .setProperty("assembler", simple("{{assembler}}"))
+                // 1.处理请求
+                .setProperty("param", simple("${in.body}"))
+                // 2.动态集成
                 .dynamicRouter(method(IntegrationParams.class, "dynamicIntegrate"))
-                // 汇编结果处理
-                .setBody(simple("${exchange.properties.get(param)}"))
-                // .to("jslt://{{assembler}}")
-                .setHeader("mappingFilePath", simple("{{assembler}}"))
-                .to("json-mapping://file")
-                // 出口
+                // 3.处理结果
+                .to("direct://handle-result-presentation")
                 .end();
 
         from("direct://presentations-integration")
@@ -92,6 +87,11 @@ public class ApplicationPresentationsServiceRouteConfiguration extends MicrcRout
                 .end()
                   // 处理返回
                 .bean(IntegrationParams.class, "processResult");
+
+        from("direct://handle-result-presentation")
+                .setBody(exchangeProperty("param"))
+                .setHeader("mappingFilePath", exchangeProperty("assembler"))
+                .to("json-mapping://file");
     }
 
     /**

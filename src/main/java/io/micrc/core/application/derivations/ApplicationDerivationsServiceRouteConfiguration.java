@@ -64,31 +64,22 @@ public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteB
                 .to("error-handle://system");
 
         routeTemplate(ROUTE_TMPL_DERIVATIONS_SERVICE)
-                // 设置模板参数
                 .templateParameter("serviceName", null, "the derivations service name")
                 .templateParameter("paramIntegrationsJson", null, "the command integration params")
                 .templateParameter("assembler", null, "assembler")
                 .templateParameter("timePathsJson", null, "time path list json")
-                // 指定service名称为入口端点
                 .from("derivations:{{serviceName}}")
                 .setProperty("paramIntegrationsJson", simple("{{paramIntegrationsJson}}"))
-                .setProperty("param", simple("${in.body}")) // 存储入参到交换区，动态处理及结果汇编需要
-                // 处理时间路径
-                .setBody(simple("{{timePathsJson}}"))
-                .process(exchange -> {
-                    exchange.getIn().setBody(JsonUtil.writeValueAsList(exchange.getIn().getBody(String.class), String.class)
-                            .stream().map(i -> i.split("/")).collect(Collectors.toList()));
-                })
-                .setProperty("timePaths", body())
-                // 动态路由解析
-                .setBody(simple("${exchange.properties.get(param)}"))
-                .dynamicRouter(method(IntegrationParams.class, "dynamicIntegrate"))
-                // 汇编结果处理
-                .setBody(simple("${exchange.properties.get(param)}"))
-                // .to("jslt://{{assembler}}")
-                .setHeader("mappingFilePath", simple("{{assembler}}"))
-                .to("json-mapping://file")
-                // 出口
+                .setProperty("assembler", simple("{{assembler}}"))
+                .setProperty("timePathsJson", simple("{{timePathsJson}}"))
+                // 1.处理请求
+                .setProperty("param", simple("${in.body}"))
+                // 2.解析时间
+                .to("direct://parse-time-derivation")
+                // 3.动态集成
+                .to("direct://dynamic-integration-derivation")
+                // 4.处理结果
+                .to("direct://handle-result-derivation")
                 .end();
 
         from("direct://derivations-integration")
@@ -115,6 +106,23 @@ public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteB
                 .end()
                   // 处理返回
                 .bean(IntegrationParams.class, "processResult");
+
+        from("direct://parse-time-derivation")
+                .setBody(exchangeProperty("timePathsJson"))
+                .process(exchange -> {
+                    exchange.getIn().setBody(JsonUtil.writeValueAsList(exchange.getIn().getBody(String.class), String.class)
+                            .stream().map(i -> i.split("/")).collect(Collectors.toList()));
+                })
+                .setProperty("timePaths", body());
+
+        from("direct://dynamic-integration-derivation")
+                .setBody(exchangeProperty("param"))
+                .dynamicRouter(method(IntegrationParams.class, "dynamicIntegrate"));
+
+        from("direct://handle-result-derivation")
+                .setBody(exchangeProperty("param"))
+                .setHeader("mappingFilePath", exchangeProperty("assembler"))
+                .to("json-mapping://file");
     }
 
     /**
@@ -270,7 +278,7 @@ class IntegrationParams {
                 } else if (null != paramIntegration.getLogicName() && !paramIntegration.getLogicName().isEmpty()) {
                     routeContent = (String) JsonUtil.readPath(param, paramIntegration.getLogicName());
                 }
-                executableIntegrationInfo.put("logic", routeContent);
+                executableIntegrationInfo.put("logic", routeContent); // 路由内容为null时，会根据technologyType执行内置路由
                 executableIntegrationInfo.put("params", JsonUtil.writeValueAsString(paramMap));
                 executableIntegrationInfo.put("technologyType", paramIntegration.getTechnologyType());
                 if (TechnologyType.ROUTE.equals(paramIntegration.getTechnologyType())) {
