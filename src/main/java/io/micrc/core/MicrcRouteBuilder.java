@@ -32,17 +32,17 @@ public abstract class MicrcRouteBuilder extends RouteBuilder {
         interceptSendToEndpoint("presentations:*")
                 .log("拦截所有presentations服务, 使用bean调用使@Cacheable生效");
         interceptSendToEndpoint("derivations:*")
-                .log("拦截所有derivations服务, 使用bean调用使@Cacheable生效 - **韩晓星注意命名**");
+                .log("拦截所有derivations服务, 使用bean调用使@Cacheable生效");
         interceptSendToEndpoint("command:*")
-            .log("拦截所有command适配, 使用bean调用使命令适配器的@Cacheable生效 - **王腾调整integration中的包结构**");
+                .log("拦截所有command适配, 使用bean调用使命令适配器的@Cacheable生效");
         interceptSendToEndpoint("query:*")
-            .log("拦截所有query适配, 使用bean调用使展示适配器的@Cacheable生效 - **韩晓星改协议名**");
+                .log("拦截所有query适配, 使用bean调用使展示适配器的@Cacheable生效");
         interceptSendToEndpoint("operate:*")
                 .log("拦截所有operate适配, 使用bean调用使衍生适配器的@Cacheable生效");
         interceptSendToEndpoint("message:*")
-            .log("拦截所有message适配, 使用bean调用使消息监听适配器的@Cacheable生效 - **王腾调整integration中的包结构**");
+                .log("拦截所有message适配, 使用bean调用使消息监听适配器的@Cacheable生效");
         interceptSendToEndpoint("rpc:*")
-                .log("拦截所有rpc适配, 使用bean调用使适配器的@Cacheable生效 - **韩晓星注意命名**");
+                .log("拦截所有rpc适配, 使用bean调用使适配器的@Cacheable生效");
 
         configureRoute();
     }

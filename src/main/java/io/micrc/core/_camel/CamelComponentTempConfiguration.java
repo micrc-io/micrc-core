@@ -17,6 +17,7 @@ import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.direct.DirectComponent;
 import org.apache.camel.support.ResourceHelper;
 import org.kie.dmn.api.core.DMNDecisionResult;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -270,12 +271,29 @@ public class CamelComponentTempConfiguration {
                         .process(exchange -> {
                             log.error(exchange.getIn().getBody(String.class));
                             ErrorInfo errorInfo = new ErrorInfo();
+                            errorInfo.setErrorCode(exchange.getIn().getBody(String.class));
+                            errorInfo.setErrorMessage("-");
+                            String commandJson = (String) exchange.getProperty("commandJson");
+                            commandJson = JsonUtil.patch(commandJson, "/error", JsonUtil.writeValueAsString(errorInfo));
+                            exchange.setProperty("commandJson", commandJson);
+                            Object command = exchange.getProperty("command");
+                            BeanUtils.copyProperties(JsonUtil.writeValueAsObject(commandJson, command.getClass()), command);
+                        })
+                        .end();
+
+                from("error-handle://business")
+                        .routeId("error-handle-business")
+                        .process(exchange -> {
+                            log.error(exchange.getIn().getBody(String.class));
+                            ErrorInfo errorInfo = new ErrorInfo();
                             errorInfo.setErrorCode("888888888");
                             errorInfo.setErrorMessage(exchange.getIn().getBody(String.class));
-                            String body = exchange.getIn().getBody(String.class);
-                            exchange.getIn().setBody(new Result<>().result(errorInfo, JsonUtil.writeValueAsObject(body, Object.class)));
+                            String commandJson = (String) exchange.getProperty("commandJson");
+                            commandJson = JsonUtil.patch(commandJson, "/error", JsonUtil.writeValueAsString(errorInfo));
+                            exchange.setProperty("commandJson", commandJson);
+                            Object command = exchange.getProperty("command");
+                            BeanUtils.copyProperties(JsonUtil.writeValueAsObject(commandJson, command.getClass()), command);
                         })
-                        .marshal().json().convertBodyTo(String.class)
                         .end();
             }
         };

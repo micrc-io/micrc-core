@@ -24,7 +24,7 @@ public class BusinessesServiceRouterExecution implements Ordered {
     public void annotationPointCut() {/* leave it out */}
 
     @Around("annotationPointCut()")
-    public Object around(ProceedingJoinPoint proceedingJoinPoint) throws Throwable {
+    public void around(ProceedingJoinPoint proceedingJoinPoint) throws Throwable {
         Class<?>[] interfaces = proceedingJoinPoint.getTarget().getClass().getInterfaces();
         if (interfaces.length != 1) { // 实现类有且只能有一个接口
             throw new IllegalStateException(
@@ -41,14 +41,14 @@ public class BusinessesServiceRouterExecution implements Ordered {
             custom = annotation.custom();
         }
         if (custom || annotation == null) {
-            return proceedingJoinPoint.proceed(proceedingJoinPoint.getArgs());
+            proceedingJoinPoint.proceed(proceedingJoinPoint.getArgs());
+        } else {
+            routeTemplate.requestBodyAndHeaders(
+                    annotation.routeProtocol() + ":" + interfaces[0].getSimpleName(),
+                    args[0],
+                    routeHeaders
+            );
         }
-
-        return routeTemplate.requestBodyAndHeaders(
-                annotation.routeProtocol() + ":" + interfaces[0].getSimpleName(),
-                args[0],
-                routeHeaders
-        );
     }
 
     @Override

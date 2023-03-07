@@ -7,7 +7,6 @@ import io.micrc.core.annotations.application.businesses.LogicType;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.CommandParamIntegration;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.LogicIntegration;
 import io.micrc.core.persistence.snowflake.SnowFlakeIdentity;
-import io.micrc.core.rpc.ErrorInfo;
 import io.micrc.core.rpc.LogicRequest;
 import io.micrc.lib.ClassCastUtils;
 import io.micrc.lib.JsonUtil;
@@ -20,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangeProperties;
 import org.apache.camel.support.ExpressionAdapter;
+import org.springframework.beans.BeanUtils;
 import org.springframework.util.StringUtils;
 
 import java.io.BufferedReader;
@@ -59,7 +59,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
         // 其他错误
         onException(Exception.class)
                 .handled(true)
-                .to("error-handle://system");
+                .to("error-handle://business");
 
         routeTemplate(ROUTE_TMPL_BUSINESSES_SERVICE)
                 .templateParameter("serviceName", null, "the business service name")
@@ -104,11 +104,16 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .end();
 
         from("direct://handle-request")
+                .setProperty("command", body())
                 .marshal().json().convertBodyTo(String.class)
                 .setProperty("commandJson", body());
 
         from("direct://handle-result")
-                .setBody(exchangeProperty("commandJson"));
+                .process(exchange -> {
+                    String commandJson = (String) exchange.getProperty("commandJson");
+                    Object command = exchange.getProperty("command");
+                    BeanUtils.copyProperties(JsonUtil.writeValueAsObject(commandJson, command.getClass()), command);
+                });
 
         from("direct://dynamic-integration")
                 .dynamicRouter(method(IntegrationCommandParams.class, "integrate"));
@@ -377,19 +382,14 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
 
     public static class ResultCheck {
         public static void check(HashMap<String, Object> checkResult, Exchange exchange) {
-            ErrorInfo errorInfo = new ErrorInfo();
+            String errorCode = null;
             if (null == checkResult.get("checkResult")) {
-                errorInfo.setErrorCode("System-DMN-notfound");
+                errorCode = "System-DMN-error";
             } else if (!(Boolean) checkResult.get("checkResult")) {
-                errorInfo.setErrorCode((String) checkResult.get("errorCode"));
+                errorCode = (String) checkResult.get("errorCode");
             }
-            if (null != errorInfo.getErrorCode()) {
-//                String commandJson = JsonUtil.patch((String) exchange.getProperties().get("commandJson"),
-//                        "/error",
-//                        JsonUtil.writeValueAsString(errorInfo));
-//                exchange.getProperties().put("commandJson", commandJson);
-//                exchange.getIn().setBody(commandJson);
-                throw new IllegalStateException(errorInfo.getErrorCode());
+            if (null != errorCode) {
+                throw new IllegalStateException(errorCode);
             }
         }
     }
@@ -503,7 +503,7 @@ class IntegrationCommandParams {
             body = ((Optional<?>) body).orElseThrow();
         } else {
             if (!"200".equals(JsonUtil.readPath((String) body, "/code"))) {
-                throw new IllegalArgumentException("Integrate [" + name + "] error: " + JsonUtil.readPath((String) body, "/message"));
+                throw new RuntimeException("Integrate [" + name + "] error: " + JsonUtil.readPath((String) body, "/message"));
             }
             body = JsonUtil.readPath((String) body, "/data");
         }

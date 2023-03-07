@@ -49,12 +49,11 @@ public class ApplicationCommandAdapterRouteConfiguration extends MicrcRouteBuild
 //                .dynamicRouter(method(AdapterParamsHandler.class, "convert"))
                 .bean(AdapterParamsHandler.class, "convertCommand")
                 .setBody(exchangeProperty("command"))
-                .to("businesses://{{serviceName}}")
+                .toD("bean://{{serviceName}}?method=execute")
                 .to("direct://commandAdapterResult");
 
         // 命令适配器结果处理
         from("direct://commandAdapterResult")
-                .unmarshal().json(Object.class)
                 .setProperty("command", body())
                 .marshal().json().convertBodyTo(String.class)
                 .setHeader("pointer", simple("/error"))
