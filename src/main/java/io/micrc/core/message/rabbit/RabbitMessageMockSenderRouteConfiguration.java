@@ -28,22 +28,22 @@ public class RabbitMessageMockSenderRouteConfiguration extends MicrcRouteBuilder
     @Override
     public void configureRoute() throws Exception {
 
-        // 其他错误
-        onException(Exception.class)
-                .handled(true)
-                .to("error-handle://system");
-
-        routeTemplate(ROUTE_TMPL_MESSAGE_SENDER)
-                // 设置模板参数
-                .templateParameter("listenerName", null, "the message listener name")
-                .templateParameter("eventName", null, "the message logic name")
-                // 指定service名称为入口端点
-                .from("rest:post:{{listenerName}}")
-                .log("测试1")
-                .to("message://{{eventName}}Listener")
-                .log("测试2")
-                .to("direct://messageAdapterResult")
-                .end();
+//        // 其他错误
+//        onException(Exception.class)
+//                .handled(true)
+//                .to("error-handle://system");
+//
+//        routeTemplate(ROUTE_TMPL_MESSAGE_SENDER)
+//                // 设置模板参数
+//                .templateParameter("listenerName", null, "the message listener name")
+//                .templateParameter("eventName", null, "the message logic name")
+//                // 指定service名称为入口端点
+//                .from("rest:post:{{listenerName}}")
+//                .log("测试1")
+//                .to("message://{{eventName}}Listener")
+//                .log("测试2")
+//                .to("direct://messageAdapterResult")
+//                .end();
     }
 
     /**

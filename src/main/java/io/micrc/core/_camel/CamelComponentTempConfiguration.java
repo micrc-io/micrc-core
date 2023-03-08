@@ -37,6 +37,7 @@ import javax.xml.xpath.XPathFactory;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -257,10 +258,9 @@ public class CamelComponentTempConfiguration {
                         .routeId("error-handle-system")
                         .setBody(exceptionMessage())
                         .process(exchange -> {
-                            log.error(exchange.getIn().getBody(String.class));
                             ErrorInfo errorInfo = new ErrorInfo();
                             errorInfo.setErrorCode("999999999");
-                            errorInfo.setErrorMessage(exchange.getIn().getBody(String.class));
+                            errorInfo.setErrorMessage(getErrorMessage(exchange));
                             exchange.getIn().setBody(new Result<>().result(errorInfo, null));
                         })
                         .marshal().json().convertBodyTo(String.class)
@@ -269,32 +269,38 @@ public class CamelComponentTempConfiguration {
                 from("error-handle://command")
                         .routeId("error-handle-command")
                         .process(exchange -> {
-                            log.error(exchange.getIn().getBody(String.class));
+                            String message = getErrorMessage(exchange);
                             ErrorInfo errorInfo = new ErrorInfo();
-                            errorInfo.setErrorCode(exchange.getIn().getBody(String.class));
-                            errorInfo.setErrorMessage("-");
-                            String commandJson = (String) exchange.getProperty("commandJson");
-                            commandJson = JsonUtil.patch(commandJson, "/error", JsonUtil.writeValueAsString(errorInfo));
-                            exchange.setProperty("commandJson", commandJson);
-                            Object command = exchange.getProperty("command");
-                            BeanUtils.copyProperties(JsonUtil.writeValueAsObject(commandJson, command.getClass()), command);
+                            errorInfo.setErrorCode(message);
+                            errorInfo.setErrorMessage(message);
+                            patchErrorToCommand(exchange, errorInfo);
                         })
                         .end();
 
                 from("error-handle://business")
                         .routeId("error-handle-business")
                         .process(exchange -> {
-                            log.error(exchange.getIn().getBody(String.class));
                             ErrorInfo errorInfo = new ErrorInfo();
                             errorInfo.setErrorCode("888888888");
-                            errorInfo.setErrorMessage(exchange.getIn().getBody(String.class));
-                            String commandJson = (String) exchange.getProperty("commandJson");
-                            commandJson = JsonUtil.patch(commandJson, "/error", JsonUtil.writeValueAsString(errorInfo));
-                            exchange.setProperty("commandJson", commandJson);
-                            Object command = exchange.getProperty("command");
-                            BeanUtils.copyProperties(JsonUtil.writeValueAsObject(commandJson, command.getClass()), command);
+                            errorInfo.setErrorMessage(getErrorMessage(exchange));
+                            patchErrorToCommand(exchange, errorInfo);
                         })
                         .end();
+            }
+
+            private void patchErrorToCommand(Exchange exchange, ErrorInfo errorInfo) {
+                String commandJson = (String) exchange.getProperty("commandJson");
+                commandJson = JsonUtil.patch(commandJson, "/error", JsonUtil.writeValueAsString(errorInfo));
+                exchange.setProperty("commandJson", commandJson);
+                Object command = exchange.getProperty("command");
+                BeanUtils.copyProperties(JsonUtil.writeValueAsObject(commandJson, command.getClass()), command);
+            }
+
+            private String getErrorMessage(Exchange exchange) {
+                Throwable throwable = exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Throwable.class);
+                String message = Objects.requireNonNullElse(throwable.getCause(), throwable).getLocalizedMessage();
+                log.error(message);
+                return message;
             }
         };
     }

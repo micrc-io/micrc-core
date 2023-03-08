@@ -33,6 +33,10 @@ public class PresentationsAdapterRouteConfiguration extends MicrcRouteBuilder {
                 .templateParameter("serviceName", null, "the presentations service name")
                 .from("query:{{name}}")
                 .toD("bean://{{serviceName}}?method=execute")
+                .to("direct://presentationsAdapterResult")
+                .end();
+
+        from("direct://presentationsAdapterResult")
                 .process(exchange -> {
                     String body = (String) exchange.getIn().getBody();
                     Object code = JsonUtil.readPath(body, "/code");

@@ -34,6 +34,10 @@ public class DerivationsAdapterRouteConfiguration extends MicrcRouteBuilder {
                 .from("operate:{{name}}")
                 .routeId("operate-{{name}}")
                 .toD("bean://{{serviceName}}?method=execute")
+                .to("direct://derivationsAdapterResult")
+                .end();
+
+        from("direct://derivationsAdapterResult")
                 .process(exchange -> {
                     String body = (String) exchange.getIn().getBody();
                     Object code = JsonUtil.readPath(body, "/code");

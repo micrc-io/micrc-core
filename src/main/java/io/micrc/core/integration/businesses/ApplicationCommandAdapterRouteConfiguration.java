@@ -50,7 +50,8 @@ public class ApplicationCommandAdapterRouteConfiguration extends MicrcRouteBuild
                 .bean(AdapterParamsHandler.class, "convertCommand")
                 .setBody(exchangeProperty("command"))
                 .toD("bean://{{serviceName}}?method=execute")
-                .to("direct://commandAdapterResult");
+                .to("direct://commandAdapterResult")
+                .end();
 
         // 命令适配器结果处理
         from("direct://commandAdapterResult")
