@@ -42,7 +42,6 @@ public class MessageAdapterRouteConfiguration extends MicrcRouteBuilder {
 
         // 命令适配器结果处理
         from("direct://messageAdapterResult")
-                .unmarshal().json(Object.class)
                 .setProperty("command", body())
                 .marshal().json().convertBodyTo(String.class)
                 .setHeader("pointer", simple("/error"))

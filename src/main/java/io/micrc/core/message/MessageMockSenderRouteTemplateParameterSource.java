@@ -1,4 +1,4 @@
-package io.micrc.core.message.rabbit;
+package io.micrc.core.message;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.camel.spi.RouteTemplateParameterSource;
@@ -14,8 +14,8 @@ import java.util.Set;
  * @date 2022-11-19 14:21
  * @since 0.0.1
  */
-public class RabbitMessageMockSenderRouteTemplateParameterSource implements RouteTemplateParameterSource {
-    private final Map<String, RabbitMessageMockSenderRouteConfiguration.MessageMockSenderDefinition> parameters = new LinkedHashMap<>();
+public class MessageMockSenderRouteTemplateParameterSource implements RouteTemplateParameterSource {
+    private final Map<String, MessageMockSenderRouteConfiguration.MessageMockSenderDefinition> parameters = new LinkedHashMap<>();
 
     @SuppressWarnings("unchecked")
     @Override
@@ -28,11 +28,11 @@ public class RabbitMessageMockSenderRouteTemplateParameterSource implements Rout
         return parameters.keySet();
     }
 
-    public void addParameter(String routeId, RabbitMessageMockSenderRouteConfiguration.MessageMockSenderDefinition definition) {
+    public void addParameter(String routeId, MessageMockSenderRouteConfiguration.MessageMockSenderDefinition definition) {
         parameters.put(routeId, definition);
     }
 
-    public RabbitMessageMockSenderRouteConfiguration.MessageMockSenderDefinition parameter(String routeId) {
+    public MessageMockSenderRouteConfiguration.MessageMockSenderDefinition parameter(String routeId) {
         return parameters.get(routeId);
     }
 }
