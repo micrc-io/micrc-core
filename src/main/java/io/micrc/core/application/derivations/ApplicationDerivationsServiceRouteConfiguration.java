@@ -4,6 +4,7 @@ import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.core.annotations.application.derivations.TechnologyType;
 import io.micrc.lib.ClassCastUtils;
+import io.micrc.lib.FileUtils;
 import io.micrc.lib.JsonUtil;
 import io.micrc.lib.TimeReplaceUtil;
 import lombok.Data;
@@ -14,7 +15,6 @@ import org.apache.camel.Exchange;
 import org.apache.camel.ExchangeProperties;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.util.StringUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.xml.sax.SAXException;
@@ -274,7 +274,7 @@ class IntegrationParams {
             } else if (ParamIntegration.Type.SPECIAL_TECHNOLOGY.equals(paramIntegration.getType())) {
                 String routeContent = null;
                 if (null != paramIntegration.getFilePath() && !paramIntegration.getFilePath().isEmpty()) {
-                    routeContent = fileReader(paramIntegration.getFilePath());
+                    routeContent = FileUtils.fileReader(paramIntegration.getFilePath(), List.of("xml", "dmn", "groovy", "jslt"));
                 } else if (null != paramIntegration.getLogicName() && !paramIntegration.getLogicName().isEmpty()) {
                     routeContent = (String) JsonUtil.readPath(param, paramIntegration.getLogicName());
                 }
@@ -288,7 +288,7 @@ class IntegrationParams {
             } else if (ParamIntegration.Type.GENERAL_TECHNOLOGY.equals(paramIntegration.getType())) {
                 String routeContent = null;
                 if (null != paramIntegration.getFilePath() && !paramIntegration.getFilePath().isEmpty()) {
-                    routeContent = fileReader(paramIntegration.getFilePath());
+                    routeContent = FileUtils.fileReader(paramIntegration.getFilePath(), List.of("xml"));
                 } else if (null != paramIntegration.getLogicName() && !paramIntegration.getLogicName().isEmpty()) {
                     routeContent = (String) JsonUtil.readPath(param, paramIntegration.getLogicName());
                 }
@@ -313,32 +313,6 @@ class IntegrationParams {
         Document document = db.parse(new ByteArrayInputStream(routeContent.getBytes()));
         String routeName = ((Node) xPath.evaluate("/routes/route[1]/from/@uri", document, XPathConstants.NODE)).getTextContent();
         return routeName;
-    }
-
-    /**
-     * 读取文件
-     *
-     * @param filePath
-     * @return
-     */
-    private static String fileReader(String filePath) {
-        if (!StringUtils.hasText(filePath)) {
-            throw new RuntimeException("the route file invalid...");
-        }
-        StringBuffer fileContent = new StringBuffer();
-        try {
-            InputStream stream = Thread.currentThread().getContextClassLoader()
-                    .getResourceAsStream(filePath);
-            BufferedReader in = new BufferedReader(new InputStreamReader(stream, "UTF-8"));
-            String str = null;
-            while ((str = in.readLine()) != null) {
-                fileContent.append(str + "\n");
-            }
-            in.close();
-        } catch (IOException e) {
-            throw new RuntimeException(filePath + " file not found or can`t resolve...");
-        }
-        return fileContent.toString();
     }
 
     /**

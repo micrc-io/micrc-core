@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.lib.ClassCastUtils;
+import io.micrc.lib.FileUtils;
 import io.micrc.lib.JsonUtil;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -13,12 +14,7 @@ import org.apache.camel.Exchange;
 import org.apache.camel.ExchangeProperties;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.util.StringUtils;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
@@ -224,7 +220,7 @@ class IntegrationParams {
                 executableIntegrationInfo.put("pageNumberPath", paramIntegration.getPageNumberPath());
             } else if (ParamIntegration.Type.INTEGRATE.equals(paramIntegration.getType())) {
                 // 集成
-                String protocolContent = fileReader(paramIntegration.getProtocol());
+                String protocolContent = FileUtils.fileReader(paramIntegration.getProtocol(), List.of("json"));
                 JsonNode protocolNode = JsonUtil.readTree(protocolContent);
                 // 如果能够集成,收集信息,然后会自动跳出循环
                 executableIntegrationInfo.put("protocol", paramIntegration.getProtocol());
@@ -287,32 +283,5 @@ class IntegrationParams {
         } catch (IllegalAccessException | InvocationTargetException | ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    /**
-     * 读取文件
-     *
-     * @param filePath
-     * @return
-     */
-    private static String fileReader(String filePath) {
-        if (!StringUtils.hasText(filePath) ||
-                (!filePath.endsWith(".xml") && !filePath.endsWith(".yaml") && !filePath.endsWith(".json"))) {
-            throw new RuntimeException("the openapi protocol file invalid...");
-        }
-        StringBuffer fileContent = new StringBuffer();
-        try {
-            InputStream stream = Thread.currentThread().getContextClassLoader()
-                    .getResourceAsStream(filePath);
-            BufferedReader in = new BufferedReader(new InputStreamReader(stream, "UTF-8"));
-            String str = null;
-            while ((str = in.readLine()) != null) {
-                fileContent.append(str);
-            }
-            in.close();
-        } catch (IOException e) {
-            throw new IllegalStateException(filePath + " file not found or can`t resolve...");
-        }
-        return fileContent.toString();
     }
 }

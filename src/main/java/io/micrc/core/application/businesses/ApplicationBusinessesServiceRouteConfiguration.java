@@ -9,6 +9,7 @@ import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteCon
 import io.micrc.core.persistence.snowflake.SnowFlakeIdentity;
 import io.micrc.core.rpc.LogicRequest;
 import io.micrc.lib.ClassCastUtils;
+import io.micrc.lib.FileUtils;
 import io.micrc.lib.JsonUtil;
 import io.micrc.lib.TimeReplaceUtil;
 import lombok.Data;
@@ -20,12 +21,7 @@ import org.apache.camel.Exchange;
 import org.apache.camel.ExchangeProperties;
 import org.apache.camel.support.ExpressionAdapter;
 import org.springframework.beans.BeanUtils;
-import org.springframework.util.StringUtils;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -546,7 +542,7 @@ class IntegrationCommandParams {
                 body = JsonUtil.patch(body, targetPath, JsonUtil.writeValueAsString(value));
             }
             if (!"".equals(commandParamIntegration.getProtocol())) {
-                String protocolContent = fileReader(commandParamIntegration.getProtocol());
+                String protocolContent = FileUtils.fileReader(commandParamIntegration.getProtocol(), List.of("json"));
                 JsonNode protocolNode = JsonUtil.readTree(protocolContent);
                 // 收集host
                 JsonNode urlNode = protocolNode
@@ -576,32 +572,5 @@ class IntegrationCommandParams {
         }
         log.info("业务可集成：{}，参数：{}", executableIntegrationInfo.get("paramName"), executableIntegrationInfo.get("integrateParams"));
         return executableIntegrationInfo;
-    }
-
-    /**
-     * 读取文件
-     *
-     * @param filePath
-     * @return
-     */
-    private static String fileReader(String filePath) {
-        if (!StringUtils.hasText(filePath) ||
-                (!filePath.endsWith(".xml") && !filePath.endsWith(".yaml") && !filePath.endsWith(".json"))) {
-            throw new RuntimeException("the openapi protocol file invalid...");
-        }
-        StringBuffer fileContent = new StringBuffer();
-        try {
-            InputStream stream = Thread.currentThread().getContextClassLoader()
-                    .getResourceAsStream(filePath);
-            BufferedReader in = new BufferedReader(new InputStreamReader(stream, "UTF-8"));
-            String str = null;
-            while ((str = in.readLine()) != null) {
-                fileContent.append(str);
-            }
-            in.close();
-        } catch (IOException e) {
-            throw new RuntimeException(filePath + " file not found or can`t resolve...");
-        }
-        return fileContent.toString();
     }
 }

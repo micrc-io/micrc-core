@@ -9,6 +9,7 @@ import io.micrc.core.rpc.RpcRestRouteConfiguration.AdaptersInfo;
 import io.micrc.core.rpc.RpcRestRouteConfiguration.RpcDefinition;
 import io.micrc.core.rpc.RpcRestRouteParamSource;
 import io.micrc.lib.ClassCastUtils;
+import io.micrc.lib.FileUtils;
 import io.micrc.lib.JsonUtil;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
@@ -28,8 +29,8 @@ import org.springframework.core.type.StandardAnnotationMetadata;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
 import org.springframework.util.StringUtils;
 
-import java.io.*;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -44,27 +45,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ClassPathRestEndpointScannerRegistrar implements ImportBeanDefinitionRegistrar, ResourceLoaderAware {
 
     private ResourceLoader resourceLoader;
-
-    public static String fileReader(String filePath) throws FileNotFoundException {
-        if (!StringUtils.hasText(filePath) ||
-                (!filePath.endsWith(".xml") && !filePath.endsWith(".yaml") && !filePath.endsWith(".json"))) {
-            throw new RuntimeException("the openapi protocol file invalid...");
-        }
-        StringBuffer fileContent = new StringBuffer();
-        try {
-            InputStream stream = Thread.currentThread().getContextClassLoader()
-                    .getResourceAsStream(filePath);
-            BufferedReader in = new BufferedReader(new InputStreamReader(stream, "UTF-8"));
-            String str = null;
-            while ((str = in.readLine()) != null) {
-                fileContent.append(str);
-            }
-            in.close();
-        } catch (IOException e) {
-            throw new FileNotFoundException("the openapi protocol file not found...");
-        }
-        return fileContent.toString();
-    }
 
     @Override
     public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry,
@@ -157,7 +137,7 @@ class RpcCommandScanner extends ClassPathBeanDefinitionScanner {
             String adapterName = beanDefinition.getBeanClass().getSimpleName();
             String protocolPath = commandAdapter.protocolPath();
             String routeProtocol = commandAdapter.routeProtocol();
-            String openapiProtocolJson = ClassPathRestEndpointScannerRegistrar.fileReader(protocolPath);
+            String openapiProtocolJson = FileUtils.fileReader(protocolPath, List.of("json"));
             Map<String, Object> pathsMap = ClassCastUtils.castHashMap(
                     JsonUtil.writeValueAsObject(JsonUtil.readTree(openapiProtocolJson).at("/paths").toString(),
                             HashMap.class),
@@ -235,7 +215,7 @@ class RpcDerivationScanner extends ClassPathBeanDefinitionScanner {
             String adapterName = beanDefinition.getBeanClass().getSimpleName();
             String protocolPath = derivationsAdapter.protocolPath();
             String routeProtocol = derivationsAdapter.routeProtocol();
-            String openapiProtocolJson = ClassPathRestEndpointScannerRegistrar.fileReader(protocolPath);
+            String openapiProtocolJson = FileUtils.fileReader(protocolPath, List.of("json"));
             Map<String, Object> pathsMap = ClassCastUtils.castHashMap(
                     JsonUtil.writeValueAsObject(JsonUtil.readTree(openapiProtocolJson).at("/paths").toString(),
                             HashMap.class),
@@ -313,7 +293,7 @@ class RpcPresentationScanner extends ClassPathBeanDefinitionScanner {
             String adapterName = beanDefinition.getBeanClass().getSimpleName();
             String protocolPath = presentationsAdapter.protocolPath();
             String routeProtocol = presentationsAdapter.routeProtocol();
-            String openapiProtocolJson = ClassPathRestEndpointScannerRegistrar.fileReader(protocolPath);
+            String openapiProtocolJson = FileUtils.fileReader(protocolPath, List.of("json"));
             Map<String, Object> pathsMap = ClassCastUtils.castHashMap(
                     JsonUtil.writeValueAsObject(JsonUtil.readTree(openapiProtocolJson).at("/paths").toString(),
                             HashMap.class),

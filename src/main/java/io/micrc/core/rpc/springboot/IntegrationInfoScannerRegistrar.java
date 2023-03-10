@@ -7,6 +7,7 @@ import io.micrc.core.annotations.application.businesses.DeriveIntegration;
 import io.micrc.core.annotations.application.presentations.PresentationsService;
 import io.micrc.core.rpc.IntegrationsInfo;
 import io.micrc.core.rpc.IntegrationsInfo.Integration;
+import io.micrc.lib.FileUtils;
 import io.micrc.lib.JsonUtil;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
@@ -24,9 +25,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.core.type.StandardAnnotationMetadata;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
-import org.springframework.util.StringUtils;
 
-import java.io.*;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -136,7 +135,7 @@ public class IntegrationInfoScannerRegistrar implements ImportBeanDefinitionRegi
 
         @SneakyThrows
         private Integration analysisOpenApiProtocol(String protocolFilePath) {
-            String protocolContent = this.fileReader(protocolFilePath);
+            String protocolContent = FileUtils.fileReader(protocolFilePath, List.of("json"));
             JsonNode protocolNode = JsonUtil.readTree(protocolContent);
             // 收集host
             JsonNode hostNode = protocolNode
@@ -151,27 +150,6 @@ public class IntegrationInfoScannerRegistrar implements ImportBeanDefinitionRegi
                     .operationId(operationNode.textValue())
                     .host(hostNode.textValue())
                     .build();
-        }
-
-        private String fileReader(String filePath) throws FileNotFoundException {
-            if (!StringUtils.hasText(filePath) ||
-                    (!filePath.endsWith(".xml") && !filePath.endsWith(".yaml") && !filePath.endsWith(".json"))) {
-                throw new RuntimeException("the openapi protocol file invalid...");
-            }
-            StringBuffer fileContent = new StringBuffer();
-            try {
-                InputStream stream = Thread.currentThread().getContextClassLoader()
-                        .getResourceAsStream(filePath);
-                BufferedReader in = new BufferedReader(new InputStreamReader(stream, "UTF-8"));
-                String str = null;
-                while ((str = in.readLine()) != null) {
-                    fileContent.append(str);
-                }
-                in.close();
-            } catch (IOException e) {
-                throw new FileNotFoundException("the openapi protocol file not found...");
-            }
-            return fileContent.toString();
         }
     }
 
