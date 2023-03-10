@@ -4,6 +4,7 @@ import io.micrc.core.annotations.integration.derivation.DerivationsAdapter;
 import io.micrc.core.integration.derivations.DerivationsAdapterRouteConfiguration;
 import io.micrc.core.integration.derivations.DerivationsAdapterRouteTemplateParameterSource;
 import io.micrc.core.integration.derivations.EnableDerivationsAdapter;
+import io.micrc.lib.FileUtils;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -25,6 +26,7 @@ import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -125,6 +127,16 @@ class ApplicationDerivationsAdapterScanner extends ClassPathBeanDefinitionScanne
             if (derivationsAdapter.custom()) {
                 continue;
             }
+            String requestMappingFile = derivationsAdapter.requestMappingFile();
+            String requestMapping = ".";
+            if (StringUtils.hasText(requestMappingFile)) {
+                requestMapping = FileUtils.fileReader(requestMappingFile, List.of("jslt"));
+            }
+            String responseMappingFile = derivationsAdapter.responseMappingFile();
+            String responseMapping = ".";
+            if (StringUtils.hasText(responseMappingFile)) {
+                responseMapping = FileUtils.fileReader(responseMappingFile, List.of("jslt"));
+            }
             String serviceName = derivationsAdapter.serviceName();
             sourceDefinition.addParameter(
                     routeId(adapterName),
@@ -132,6 +144,8 @@ class ApplicationDerivationsAdapterScanner extends ClassPathBeanDefinitionScanne
                             .templateId(DerivationsAdapterRouteConfiguration.ROUTE_TMPL_DERIVATIONS_ADAPTER)
                             .name(adapterName)
                             .serviceName(serviceName)
+                            .requestMapping(requestMapping)
+                            .responseMapping(responseMapping)
                             .build());
         }
         holders.clear();

@@ -5,6 +5,7 @@ import io.micrc.core.integration.businesses.ApplicationCommandAdapterRouteConfig
 import io.micrc.core.integration.businesses.ApplicationCommandAdapterRouteTemplateParameterSource;
 import io.micrc.core.integration.businesses.EnableCommandAdapter;
 import io.micrc.core.integration.message.MethodAdapterDesignException;
+import io.micrc.lib.FileUtils;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -132,6 +133,16 @@ class ApplicationCommandAdapterScanner extends ClassPathBeanDefinitionScanner {
 //                throw new MethodAdapterDesignException(" the application businesses adapter interface " + name + " need extends ApplicationCommandAdapter. please check");
 //            }
             CommandAdapter commandAdapter = beanDefinition.getBeanClass().getAnnotation(CommandAdapter.class);
+            String requestMappingFile = commandAdapter.requestMappingFile();
+            String requestMapping = ".";
+            if (StringUtils.hasText(requestMappingFile)) {
+                requestMapping = FileUtils.fileReader(requestMappingFile, List.of("jslt"));
+            }
+            String responseMappingFile = commandAdapter.responseMappingFile();
+            String responseMapping = ".";
+            if (StringUtils.hasText(responseMappingFile)) {
+                responseMapping = FileUtils.fileReader(responseMappingFile, List.of("jslt"));
+            }
             String serviceName = commandAdapter.serviceName();
             String servicePath = basePackages[0] + ".application.businesses." + commandAdapter.rootEntityName().toLowerCase() + "." + serviceName;
             Class<?> service = Class.forName(servicePath);
@@ -169,6 +180,8 @@ class ApplicationCommandAdapterScanner extends ClassPathBeanDefinitionScanner {
                             .name(adapterName)
                             .serviceName(serviceName)
                             .commandPath(commandPath)
+                            .requestMapping(requestMapping)
+                            .responseMapping(responseMapping)
 //                            .conceptionsJson(JsonUtil.writeValueAsString(conceptions))
                             .build());
         }

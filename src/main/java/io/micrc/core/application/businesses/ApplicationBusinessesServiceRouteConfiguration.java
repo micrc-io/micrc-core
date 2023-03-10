@@ -81,21 +81,21 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .setProperty("logicIntegrationJson").groovy("new String(java.util.Base64.getDecoder().decode('{{logicIntegrationJson}}'))")
                 .setProperty("timePathsJson", simple("{{timePathsJson}}"))
                 .transacted()
-                // 1 处理请求
+                // 1.处理请求
                 .to("direct://handle-request")
-                // 2 动态集成
+                // 2.动态集成
                 .to("direct://dynamic-integration")
-                // 3 复制资源
+                // 3.复制资源
                 .to("direct://copy-source")
-                // 4 解析时间
+                // 4.解析时间
                 .to("direct://parse-time")
-                // 5 执行逻辑
+                // 5.执行逻辑
                 .to("logic://logic-execute")
-                // 6 存储实体
+                // 6.存储实体
                 .to("direct://save-entity")
-                // 7 存储消息
+                // 7.存储消息
                 .to("direct://save-message")
-                // 8 处理结果
+                // 8.处理结果
                 .to("direct://handle-result")
                 .end();
 

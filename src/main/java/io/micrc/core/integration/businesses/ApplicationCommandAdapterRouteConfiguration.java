@@ -41,28 +41,51 @@ public class ApplicationCommandAdapterRouteConfiguration extends MicrcRouteBuild
                 .templateParameter("name", null, "the adapter name")
                 .templateParameter("serviceName", null, "the business service name")
                 .templateParameter("commandPath", null, "the command full path")
-//                .templateParameter("conceptionsJson", null, "the conceptions json")
+                .templateParameter("requestMapping", null, "the request mapping context")
+                .templateParameter("responseMapping", null, "the response mapping context")
                 .from("command:{{name}}?exchangePattern=InOut")
                 .setProperty("commandPath", constant("{{commandPath}}"))
-//                .setProperty("conceptionsJson", constant("{{conceptionsJson}}"))
-                .setProperty("paramsJson", body())
-//                .dynamicRouter(method(AdapterParamsHandler.class, "convert"))
-                .bean(AdapterParamsHandler.class, "convertCommand")
-                .setBody(exchangeProperty("command"))
+                .setProperty("requestMapping", simple("{{requestMapping}}"))
+                .setProperty("responseMapping", simple("{{responseMapping}}"))
+                // 1.请求映射
+                .to("direct://request-mapping-businesses")
+                // 2.转换命令
+                .to("direct://convert-command")
+                // 3.执行逻辑
                 .toD("bean://{{serviceName}}?method=execute")
+                // 4.统一返回
                 .to("direct://commandAdapterResult")
                 .end();
 
+        from("direct://convert-command")
+                .setProperty("paramsJson", body())
+                .bean(AdapterParamsHandler.class, "convertCommand")
+                .setBody(exchangeProperty("command"));
+
+        from("direct://request-mapping-businesses")
+                .setHeader("mappingContent", exchangeProperty("requestMapping"))
+                .to("json-mapping://content");
+
+        from("direct://response-mapping-businesses")
+                .setHeader("mappingContent", exchangeProperty("responseMapping"))
+                .to("json-mapping://content");
+
         // 命令适配器结果处理
         from("direct://commandAdapterResult")
-                .setProperty("command", body())
                 .marshal().json().convertBodyTo(String.class)
+                .setProperty("commandJson", body())
+                // 结果转换
+                .to("direct://response-mapping-businesses")
+                .unmarshal().json(Object.class)
+                .setProperty("commandResult", body())
+                // 错误信息
+                .setBody(exchangeProperty("commandJson"))
                 .setHeader("pointer", simple("/error"))
                 .to("json-patch://select")
                 .marshal().json().convertBodyTo(String.class)
                 .unmarshal().json(ErrorInfo.class)
-                // TODO 设置command对Data的映射,使用protocol读取其x-result-mapping.暂时使用command替代
-                .bean(Result.class, "result(${body}, ${exchange.properties.get(command)})");
+                .setProperty("errorInfo", body())
+                .bean(Result.class, "result(${body}, ${exchange.properties.get(commandResult)})");
     }
 
     /**
@@ -82,6 +105,16 @@ public class ApplicationCommandAdapterRouteConfiguration extends MicrcRouteBuild
         private String serviceName;
 
         private String commandPath;
+
+        /**
+         * 请求映射
+         */
+        String requestMapping;
+
+        /**
+         * 响应映射
+         */
+        String responseMapping;
 
 //        private String conceptionsJson;
     }

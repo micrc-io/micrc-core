@@ -31,10 +31,28 @@ public class PresentationsAdapterRouteConfiguration extends MicrcRouteBuilder {
         routeTemplate(ROUTE_TMPL_PRESENTATIONS_ADAPTER)
                 .templateParameter("name", null, "the presentations adapter name")
                 .templateParameter("serviceName", null, "the presentations service name")
+                .templateParameter("requestMapping", null, "the request mapping context")
+                .templateParameter("responseMapping", null, "the response mapping context")
                 .from("query:{{name}}")
+                .setProperty("requestMapping", simple("{{requestMapping}}"))
+                .setProperty("responseMapping", simple("{{responseMapping}}"))
+                // 1.请求映射
+                .to("direct://request-mapping-presentations")
+                // 2.执行逻辑
                 .toD("bean://{{serviceName}}?method=execute")
+                // 3.响应映射
+                .to("direct://response-mapping-presentations")
+                // 4.统一返回
                 .to("direct://presentationsAdapterResult")
                 .end();
+
+        from("direct://request-mapping-presentations")
+                .setHeader("mappingContent", exchangeProperty("requestMapping"))
+                .to("json-mapping://content");
+
+        from("direct://response-mapping-presentations")
+                .setHeader("mappingContent", exchangeProperty("responseMapping"))
+                .to("json-mapping://content");
 
         from("direct://presentationsAdapterResult")
                 .process(exchange -> {
@@ -75,5 +93,15 @@ public class PresentationsAdapterRouteConfiguration extends MicrcRouteBuilder {
          * @return
          */
         String serviceName;
+
+        /**
+         * 请求映射
+         */
+        String requestMapping;
+
+        /**
+         * 响应映射
+         */
+        String responseMapping;
     }
 }

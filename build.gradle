@@ -7,7 +7,7 @@ plugins {
 }
 
 group = 'io.micrc.core'
-version = 'v0.0.1-20230309-3'
+version = 'v0.0.1-20230310-3'
 sourceCompatibility = '11'
 targetCompatibility = '11'
 
@@ -49,7 +49,7 @@ dependencyManagement {
 
 dependencies {
     // annotation - micrc-annotations: gradle task - publishToMavenLocal
-    implementation "io.micrc.core:micrc-annotations:v0.0.1-20230227-6"
+    implementation "io.micrc.core:micrc-annotations:v0.0.1-20230310-1"
 
     // springboot basic
     implementation "org.springframework.boot:spring-boot-starter"
