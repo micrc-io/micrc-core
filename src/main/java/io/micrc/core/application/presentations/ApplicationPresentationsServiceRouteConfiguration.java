@@ -201,15 +201,19 @@ class IntegrationParams {
             String body = "{}";
             for (Map.Entry<String, String> entry : paramIntegration.getQueryParams().entrySet()) {
                 String targetPath = entry.getKey();
-                String sourcePath = entry.getValue();
                 targetPath = targetPath.startsWith("/") ? targetPath : "/" + targetPath;
+                String sourcePath = entry.getValue();
                 Object value = sourcePath.startsWith("/") ? JsonUtil.readPath(param, sourcePath) : JsonUtil.writeValueAsObject(sourcePath, Object.class);
                 if (null == value) {
                     continue integrates;
                 }
-                // 补全所有目的路径不存在的节点
-                body = JsonUtil.supplementNotExistsNode(body, targetPath);
-                body = JsonUtil.patch(body, targetPath, JsonUtil.writeValueAsString(value));
+                if (ParamIntegration.Type.INTEGRATE.equals(paramIntegration.getType())) {
+                    // 补全所有目的路径不存在的节点
+                    body = JsonUtil.supplementNotExistsNode(body, targetPath);
+                    body = JsonUtil.patch(body, targetPath, JsonUtil.writeValueAsString(value));
+                } else if (ParamIntegration.Type.QUERY.equals(paramIntegration.getType())) {
+                    body = JsonUtil.add(body, sourcePath, JsonUtil.writeValueAsString(value));
+                }
             }
             if (ParamIntegration.Type.QUERY.equals(paramIntegration.getType())) {
                 // 如果能够集成,收集信息,然后会自动跳出循环
