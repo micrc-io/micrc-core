@@ -25,13 +25,15 @@ import java.util.*;
  */
 public class RpcEnvironmentProcessor implements EnvironmentPostProcessor {
 
-    static final Map<String, String> APIDOCS = new HashMap<>();
+    public static final Map<String, String> APIDOCS = new HashMap<>();
 
     private static final String RPC_ENV_NAME = "micrc-rpc";
     private static final String REST_CONTEXT_PATH = "/api";
     private static final String REST_CONTEXT_PATH_PATTERN = REST_CONTEXT_PATH + "/*";
     private static final String APIDOC_BASE_PATH = "apidoc";
-    private static final String APIDOC_BASE_URI = "/" + APIDOC_BASE_PATH + "/";
+    public static final String APIDOC_BASE_URI = "/" + APIDOC_BASE_PATH + "/";
+
+    public static final String MOCK_SENDER_URL = "mock-sender";
 
     private final Log log;
 
@@ -73,7 +75,8 @@ public class RpcEnvironmentProcessor implements EnvironmentPostProcessor {
             Resource[] resources = new PathMatchingResourcePatternResolver()
                     .getResources(ResourceUtils.CLASSPATH_URL_PREFIX + APIDOC_BASE_PATH + "/**/*.json");
             // swagger config  read https://springdoc.org/v2/
-            for (int i = 0; i < resources.length; i++) {
+            int mockIndex = 0;
+            for (int i = 0; i < resources.length; mockIndex = ++i) {
                 Resource resource = resources[i];
                 String apidocUrl = base.getURI().relativize(resource.getURI()).getPath()
                         .replace(".json", "");
@@ -95,6 +98,10 @@ public class RpcEnvironmentProcessor implements EnvironmentPostProcessor {
                         REST_CONTEXT_PATH + APIDOC_BASE_URI + apidocUrl);
                 properties.setProperty("springdoc.swagger-ui.urls[" + i + "].name", apidocUrl);
             }
+            // 提前预置MOCK-SENDER的DOC信息，待监听器扫描时替换为真实的接口信息
+            APIDOCS.put(RpcEnvironmentProcessor.APIDOC_BASE_URI + MOCK_SENDER_URL, "{}");
+            properties.setProperty("springdoc.swagger-ui.urls[" + mockIndex + "].url", REST_CONTEXT_PATH + APIDOC_BASE_URI + MOCK_SENDER_URL);
+            properties.setProperty("springdoc.swagger-ui.urls[" + mockIndex + "].name", MOCK_SENDER_URL);
         } catch (IOException e) {
             throw new IllegalStateException("Unable load api doc file from '" + APIDOC_BASE_PATH + "'", e);
         }

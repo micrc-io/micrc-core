@@ -4,6 +4,7 @@ import io.micrc.core.EnableMicrcSupport;
 import io.micrc.core.annotations.message.MessageAdapter;
 import io.micrc.core.message.MessageMockSenderRouteConfiguration;
 import io.micrc.core.message.MessageMockSenderRouteTemplateParameterSource;
+import io.micrc.core.rpc.springboot.RpcEnvironmentProcessor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
@@ -122,6 +123,7 @@ class MessageMockSenderApiScanner extends ClassPathBeanDefinitionScanner {
     protected Set<BeanDefinitionHolder> doScan(String... basePackages) {
         this.addIncludeFilter(new AnnotationTypeFilter(MessageAdapter.class));
         Set<BeanDefinitionHolder> holders = super.doScan(basePackages);
+        StringBuilder path = new StringBuilder();
         for (BeanDefinitionHolder holder : holders) {
             GenericBeanDefinition beanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
             beanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
@@ -148,7 +150,43 @@ class MessageMockSenderApiScanner extends ClassPathBeanDefinitionScanner {
                     .topicName(topicName)
                     .build();
             sourceDefinition.addParameter(routeId(listenerName),build);
+            path.append("," +
+                    "\"/" + listenerName + "\": {\n" +
+                            "      \"post\": {\n" +
+                            "        \"operationId\": \"" + listenerName + "\",\n" +
+                            "        \"requestBody\": {\n" +
+                            "          \"content\": {\n" +
+                            "            \"application/json\": {\n" +
+                            "              \"schema\": {\n" +
+                            "              }\n" +
+                            "            }\n" +
+                            "          }\n" +
+                            "        },\n" +
+                            "        \"responses\": {\n" +
+                            "          \"content\": {\n" +
+                            "            \"application/json\": {\n" +
+                            "              \"schema\": {\n" +
+                            "              }\n" +
+                            "            }\n" +
+                            "          }\n" +
+                            "        }\n" +
+                            "      }\n" +
+                            "    }\n");
         }
+        String doc = "{\n" +
+                "  \"openapi\" : \"3.0.3\",\n" +
+                "  \"info\" : {\n" +
+                "    \"version\" : \"1.0.0\"\n" +
+                "  },\n" +
+                "  \"servers\" : [ {\n" +
+                "    \"url\" : \"http://localhost:8080/api\"\n" +
+                "  } ],\n" +
+                "  \"components\" : { },\n" +
+                "  \"paths\" : {\n" +
+                (path.length() == 0 ? path.toString() : path.substring(1)) +
+                "  }\n" +
+                "}";
+        RpcEnvironmentProcessor.APIDOCS.put(RpcEnvironmentProcessor.APIDOC_BASE_URI + RpcEnvironmentProcessor.MOCK_SENDER_URL, doc);
         holders.clear();
         return holders;
     }
