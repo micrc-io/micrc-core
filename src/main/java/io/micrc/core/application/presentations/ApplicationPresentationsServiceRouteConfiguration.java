@@ -86,8 +86,8 @@ public class ApplicationPresentationsServiceRouteConfiguration extends MicrcRout
 
         from("direct://handle-result-presentation")
                 .setBody(exchangeProperty("param"))
-                .setHeader("mappingFilePath", exchangeProperty("assembler"))
-                .to("json-mapping://file");
+                .setHeader("mappingContent", exchangeProperty("assembler"))
+                .to("json-mapping://content");
     }
 
     /**

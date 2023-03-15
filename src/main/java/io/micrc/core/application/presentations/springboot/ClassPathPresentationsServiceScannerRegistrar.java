@@ -9,6 +9,7 @@ import io.micrc.core.application.presentations.ApplicationPresentationsServiceRo
 import io.micrc.core.application.presentations.ApplicationPresentationsServiceRouteTemplateParameterSource;
 import io.micrc.core.application.presentations.EnablePresentationsService;
 import io.micrc.core.application.presentations.ParamIntegration;
+import io.micrc.lib.FileUtils;
 import io.micrc.lib.JsonUtil;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
@@ -152,7 +153,7 @@ class ApplicationPresentationsServiceScanner extends ClassPathBeanDefinitionScan
                             .templateId(ApplicationPresentationsServiceRouteConfiguration.ROUTE_TMPL_PRESENTATIONS_SERVICE)
                             .serviceName(serviceName)
                             .paramIntegrationsJson(JsonUtil.writeValueAsString(paramIntegrations))
-                            .assembler(presentationsService.assembler())
+                            .assembler(FileUtils.fileReader(presentationsService.assembler(), List.of("jslt")))
                             .build());
         }
         holders.clear();

@@ -10,6 +10,7 @@ import io.micrc.core.application.derivations.ApplicationDerivationsServiceRouteC
 import io.micrc.core.application.derivations.ApplicationDerivationsServiceRouteTemplateParameterSource;
 import io.micrc.core.application.derivations.EnableDerivationsService;
 import io.micrc.core.application.derivations.ParamIntegration;
+import io.micrc.lib.FileUtils;
 import io.micrc.lib.JsonUtil;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
@@ -162,7 +163,7 @@ class ApplicationDerivationsServiceScanner extends ClassPathBeanDefinitionScanne
                             .templateId(ApplicationDerivationsServiceRouteConfiguration.ROUTE_TMPL_DERIVATIONS_SERVICE)
                             .serviceName(serviceName)
                             .paramIntegrationsJson(JsonUtil.writeValueAsString(paramIntegrations))
-                            .assembler(derivationsService.assembler())
+                            .assembler(FileUtils.fileReader(derivationsService.assembler(), List.of("jslt")))
                             .timePathsJson(JsonUtil.writeValueAsString(timePaths))
                             .build());
         }

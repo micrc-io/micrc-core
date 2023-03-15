@@ -121,8 +121,8 @@ public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteB
 
         from("direct://handle-result-derivation")
                 .setBody(exchangeProperty("param"))
-                .setHeader("mappingFilePath", exchangeProperty("assembler"))
-                .to("json-mapping://file");
+                .setHeader("mappingContent", exchangeProperty("assembler"))
+                .to("json-mapping://content");
     }
 
     /**
