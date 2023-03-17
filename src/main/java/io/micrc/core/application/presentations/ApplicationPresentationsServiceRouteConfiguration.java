@@ -169,7 +169,7 @@ class IntegrationParams {
         String name = (String) current.get("name");
         ParamIntegration.Type currentIntegrateType = (ParamIntegration.Type) current.get("type");
         if (ParamIntegration.Type.QUERY.equals(currentIntegrateType) && body instanceof Optional) {
-            body = ((Optional<?>) body).orElseThrow();
+            body = ((Optional<?>) body).orElse(null);
         } else if (ParamIntegration.Type.INTEGRATE.equals(currentIntegrateType)) {
             body = JsonUtil.readPath((String) body, "/data");
         }

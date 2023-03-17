@@ -563,7 +563,7 @@ class IntegrationCommandParams {
         }
         if (null == executableIntegrationInfo.get("paramName")) {
             // 是否只剩下了可选集成
-            if (unIntegrateParams.values().stream().anyMatch(CommandParamIntegration::isIgnoreIfParamAbsent)) {
+            if (unIntegrateParams.values().stream().allMatch(CommandParamIntegration::isIgnoreIfParamAbsent)) {
                 log.info("业务忽略集成：{}", String.join(",", unIntegrateParams.keySet()));
                 return null;
             }
