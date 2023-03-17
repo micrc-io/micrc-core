@@ -1,7 +1,7 @@
 package io.micrc.lib;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -25,7 +25,7 @@ public final class ClassCastUtils {
      * @return params convert result
      */
     public static <K, V> Map<K, V> castHashMap(Object obj, Class<K> keyClass, Class<V> valueClass) {
-        Map<K, V> retVal = new HashMap<>();
+        Map<K, V> retVal = new LinkedHashMap<>();
         if (obj instanceof Map<?, ?>) {
             for (Map.Entry<?, ?> entry : ((Map<?, ?>) obj).entrySet()) {
                 retVal.put(keyClass.cast(entry.getKey()), valueClass.cast(entry.getValue()));

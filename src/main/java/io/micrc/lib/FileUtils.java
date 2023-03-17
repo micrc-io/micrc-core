@@ -34,13 +34,22 @@ public class FileUtils {
     }
 
     public static String fileReader(String filePath, List<String> suffixList) {
+        checkFileSuffix(filePath, suffixList);
+        return fileReader(filePath, true);
+    }
+
+    public static String fileReaderSingleLine(String filePath, List<String> suffixList) {
+        checkFileSuffix(filePath, suffixList);
+        return fileReader(filePath, false);
+    }
+
+    private static void checkFileSuffix(String filePath, List<String> suffixList) {
         if (!StringUtils.hasText(filePath) || null == suffixList || suffixList.stream().noneMatch(filePath::endsWith)) {
             throw new RuntimeException("the file suffix invalid.");
         }
-        return fileReader(filePath);
     }
 
-    public static String fileReader(String filePath) {
+    private static String fileReader(String filePath, boolean linefeed) {
         if (!StringUtils.hasText(filePath)) {
             throw new RuntimeException("the file path invalid.");
         }
@@ -51,7 +60,7 @@ public class FileUtils {
             BufferedReader in = new BufferedReader(new InputStreamReader(stream, "UTF-8"));
             String str = null;
             while ((str = in.readLine()) != null) {
-                fileContent.append(str).append("\n");
+                fileContent.append(str).append(linefeed ? "\n" : " ");
             }
             in.close();
         } catch (IOException e) {

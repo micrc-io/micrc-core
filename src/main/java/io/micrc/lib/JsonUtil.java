@@ -10,9 +10,16 @@ import com.fasterxml.jackson.databind.node.*;
 import com.fasterxml.jackson.databind.type.CollectionType;
 import com.github.fge.jsonpatch.JsonPatch;
 import com.github.fge.jsonpatch.JsonPatchException;
+import com.github.fge.jsonschema.core.report.ProcessingReport;
+import com.github.fge.jsonschema.main.JsonSchemaFactory;
+import com.github.fge.jsonschema.main.JsonValidator;
+import com.schibsted.spt.data.jslt.Expression;
+import com.schibsted.spt.data.jslt.Parser;
+import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class JsonUtil {
@@ -20,6 +27,8 @@ public class JsonUtil {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private static final ObjectMapper OBJECT_NULL_MAPPER = new ObjectMapper();
+
+    private static final JsonValidator JSON_VALIDATOR = JsonSchemaFactory.byDefault().getValidator();
 
     static {
         OBJECT_MAPPER.setSerializationInclusion(Include.NON_NULL);
@@ -112,6 +121,37 @@ public class JsonUtil {
             e.printStackTrace();
             throw new RuntimeException(e);
         }
+    }
+
+    public static String transAndCheck(String jslt, String string, String openApi) {
+        try {
+            Expression expression = Parser.compileString(jslt);
+            JsonNode resultNode = expression.apply(JsonUtil.readTree(string));
+            boolean checked;
+            if (StringUtils.hasText(openApi)) {
+                JsonNode openApiNode = JsonUtil.readTree(openApi);
+                // schema
+                JsonNode schemaNode = openApiNode.at("/paths")
+                        .iterator().next().at("/post/requestBody/content")
+                        .iterator().next().at("/schema");
+                // components
+                JsonNode componentsNode = openApiNode.at("/components");
+                // 合并
+                HashMap hashMap = writeValueAsObject(schemaNode.toString(), HashMap.class);
+                hashMap.put("components", writeValueAsObject(componentsNode.toString(), Object.class));
+                // 检查
+                ProcessingReport processingMessages = JSON_VALIDATOR.validateUnchecked(JsonUtil.readTree(hashMap), resultNode);
+                checked = processingMessages.isSuccess();
+            } else {
+                checked = !resultNode.isEmpty();
+            }
+            if (checked) {
+                return resultNode.toString();
+            }
+        } catch (Exception e) {
+            //
+        }
+        return null;
     }
 
     public static Object readPath(String json, String path) {

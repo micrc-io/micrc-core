@@ -171,7 +171,7 @@ class ApplicationPresentationsServiceScanner extends ClassPathBeanDefinitionScan
         List<ParamIntegration> paramIntegrations = new ArrayList<>();
         // 查询逻辑解析
         Arrays.stream(queryLogics).forEach(logic -> {
-            Map<String, String> paramPath = new HashMap<>();
+            Map<String, String> paramPath = new LinkedHashMap<>();
             // 解析查询参数
             Arrays.stream(logic.params()).forEach(param -> {
                 paramPath.put(param.toString(), param.path());
