@@ -25,6 +25,7 @@ ext {
     set('embedded-redis.version', '0.7.3')
     set('testcontainers.version', '2.2.10')
     set('jslt.version', '0.1.13')
+    set('json-schema-validator.version', '2.2.14')
 }
 
 configurations {
@@ -128,6 +129,7 @@ dependencies {
     implementation "net.javacrumbs.shedlock:shedlock-spring:${property('shedlock.version')}"
     implementation "net.javacrumbs.shedlock:shedlock-provider-redis-spring:${property('shedlock.version')}"
 
+    implementation "com.github.java-json-tools:json-schema-validator:${property('json-schema-validator.version')}"
 }
 
 processTestResources {
