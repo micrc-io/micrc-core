@@ -4,18 +4,13 @@ import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.core.rpc.ErrorInfo;
 import io.micrc.core.rpc.Result;
-import io.micrc.lib.ClassCastUtils;
 import io.micrc.lib.JsonUtil;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
-import org.apache.camel.Exchange;
 import org.apache.camel.ExchangeProperties;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * 应用业务服务适配器路由定义和参数bean定义
@@ -44,6 +39,7 @@ public class ApplicationCommandAdapterRouteConfiguration extends MicrcRouteBuild
                 .templateParameter("requestMapping", null, "the request mapping context")
                 .templateParameter("responseMapping", null, "the response mapping context")
                 .from("command:{{name}}?exchangePattern=InOut")
+                .setProperty("serviceName", simple("{{serviceName}}"))
                 .setProperty("commandPath", constant("{{commandPath}}"))
                 .setProperty("requestMapping", simple("{{requestMapping}}"))
                 .setProperty("responseMapping", simple("{{responseMapping}}"))
@@ -52,10 +48,13 @@ public class ApplicationCommandAdapterRouteConfiguration extends MicrcRouteBuild
                 // 2.转换命令
                 .to("direct://convert-command")
                 // 3.执行逻辑
-                .toD("bean://{{serviceName}}?method=execute")
+                .to("direct://execute-businesses")
                 // 4.统一返回
                 .to("direct://commandAdapterResult")
                 .end();
+
+        from("direct://execute-businesses")
+            .toD("bean://${exchange.properties.get(serviceName)}?method=execute");
 
         from("direct://convert-command")
                 .setProperty("paramsJson", body())
@@ -130,67 +129,67 @@ class AdapterParamsHandler {
         properties.put("command", commandInstance);
     }
 
-    public static String convert(
-            Exchange exchange,
-            @ExchangeProperties Map<String, Object> properties) throws ClassNotFoundException, NoSuchMethodException,
-            InvocationTargetException, InstantiationException, IllegalAccessException {
-        String paramsJson = (String) properties.get("paramsJson");
-        List<ConceptionParam> conceptions = ClassCastUtils.castArrayList(properties.get("conceptions"),
-                ConceptionParam.class);
-        Object command = properties.get("command");
-        // 处理第一次进来时的情况
-        if (null == conceptions) {
-            String conceptionsJson = (String) properties.get("conceptionsJson");
-            conceptions = JsonUtil.writeValueAsList(conceptionsJson, ConceptionParam.class);
-            properties.put("conceptions", conceptions);
-        }
-        if (null == command) {
-            Class<?> commandClazz = Class.forName((String) properties.get("commandPath"));
-            Object commandInstance = commandClazz.getConstructor().newInstance();
-            properties.put("command", commandInstance);
-            command = commandInstance;
-        }
-        // 处理上一次返回结果
-        String currentResolveParam = (String) properties.get("currentResolveParam");
-        if (null != currentResolveParam) {
-            assert conceptions != null;
-            for (ConceptionParam conception : conceptions) {
-                if (currentResolveParam.equals(conception.getName())) {
-                    Method[] methods = command.getClass().getMethods();
-                    Optional<Method> targetMethodOptional = Arrays.stream(methods).filter(method -> method.getName()
-                            .equals("set" + upperStringFirst(conception.getCommandInnerName()))).findFirst();
-                    if (targetMethodOptional.isEmpty()) {
-                        throw new ApplicationCommandAdapterDesignException(
-                                "command not found method to set value " + conception.getName()
-                                        + ", the target conception name is " + conception.getCommandInnerName());
-                    }
-                    Method targetMethod = targetMethodOptional.get();
-                    Class<?>[] parameterTypes = targetMethod.getParameterTypes();
-                    if (parameterTypes.length != 1) {
-                        throw new ApplicationCommandAdapterDesignException(
-                                "command target conception can not to set, please check target method params ");
-                    }
-                    Object value = JsonUtil.writeValueAsObject(String.valueOf(exchange.getIn().getBody()), parameterTypes[0]);
-                    targetMethod.invoke(command, value);
-                    conception.setResolved(true);
-                }
-            }
-        }
-        assert conceptions != null;
-        List<ConceptionParam> unResolveParams = conceptions.stream()
-                .filter(conceptionParam -> !conceptionParam.getResolved()).collect(Collectors.toList());
-        // 所有都处理完了
-        if (0 == unResolveParams.size()) {
-            return null;
-        }
-        unResolveParams.sort(Comparator.comparing(ConceptionParam::getOrder));
-        ConceptionParam conceptionParam = unResolveParams.get(0);
-        properties.put("currentResolveParam", conceptionParam.getName());
-        String body = JsonUtil.readTree(paramsJson).at("/" + conceptionParam.getName()).toString();
-        exchange.getIn().setHeader("mappingFilePath", conceptionParam.getTargetConceptionMappingPath());
-        exchange.getIn().setBody(body);
-        return "json-mapping://file";
-    }
+//    public static String convert(
+//            Exchange exchange,
+//            @ExchangeProperties Map<String, Object> properties) throws ClassNotFoundException, NoSuchMethodException,
+//            InvocationTargetException, InstantiationException, IllegalAccessException {
+//        String paramsJson = (String) properties.get("paramsJson");
+//        List<ConceptionParam> conceptions = ClassCastUtils.castArrayList(properties.get("conceptions"),
+//                ConceptionParam.class);
+//        Object command = properties.get("command");
+//        // 处理第一次进来时的情况
+//        if (null == conceptions) {
+//            String conceptionsJson = (String) properties.get("conceptionsJson");
+//            conceptions = JsonUtil.writeValueAsList(conceptionsJson, ConceptionParam.class);
+//            properties.put("conceptions", conceptions);
+//        }
+//        if (null == command) {
+//            Class<?> commandClazz = Class.forName((String) properties.get("commandPath"));
+//            Object commandInstance = commandClazz.getConstructor().newInstance();
+//            properties.put("command", commandInstance);
+//            command = commandInstance;
+//        }
+//        // 处理上一次返回结果
+//        String currentResolveParam = (String) properties.get("currentResolveParam");
+//        if (null != currentResolveParam) {
+//            assert conceptions != null;
+//            for (ConceptionParam conception : conceptions) {
+//                if (currentResolveParam.equals(conception.getName())) {
+//                    Method[] methods = command.getClass().getMethods();
+//                    Optional<Method> targetMethodOptional = Arrays.stream(methods).filter(method -> method.getName()
+//                            .equals("set" + upperStringFirst(conception.getCommandInnerName()))).findFirst();
+//                    if (targetMethodOptional.isEmpty()) {
+//                        throw new ApplicationCommandAdapterDesignException(
+//                                "command not found method to set value " + conception.getName()
+//                                        + ", the target conception name is " + conception.getCommandInnerName());
+//                    }
+//                    Method targetMethod = targetMethodOptional.get();
+//                    Class<?>[] parameterTypes = targetMethod.getParameterTypes();
+//                    if (parameterTypes.length != 1) {
+//                        throw new ApplicationCommandAdapterDesignException(
+//                                "command target conception can not to set, please check target method params ");
+//                    }
+//                    Object value = JsonUtil.writeValueAsObject(String.valueOf(exchange.getIn().getBody()), parameterTypes[0]);
+//                    targetMethod.invoke(command, value);
+//                    conception.setResolved(true);
+//                }
+//            }
+//        }
+//        assert conceptions != null;
+//        List<ConceptionParam> unResolveParams = conceptions.stream()
+//                .filter(conceptionParam -> !conceptionParam.getResolved()).collect(Collectors.toList());
+//        // 所有都处理完了
+//        if (0 == unResolveParams.size()) {
+//            return null;
+//        }
+//        unResolveParams.sort(Comparator.comparing(ConceptionParam::getOrder));
+//        ConceptionParam conceptionParam = unResolveParams.get(0);
+//        properties.put("currentResolveParam", conceptionParam.getName());
+//        String body = JsonUtil.readTree(paramsJson).at("/" + conceptionParam.getName()).toString();
+//        exchange.getIn().setHeader("mappingFilePath", conceptionParam.getTargetConceptionMappingPath());
+//        exchange.getIn().setBody(body);
+//        return "json-mapping://file";
+//    }
 
     private static String upperStringFirst(String str) {
         char[] strChars = str.toCharArray();

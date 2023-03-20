@@ -34,17 +34,21 @@ public class PresentationsAdapterRouteConfiguration extends MicrcRouteBuilder {
                 .templateParameter("requestMapping", null, "the request mapping context")
                 .templateParameter("responseMapping", null, "the response mapping context")
                 .from("query:{{name}}")
+                .setProperty("serviceName", simple("{{serviceName}}"))
                 .setProperty("requestMapping", simple("{{requestMapping}}"))
                 .setProperty("responseMapping", simple("{{responseMapping}}"))
                 // 1.请求映射
                 .to("direct://request-mapping-presentations")
                 // 2.执行逻辑
-                .toD("bean://{{serviceName}}?method=execute")
+                .to("direct://execute-presentations")
                 // 3.响应映射
                 .to("direct://response-mapping-presentations")
                 // 4.统一返回
                 .to("direct://presentationsAdapterResult")
                 .end();
+
+        from("direct://execute-presentations")
+                .toD("bean://${exchange.properties.get(serviceName)}?method=execute");
 
         from("direct://request-mapping-presentations")
                 .setHeader("mappingContent", exchangeProperty("requestMapping"))

@@ -35,6 +35,7 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
 import java.io.ByteArrayInputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Objects;
@@ -298,7 +299,13 @@ public class CamelComponentTempConfiguration {
 
             private String getErrorMessage(Exchange exchange) {
                 Throwable throwable = exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Throwable.class);
-                String message = Objects.requireNonNullElse(throwable.getCause(), throwable).getLocalizedMessage();
+                Throwable causeThrowable = Objects.requireNonNullElse(throwable.getCause(), throwable);
+                String message;
+                if (InvocationTargetException.class.equals(causeThrowable.getClass())) {
+                    message = ((InvocationTargetException) causeThrowable).getTargetException().getLocalizedMessage();
+                } else {
+                    message = causeThrowable.getLocalizedMessage();
+                }
                 log.error(message);
                 return message;
             }

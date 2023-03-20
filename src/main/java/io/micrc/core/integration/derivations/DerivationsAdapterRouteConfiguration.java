@@ -35,17 +35,21 @@ public class DerivationsAdapterRouteConfiguration extends MicrcRouteBuilder {
                 .templateParameter("responseMapping", null, "the response mapping context")
                 .from("operate:{{name}}")
                 .routeId("operate-{{name}}")
+                .setProperty("serviceName", simple("{{serviceName}}"))
                 .setProperty("requestMapping", simple("{{requestMapping}}"))
                 .setProperty("responseMapping", simple("{{responseMapping}}"))
                 // 1.请求映射
                 .to("direct://request-mapping-derivations")
                 // 2.执行逻辑
-                .toD("bean://{{serviceName}}?method=execute")
+                .to("direct://execute-derivations")
                 // 3.响应映射
                 .to("direct://response-mapping-derivations")
                 // 4.统一返回
                 .to("direct://derivationsAdapterResult")
                 .end();
+
+        from("direct://execute-derivations")
+                .toD("bean://${exchange.properties.get(serviceName)}?method=execute");
 
         from("direct://request-mapping-derivations")
                 .setHeader("mappingContent", exchangeProperty("requestMapping"))
