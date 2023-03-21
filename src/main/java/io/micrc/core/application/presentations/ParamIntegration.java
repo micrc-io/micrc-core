@@ -24,11 +24,6 @@ public class ParamIntegration {
     private String concept;
 
     /**
-     * openApi集成协议 - 注解输入
-     */
-    private String protocol;
-
-    /**
      * 聚合
      *
      * @return
@@ -65,6 +60,25 @@ public class ParamIntegration {
     private String pageSizePath;
 
     /**
+     * openApi集成协议 - 注解输入
+     */
+    private String protocol;
+
+    /**
+     * 请求映射文件
+     *
+     * @return
+     */
+    private String requestMapping;
+
+    /**
+     * 响应映射文件
+     *
+     * @return
+     */
+    private String responseMapping;
+
+    /**
      * 该参数是否已经集成
      */
     private Boolean integrationComplete = false;
@@ -79,11 +93,12 @@ public class ParamIntegration {
      */
     private Type type;
 
-    public ParamIntegration(String concept, String protocol, int order, Map<String, String> paramMappings) {
+    public ParamIntegration(String concept, String protocol, String requestMapping, String responseMapping, int order) {
         this.concept = concept;
         this.protocol = protocol;
         this.order = order;
-        this.queryParams = paramMappings;
+        this.requestMapping = requestMapping;
+        this.responseMapping = responseMapping;
         this.type = Type.INTEGRATE;
     }
 

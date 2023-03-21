@@ -1,7 +1,6 @@
 package io.micrc.core.application.presentations.springboot;
 
 import io.micrc.core.annotations.application.presentations.Integration;
-import io.micrc.core.annotations.application.presentations.IntegrationMapping;
 import io.micrc.core.annotations.application.presentations.PresentationsService;
 import io.micrc.core.annotations.application.presentations.QueryLogic;
 import io.micrc.core.application.presentations.ApplicationPresentationsServiceRouteConfiguration;
@@ -185,8 +184,12 @@ class ApplicationPresentationsServiceScanner extends ClassPathBeanDefinitionScan
         // 集成解析
         Arrays.stream(integrations).forEach(integration -> {
             // 参数映射
-            Map<String, String> paramMappings = Arrays.stream(integration.integrationMapping()).collect(Collectors.toMap(IntegrationMapping::name, IntegrationMapping::mapping));
-            paramIntegrations.add(new ParamIntegration(integration.name(), integration.protocol(), integration.order(), paramMappings));
+            String reqFile = integration.requestMappingFile();
+            String resFile = integration.responseMappingFile();
+            paramIntegrations.add(new ParamIntegration(integration.name(), integration.protocol(),
+                    StringUtils.hasText(reqFile) ? FileUtils.fileReaderSingleLine(reqFile, List.of("jslt")) : ".",
+                    StringUtils.hasText(resFile) ? FileUtils.fileReaderSingleLine(resFile, List.of("jslt")) : ".",
+                    integration.order()));
         });
         // 按照优先级排序
         paramIntegrations.sort(Comparator.comparing(ParamIntegration::getOrder));

@@ -14,6 +14,7 @@ import org.apache.camel.Exchange;
 import org.apache.camel.ExchangeProperties;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.util.StringUtils;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -173,7 +174,14 @@ class IntegrationParams {
         } else if (ParamIntegration.Type.INTEGRATE.equals(currentIntegrateType)) {
             body = JsonUtil.readPath((String) body, "/data");
         }
-        log.info("展示已集成：{}，结果：{}", name, JsonUtil.writeValueAsString(body));
+        String responseMapping = (String) current.get("responseMapping");
+        String data = null;
+        if (StringUtils.hasText(responseMapping)) {
+            data = JsonUtil.transform(responseMapping, JsonUtil.writeValueAsString(body));
+        } else {
+            data = JsonUtil.writeValueAsString(body);
+        }
+        log.info("展示已集成：{}，结果：{}", name, data);
         List<ParamIntegration> paramIntegrations = ClassCastUtils.castArrayList(exchange.getProperties().get("paramIntegrations"), ParamIntegration.class);
         // 将上次执行的结果放回至原有属性集成参数之中
         ParamIntegration find = paramIntegrations.stream()
@@ -181,7 +189,7 @@ class IntegrationParams {
                 .findFirst().orElseThrow();
         // 标识该参数已成功
         find.setIntegrationComplete(true);
-        param = JsonUtil.add(param, "/" + find.getConcept(), JsonUtil.writeValueAsString(body));
+        param = JsonUtil.add(param, "/" + find.getConcept(), data);
         exchange.getProperties().put("param", param);
         exchange.getProperties().put("paramIntegrations", paramIntegrations);
     }
@@ -199,23 +207,15 @@ class IntegrationParams {
         integrates: for (ParamIntegration paramIntegration : unIntegrateParams) {
             // 获取当前查询的每个参数
             String body = "{}";
-            for (Map.Entry<String, String> entry : paramIntegration.getQueryParams().entrySet()) {
-                String targetPath = entry.getKey();
-                targetPath = targetPath.startsWith("/") ? targetPath : "/" + targetPath;
-                String sourcePath = entry.getValue();
-                Object value = sourcePath.startsWith("/") ? JsonUtil.readPath(param, sourcePath) : JsonUtil.writeValueAsObject(sourcePath, Object.class);
-                if (null == value) {
-                    continue integrates;
-                }
-                if (ParamIntegration.Type.INTEGRATE.equals(paramIntegration.getType())) {
-                    // 补全所有目的路径不存在的节点
-                    body = JsonUtil.supplementNotExistsNode(body, targetPath);
-                    body = JsonUtil.patch(body, targetPath, JsonUtil.writeValueAsString(value));
-                } else if (ParamIntegration.Type.QUERY.equals(paramIntegration.getType())) {
+            if (ParamIntegration.Type.QUERY.equals(paramIntegration.getType())) {
+                for (Map.Entry<String, String> entry : paramIntegration.getQueryParams().entrySet()) {
+                    String sourcePath = entry.getValue();
+                    Object value = sourcePath.startsWith("/") ? JsonUtil.readPath(param, sourcePath) : JsonUtil.writeValueAsObject(sourcePath, Object.class);
+                    if (null == value) {
+                        continue integrates;
+                    }
                     body = JsonUtil.add(body, sourcePath, JsonUtil.writeValueAsString(value));
                 }
-            }
-            if (ParamIntegration.Type.QUERY.equals(paramIntegration.getType())) {
                 // 如果能够集成,收集信息,然后会自动跳出循环
                 executableIntegrationInfo.put("aggregation", paramIntegration.getAggregation());
                 executableIntegrationInfo.put("method", paramIntegration.getQueryMethod());
@@ -223,8 +223,12 @@ class IntegrationParams {
                 executableIntegrationInfo.put("pageSizePath", paramIntegration.getPageSizePath());
                 executableIntegrationInfo.put("pageNumberPath", paramIntegration.getPageNumberPath());
             } else if (ParamIntegration.Type.INTEGRATE.equals(paramIntegration.getType())) {
-                // 集成
                 String protocolContent = FileUtils.fileReader(paramIntegration.getProtocol(), List.of("json"));
+                body = JsonUtil.transAndCheck(paramIntegration.getRequestMapping(), param, protocolContent);
+                if (null == body) {
+                    continue;
+                }
+                // 集成
                 JsonNode protocolNode = JsonUtil.readTree(protocolContent);
                 // 如果能够集成,收集信息,然后会自动跳出循环
                 executableIntegrationInfo.put("protocol", paramIntegration.getProtocol());
@@ -238,6 +242,7 @@ class IntegrationParams {
                         .at("/paths").elements().next().elements().next()
                         .at("/operationId");
                 executableIntegrationInfo.put("operationId", operationNode.textValue());
+                executableIntegrationInfo.put("responseMapping", paramIntegration.getResponseMapping());
             }
             executableIntegrationInfo.put("params", JsonUtil.writeValueAsObject(body, Object.class));
             executableIntegrationInfo.put("name", paramIntegration.getConcept());

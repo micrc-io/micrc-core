@@ -21,6 +21,7 @@ import org.apache.camel.Exchange;
 import org.apache.camel.ExchangeProperties;
 import org.apache.camel.support.ExpressionAdapter;
 import org.springframework.beans.BeanUtils;
+import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
 import java.util.List;
@@ -536,13 +537,16 @@ class IntegrationCommandParams {
         Map<String, Object> executableIntegrationInfo = new HashMap<>();
         for (String key : unIntegrateParams.keySet()) {
             CommandParamIntegration commandParamIntegration = unIntegrateParams.get(key);
-            String protocolContent = FileUtils.fileReader(commandParamIntegration.getProtocol(), List.of("json"));
+            String protocolContent = null;
+            if (StringUtils.hasText(commandParamIntegration.getProtocol())) {
+                protocolContent = FileUtils.fileReader(commandParamIntegration.getProtocol(), List.of("json"));
+            }
             // 获取当前查询的每个参数
             String body = JsonUtil.transAndCheck(commandParamIntegration.getRequestMapping(), commandJson, protocolContent);
             if (null == body) {
                 continue;
             }
-            if (!"".equals(commandParamIntegration.getProtocol())) {
+            if (StringUtils.hasText(commandParamIntegration.getProtocol())) {
                 JsonNode protocolNode = JsonUtil.readTree(protocolContent);
                 // 收集host
                 JsonNode urlNode = protocolNode
