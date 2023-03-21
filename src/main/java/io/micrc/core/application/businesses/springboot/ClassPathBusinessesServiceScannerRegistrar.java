@@ -9,6 +9,7 @@ import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteCon
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.LogicIntegration;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteTemplateParameterSource;
 import io.micrc.core.application.businesses.EnableBusinessesService;
+import io.micrc.lib.FileUtils;
 import io.micrc.lib.JsonUtil;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
@@ -183,11 +184,10 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
             Arrays.stream(commandFields).forEach(field -> {
                 RepositoryIntegration repositoryIntegration = field.getAnnotation(RepositoryIntegration.class);
                 if (null != repositoryIntegration) {
-                    HashMap<String, String> map = new HashMap<>();
-                    map.put("id", repositoryIntegration.idPath());
                     CommandParamIntegration commandParamIntegration = CommandParamIntegration.builder()
                             .paramName(field.getName())
-                            .paramMappings(map)
+                            .requestMapping("{\"id\": " + repositoryIntegration.idPath().replaceAll("/", ".") + "}")
+                            .responseMapping(".")
                             .ignoreIfParamAbsent(repositoryIntegration.ignoreIfParamAbsent())
                             .protocol("")
                             .build();
@@ -196,10 +196,12 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
                 DeriveIntegration deriveIntegration = field.getAnnotation(DeriveIntegration.class);
                 if (null != deriveIntegration) {
                     // 参数映射
-                    Map<String, String> paramMappings = Arrays.stream(deriveIntegration.integrationMapping()).collect(Collectors.toMap(IntegrationMapping::name, IntegrationMapping::mapping));
+                    String reqFile = deriveIntegration.requestMappingFile();
+                    String resFile = deriveIntegration.responseMappingFile();
                     CommandParamIntegration commandParamIntegration = CommandParamIntegration.builder()
                             .paramName(field.getName())
-                            .paramMappings(paramMappings)
+                            .requestMapping(StringUtils.hasText(reqFile) ? FileUtils.fileReaderSingleLine(reqFile, List.of("jslt")) : ".")
+                            .responseMapping(StringUtils.hasText(resFile) ? FileUtils.fileReaderSingleLine(resFile, List.of("jslt")) : ".")
                             .protocol(deriveIntegration.protocolPath())
                             .build();
                     commandParamIntegrations.add(commandParamIntegration);

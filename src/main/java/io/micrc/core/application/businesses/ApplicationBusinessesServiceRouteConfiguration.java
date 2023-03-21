@@ -350,9 +350,18 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
         private boolean ignoreIfParamAbsent;
 
         /**
-         * 参数映射
+         * 请求映射文件
+         *
+         * @return
          */
-        private Map<String, String> paramMappings;
+        private String requestMapping;
+
+        /**
+         * 响应映射文件
+         *
+         * @return
+         */
+        private String responseMapping;
 
         /**
          * openApi集成协议 - 注解输入
@@ -503,8 +512,9 @@ class IntegrationCommandParams {
             }
             body = JsonUtil.readPath((String) body, "/data");
         }
-        log.info("业务已集成：{}，结果：{}", name, JsonUtil.writeValueAsString(body));
-        commandJson = JsonUtil.patch(commandJson, "/" + name, JsonUtil.writeValueAsString(body));
+        String data = JsonUtil.transform(unIntegrateParams.get(name).getResponseMapping(), JsonUtil.writeValueAsString(body));
+        log.info("业务已集成：{}，结果：{}", name, data);
+        commandJson = JsonUtil.patch(commandJson, "/" + name, data);
         exchange.getProperties().put("commandJson", commandJson);
         unIntegrateParams.remove(name);
         exchange.getProperties().put("currentIntegrateParam", current);
@@ -524,25 +534,15 @@ class IntegrationCommandParams {
         }
         log.info("业务未集成：{}", String.join(",", unIntegrateParams.keySet()));
         Map<String, Object> executableIntegrationInfo = new HashMap<>();
-        integrates:
         for (String key : unIntegrateParams.keySet()) {
             CommandParamIntegration commandParamIntegration = unIntegrateParams.get(key);
+            String protocolContent = FileUtils.fileReader(commandParamIntegration.getProtocol(), List.of("json"));
             // 获取当前查询的每个参数
-            String body = "{}";
-            for (Map.Entry<String, String> entry : commandParamIntegration.getParamMappings().entrySet()) {
-                String targetPath = entry.getKey();
-                String sourcePath = entry.getValue();
-                targetPath = targetPath.startsWith("/") ? targetPath : "/" + targetPath;
-                Object value = sourcePath.startsWith("/") ? JsonUtil.readPath(commandJson, sourcePath) : JsonUtil.writeValueAsObject(sourcePath, Object.class);
-                if (null == value) {
-                    continue integrates;
-                }
-                // 补全所有目的路径不存在的节点
-                body = JsonUtil.supplementNotExistsNode(body, targetPath);
-                body = JsonUtil.patch(body, targetPath, JsonUtil.writeValueAsString(value));
+            String body = JsonUtil.transAndCheck(commandParamIntegration.getRequestMapping(), commandJson, protocolContent);
+            if (null == body) {
+                continue;
             }
             if (!"".equals(commandParamIntegration.getProtocol())) {
-                String protocolContent = FileUtils.fileReader(commandParamIntegration.getProtocol(), List.of("json"));
                 JsonNode protocolNode = JsonUtil.readTree(protocolContent);
                 // 收集host
                 JsonNode urlNode = protocolNode

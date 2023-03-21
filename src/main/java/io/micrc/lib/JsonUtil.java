@@ -123,6 +123,12 @@ public class JsonUtil {
         }
     }
 
+    public static String transform(String jslt, String string) {
+        Expression expression = Parser.compileString(jslt);
+        JsonNode resultNode = expression.apply(JsonUtil.readTree(string));
+        return resultNode.toString();
+    }
+
     public static String transAndCheck(String jslt, String string, String openApi) {
         try {
             Expression expression = Parser.compileString(jslt);
