@@ -113,6 +113,7 @@ public class ParamIntegration {
         this.pageSizePath = pageSizePath;
         this.pageNumberPath = pageNumberPath;
         this.order = order;
+        this.responseMapping = ".";
         this.type = Type.QUERY;
     }
 

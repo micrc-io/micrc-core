@@ -175,12 +175,7 @@ class IntegrationParams {
             body = JsonUtil.readPath((String) body, "/data");
         }
         String responseMapping = (String) current.get("responseMapping");
-        String data = null;
-        if (StringUtils.hasText(responseMapping)) {
-            data = JsonUtil.transform(responseMapping, JsonUtil.writeValueAsString(body));
-        } else {
-            data = JsonUtil.writeValueAsString(body);
-        }
+        String data = JsonUtil.transform(responseMapping, JsonUtil.writeValueAsString(body));
         log.info("展示已集成：{}，结果：{}", name, data);
         List<ParamIntegration> paramIntegrations = ClassCastUtils.castArrayList(exchange.getProperties().get("paramIntegrations"), ParamIntegration.class);
         // 将上次执行的结果放回至原有属性集成参数之中
