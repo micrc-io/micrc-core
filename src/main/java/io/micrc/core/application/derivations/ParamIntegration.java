@@ -62,10 +62,13 @@ public class ParamIntegration {
     private String pageSizePath;
 
     /**
-     * 逻辑名称，执行指定DMN
+     * 内容位置
      */
-    private String logicName;
+    private String contentPath;
 
+    /**
+     * 文件位置
+     */
     private String filePath;
 
     /**
@@ -85,11 +88,11 @@ public class ParamIntegration {
 
     private TechnologyType technologyType;
 
-    public ParamIntegration(String concept, HashMap<String, String> queryParams, String logicName, String filePath, int order, Type type, TechnologyType technologyType) {
+    public ParamIntegration(String concept, HashMap<String, String> queryParams, String contentPath, String filePath, int order, Type type, TechnologyType technologyType) {
         this.concept = concept;
         this.queryParams = queryParams;
         this.order = order;
-        this.logicName = logicName;
+        this.contentPath = contentPath;
         this.filePath = filePath;
         this.type = type;
         this.technologyType = technologyType;

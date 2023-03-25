@@ -275,8 +275,8 @@ class IntegrationParams {
                 String routeContent = null;
                 if (null != paramIntegration.getFilePath() && !paramIntegration.getFilePath().isEmpty()) {
                     routeContent = FileUtils.fileReader(paramIntegration.getFilePath(), List.of("xml", "dmn", "groovy", "jslt"));
-                } else if (null != paramIntegration.getLogicName() && !paramIntegration.getLogicName().isEmpty()) {
-                    routeContent = (String) JsonUtil.readPath(param, paramIntegration.getLogicName());
+                } else if (null != paramIntegration.getContentPath() && !paramIntegration.getContentPath().isEmpty()) {
+                    routeContent = (String) JsonUtil.readPath(param, paramIntegration.getContentPath());
                 }
                 executableIntegrationInfo.put("logic", routeContent); // 路由内容为null时，会根据technologyType执行内置路由
                 executableIntegrationInfo.put("params", JsonUtil.writeValueAsString(paramMap));
@@ -289,8 +289,8 @@ class IntegrationParams {
                 String routeContent = null;
                 if (null != paramIntegration.getFilePath() && !paramIntegration.getFilePath().isEmpty()) {
                     routeContent = FileUtils.fileReader(paramIntegration.getFilePath(), List.of("xml"));
-                } else if (null != paramIntegration.getLogicName() && !paramIntegration.getLogicName().isEmpty()) {
-                    routeContent = (String) JsonUtil.readPath(param, paramIntegration.getLogicName());
+                } else if (null != paramIntegration.getContentPath() && !paramIntegration.getContentPath().isEmpty()) {
+                    routeContent = (String) JsonUtil.readPath(param, paramIntegration.getContentPath());
                 }
                 if (null == routeContent) {
                     continue;
@@ -308,6 +308,9 @@ class IntegrationParams {
     }
 
     private static String findRouteName(String routeContent) throws ParserConfigurationException, SAXException, IOException, XPathExpressionException {
+        if (null == routeContent) {
+            return null;
+        }
         DocumentBuilder db = DocumentBuilderFactory.newInstance().newDocumentBuilder();
         XPath xPath = XPathFactory.newInstance().newXPath();
         Document document = db.parse(new ByteArrayInputStream(routeContent.getBytes()));
