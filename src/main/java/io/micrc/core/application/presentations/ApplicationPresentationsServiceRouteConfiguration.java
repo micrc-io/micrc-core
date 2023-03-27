@@ -14,7 +14,6 @@ import org.apache.camel.Exchange;
 import org.apache.camel.ExchangeProperties;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.util.StringUtils;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -199,24 +198,19 @@ class IntegrationParams {
     public static Map<String, Object> findExecutable(List<ParamIntegration> unIntegrateParams, String param) {
 
         Map<String, Object> executableIntegrationInfo = new HashMap<>();
-        integrates: for (ParamIntegration paramIntegration : unIntegrateParams) {
+        for (ParamIntegration paramIntegration : unIntegrateParams) {
             // 获取当前查询的每个参数
-            String body = "{}";
+            String body;
             if (ParamIntegration.Type.QUERY.equals(paramIntegration.getType())) {
-                for (Map.Entry<String, String> entry : paramIntegration.getQueryParams().entrySet()) {
-                    String sourcePath = entry.getValue();
-                    Object value = sourcePath.startsWith("/") ? JsonUtil.readPath(param, sourcePath) : JsonUtil.writeValueAsObject(sourcePath, Object.class);
-                    if (null == value) {
-                        continue integrates;
-                    }
-                    body = JsonUtil.add(body, sourcePath, JsonUtil.writeValueAsString(value));
+                List<String> params = paramIntegration.getParamMappings().stream()
+                        .map(mapping -> JsonUtil.transAndCheck(mapping, param, null)).collect(Collectors.toList());
+                if (params.stream().anyMatch(Objects::isNull)) {
+                    continue;
                 }
+                executableIntegrationInfo.put("params", params);
                 // 如果能够集成,收集信息,然后会自动跳出循环
                 executableIntegrationInfo.put("aggregation", paramIntegration.getAggregation());
                 executableIntegrationInfo.put("method", paramIntegration.getQueryMethod());
-                executableIntegrationInfo.put("sorts", paramIntegration.getSortParams());
-                executableIntegrationInfo.put("pageSizePath", paramIntegration.getPageSizePath());
-                executableIntegrationInfo.put("pageNumberPath", paramIntegration.getPageNumberPath());
             } else if (ParamIntegration.Type.INTEGRATE.equals(paramIntegration.getType())) {
                 String protocolContent = FileUtils.fileReader(paramIntegration.getProtocol(), List.of("json"));
                 body = JsonUtil.transAndCheck(paramIntegration.getRequestMapping(), param, protocolContent);
@@ -237,9 +231,9 @@ class IntegrationParams {
                         .at("/paths").elements().next().elements().next()
                         .at("/operationId");
                 executableIntegrationInfo.put("operationId", operationNode.textValue());
-                executableIntegrationInfo.put("responseMapping", paramIntegration.getResponseMapping());
+                executableIntegrationInfo.put("params", JsonUtil.writeValueAsObject(body, Object.class));
             }
-            executableIntegrationInfo.put("params", JsonUtil.writeValueAsObject(body, Object.class));
+            executableIntegrationInfo.put("responseMapping", paramIntegration.getResponseMapping());
             executableIntegrationInfo.put("name", paramIntegration.getConcept());
             executableIntegrationInfo.put("type", paramIntegration.getType());
         }
@@ -257,31 +251,35 @@ class IntegrationParams {
      * @return
      */
     public static Object executeQuery(Exchange exchange, Map<String, Object> body) {
-        Object pageSize = JsonUtil.readPath((String) exchange.getProperty("param"), (String) body.get("pageSizePath"));
-        Object pageNumber = JsonUtil.readPath((String) exchange.getProperty("param"), (String) body.get("pageNumberPath"));
-        PageRequest pageRequest = PageRequest.of((null == pageNumber ? 1 : (int) pageNumber) - 1, null == pageSize ? 10 : (int) pageSize);
-        // 追加排序参数
-        Sort sort = Sort.unsorted();
-        Map<String, String> sorts = ClassCastUtils.castHashMap(body.get("sorts"), String.class, String.class);
-        for (Map.Entry<String, String> next : sorts.entrySet()) {
-            sort = sort.and(Sort.by(Sort.Direction.valueOf(next.getValue()), next.getKey()));
-        }
-        pageRequest = pageRequest.withSort(sort);
         try {
             Object repository = exchange.getContext().getRegistry().lookupByName(body.get("aggregation") + "Repository");
             Method method = Arrays.stream(repository.getClass().getMethods())
                     .filter(m -> m.getName().equals(body.get("method"))).findFirst().orElseThrow();
             Iterator<Class<?>> parameterTypes = Arrays.stream(method.getParameterTypes()).iterator();
-            Iterator<Object> parameterValues = (ClassCastUtils.castHashMap(body.get("params"), String.class, Object.class)).values().iterator();
+            Iterator<Object> parameterValues = (ClassCastUtils.castArrayList(body.get("params"), Object.class)).iterator();
             // 解析查询参数
             ArrayList<Object> parameters = new ArrayList<>();
             while (parameterTypes.hasNext()) {
                 String typeName = parameterTypes.next().getName();
-                if ("org.springframework.data.domain.Pageable".equals(typeName)) {
+                String value = (String) parameterValues.next();
+                if ("org.springframework.data.domain.Pageable".equals(typeName) || "org.springframework.data.domain.PageRequest".equals(typeName)) {
+                    Object page = JsonUtil.readPath(value, "/page");
+                    Object size = JsonUtil.readPath(value, "/size");
+                    PageRequest pageRequest = PageRequest.of((int) page - 1, (int) size);
+                    Sort sort = Sort.unsorted();
+                    Object sorts = JsonUtil.readPath(value, "/sort");
+                    if (sorts != null) {
+                        List<Map<String, String>> sorts1 = (List<Map<String, String>>) sorts;
+                        for (Map<String, String> map : sorts1) {
+                            String key = map.keySet().iterator().next();
+                            sort = sort.and(Sort.by(Sort.Direction.valueOf(map.get(key)), key));
+                        }
+                    }
+                    pageRequest = pageRequest.withSort(sort);
                     parameters.add(pageRequest);
-                    continue;
+                } else {
+                    parameters.add(JsonUtil.writeValueAsObject(value, Class.forName(typeName)));
                 }
-                parameters.add(JsonUtil.writeObjectAsObject(parameterValues.next(), Class.forName(typeName)));
             }
             return method.invoke(repository, parameters.toArray());
         } catch (IllegalAccessException | InvocationTargetException | ClassNotFoundException e) {

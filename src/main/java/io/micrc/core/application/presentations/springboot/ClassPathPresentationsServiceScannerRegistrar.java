@@ -170,16 +170,8 @@ class ApplicationPresentationsServiceScanner extends ClassPathBeanDefinitionScan
         List<ParamIntegration> paramIntegrations = new ArrayList<>();
         // 查询逻辑解析
         Arrays.stream(queryLogics).forEach(logic -> {
-            Map<String, String> paramPath = new LinkedHashMap<>();
-            // 解析查询参数
-            Arrays.stream(logic.params()).forEach(param -> {
-                paramPath.put(param.toString(), param.path());
-            });
-            // 解析排序参数
-            Map<String, String> sortParam = Arrays.stream(logic.sorts())
-                    .collect(Collectors.toMap(i -> lowerStringFirst(i.belongConcept()), i -> i.type().name()));
-            paramIntegrations.add(new ParamIntegration(logic.name(), lowerStringFirst(logic.aggregation()), logic.methodName(),
-                    paramPath, sortParam, logic.pageSizePath(), logic.pageNumberPath(), logic.order()));
+            List<String> paramMappings = Arrays.stream(logic.paramMappingFile()).map(file -> StringUtils.hasText(file) ? FileUtils.fileReaderSingleLine(file, List.of("jslt")) : ".").collect(Collectors.toList());
+            paramIntegrations.add(new ParamIntegration(logic.name(), lowerStringFirst(logic.aggregation()), logic.methodName(), paramMappings, logic.order()));
         });
         // 集成解析
         Arrays.stream(integrations).forEach(integration -> {

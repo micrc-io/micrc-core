@@ -6,6 +6,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -47,19 +48,9 @@ public class ParamIntegration {
     private Map<String, String> queryParams;
 
     /**
-     * 排序参数方式
+     * 参数映射
      */
-    private Map<String, String> sortParams;
-
-    /**
-     * 分页编码路径
-     */
-    private String pageNumberPath;
-
-    /**
-     * 分页大小路径
-     */
-    private String pageSizePath;
+    private List<String> paramMappings;
 
     /**
      * 内容位置
@@ -98,16 +89,11 @@ public class ParamIntegration {
         this.technologyType = technologyType;
     }
 
-    public ParamIntegration(String concept, String aggregation, String queryMethod,
-                            Map<String, String> queryParams, Map<String, String> sortParams,
-                            String pageSizePath, String pageNumberPath, int order) {
+    public ParamIntegration(String concept, String aggregation, String queryMethod, List<String> paramMappings, int order) {
         this.concept = concept;
         this.aggregation = aggregation;
         this.queryMethod = queryMethod;
-        this.queryParams = queryParams;
-        this.sortParams = sortParams;
-        this.pageSizePath = pageSizePath;
-        this.pageNumberPath = pageNumberPath;
+        this.paramMappings = paramMappings;
         this.order = order;
         this.type = Type.QUERY;
     }
