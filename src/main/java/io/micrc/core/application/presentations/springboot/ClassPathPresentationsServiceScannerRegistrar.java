@@ -170,7 +170,7 @@ class ApplicationPresentationsServiceScanner extends ClassPathBeanDefinitionScan
         List<ParamIntegration> paramIntegrations = new ArrayList<>();
         // 查询逻辑解析
         Arrays.stream(queryLogics).forEach(logic -> {
-            List<String> paramMappings = Arrays.stream(logic.paramMappingFile()).map(file -> StringUtils.hasText(file) ? FileUtils.fileReaderSingleLine(file, List.of("jslt")) : ".").collect(Collectors.toList());
+            List<String> paramMappings = Arrays.stream(logic.paramMappingFile()).map(file -> FileUtils.fileReaderSingleLine(file, List.of("jslt"))).collect(Collectors.toList());
             paramIntegrations.add(new ParamIntegration(logic.name(), lowerStringFirst(logic.aggregation()), logic.methodName(), paramMappings, logic.order()));
         });
         // 集成解析

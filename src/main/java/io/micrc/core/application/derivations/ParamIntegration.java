@@ -5,7 +5,6 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -45,7 +44,7 @@ public class ParamIntegration {
      *
      * @return
      */
-    private Map<String, String> queryParams;
+    private Map<String, String> paramMappingMap;
 
     /**
      * 参数映射
@@ -79,9 +78,9 @@ public class ParamIntegration {
 
     private TechnologyType technologyType;
 
-    public ParamIntegration(String concept, HashMap<String, String> queryParams, String contentPath, String filePath, int order, Type type, TechnologyType technologyType) {
+    public ParamIntegration(String concept, String contentPath, String filePath, Map<String, String> paramMappingMap, int order, Type type, TechnologyType technologyType) {
         this.concept = concept;
-        this.queryParams = queryParams;
+        this.paramMappingMap = paramMappingMap;
         this.order = order;
         this.contentPath = contentPath;
         this.filePath = filePath;

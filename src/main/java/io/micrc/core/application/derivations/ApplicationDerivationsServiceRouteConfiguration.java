@@ -252,14 +252,14 @@ class IntegrationParams {
             LinkedHashMap<String, Object> paramMap = new LinkedHashMap<>();
             if (ParamIntegration.Type.SPECIAL_TECHNOLOGY.equals(paramIntegration.getType())
                     || ParamIntegration.Type.GENERAL_TECHNOLOGY.equals(paramIntegration.getType())) {
-                paramIntegration.getQueryParams().forEach((name, path) -> {
-                    Object value = JsonUtil.readPath(param, path);
-                    // 需要执行DMN的时候，时间格式需要转换
-                    if (TechnologyType.DMN.equals(paramIntegration.getTechnologyType())) {
-                        String valueString = JsonUtil.writeValueAsString(value);
-                        valueString = TimeReplaceUtil.matchTimePathAndReplaceTime(timePathList, path, valueString, String.class);
-                        value = JsonUtil.writeValueAsObject(valueString, Object.class);
-                    }
+                paramIntegration.getParamMappingMap().forEach((name, mapping) -> {
+                    String value = JsonUtil.transAndCheck(mapping, param, null);
+//                    // todo,需要执行DMN的时候，时间格式需要转换
+//                    if (TechnologyType.DMN.equals(paramIntegration.getTechnologyType())) {
+//                        String valueString = JsonUtil.writeValueAsString(value);
+//                        valueString = TimeReplaceUtil.matchTimePathAndReplaceTime(timePathList, path, valueString, String.class);
+//                        value = JsonUtil.writeValueAsObject(valueString, Object.class);
+//                    }
                     paramMap.put(name, value);
                 });
                 // 检查当前查询是否可执行

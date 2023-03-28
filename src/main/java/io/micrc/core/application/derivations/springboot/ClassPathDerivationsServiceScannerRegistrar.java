@@ -5,6 +5,7 @@ import io.micrc.core.annotations.application.derivations.DerivationsService;
 import io.micrc.core.annotations.application.derivations.GeneralTechnology;
 import io.micrc.core.annotations.application.derivations.QueryLogic;
 import io.micrc.core.annotations.application.derivations.SpecialTechnology;
+import io.micrc.core.annotations.application.derivations.TechnologyParam;
 import io.micrc.core.application.derivations.ApplicationDerivationsServiceRouteConfiguration;
 import io.micrc.core.application.derivations.ApplicationDerivationsServiceRouteConfiguration.ApplicationDerivationsServiceDefinition;
 import io.micrc.core.application.derivations.ApplicationDerivationsServiceRouteTemplateParameterSource;
@@ -183,27 +184,23 @@ class ApplicationDerivationsServiceScanner extends ClassPathBeanDefinitionScanne
         List<ParamIntegration> paramIntegrations = new ArrayList<>();
         // 查询逻辑解析
         Arrays.stream(queryLogics).forEach(logic -> {
-            List<String> paramMappings = Arrays.stream(logic.paramMappingFile()).map(file -> StringUtils.hasText(file) ? FileUtils.fileReaderSingleLine(file, List.of("jslt")) : ".").collect(Collectors.toList());
+            List<String> paramMappings = Arrays.stream(logic.paramMappingFile()).map(file -> FileUtils.fileReaderSingleLine(file, List.of("jslt"))).collect(Collectors.toList());
             paramIntegrations.add(new ParamIntegration(logic.name(), lowerStringFirst(logic.aggregation()), logic.methodName(), paramMappings, logic.order()));
         });
         // 专用技术解析
         Arrays.stream(specialTechnologies).forEach(specialTechnology -> {
-            HashMap<String, String> map = new HashMap<>();
-            Arrays.stream(specialTechnology.technologyParams()).forEach(param -> {
-                map.put(param.name(), param.path());
-            });
-            paramIntegrations.add(new ParamIntegration(specialTechnology.name(), map,
-                    specialTechnology.scriptContentPath(), specialTechnology.scriptFilePath(),
+            Map<String, String> map = Arrays.stream(specialTechnology.technologyParams())
+                    .collect(Collectors.toMap(TechnologyParam::name, param -> FileUtils.fileReaderSingleLine(param.paramMappingFile(), List.of("jslt")), (p1, p2) -> p2));
+            paramIntegrations.add(new ParamIntegration(specialTechnology.name(),
+                    specialTechnology.scriptContentPath(), specialTechnology.scriptFilePath(), map,
                     specialTechnology.order(), ParamIntegration.Type.SPECIAL_TECHNOLOGY, specialTechnology.technologyType()));
         });
         // 通用技术解析
         Arrays.stream(generalTechnologies).forEach(generalTechnology -> {
-            HashMap<String, String> map = new HashMap<>();
-            Arrays.stream(generalTechnology.technologyParams()).forEach(param -> {
-                map.put(param.name(), param.path());
-            });
-            paramIntegrations.add(new ParamIntegration(generalTechnology.name(), map,
-                    generalTechnology.routeContentPath(), generalTechnology.routeXmlFilePath(),
+            Map<String, String> map = Arrays.stream(generalTechnology.technologyParams())
+                    .collect(Collectors.toMap(TechnologyParam::name, param -> FileUtils.fileReaderSingleLine(param.paramMappingFile(), List.of("jslt")), (p1, p2) -> p2));
+            paramIntegrations.add(new ParamIntegration(generalTechnology.name(),
+                    generalTechnology.routeContentPath(), generalTechnology.routeXmlFilePath(), map,
                     generalTechnology.order(), ParamIntegration.Type.GENERAL_TECHNOLOGY, null));
         });
         // 按照优先级排序

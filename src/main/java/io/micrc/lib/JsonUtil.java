@@ -133,7 +133,7 @@ public class JsonUtil {
         try {
             Expression expression = Parser.compileString(jslt);
             JsonNode resultNode = expression.apply(JsonUtil.readTree(string));
-            boolean checked;
+            String result = null;
             if (StringUtils.hasText(openApi)) {
                 JsonNode openApiNode = JsonUtil.readTree(openApi);
                 // schema
@@ -147,13 +147,11 @@ public class JsonUtil {
                 hashMap.put("components", writeValueAsObject(componentsNode.toString(), Object.class));
                 // 检查
                 ProcessingReport processingMessages = JSON_VALIDATOR.validateUnchecked(JsonUtil.readTree(hashMap), resultNode);
-                checked = processingMessages.isSuccess();
+                result = processingMessages.isSuccess() ? resultNode.toString() : null;
             } else {
-                checked = !resultNode.isEmpty();
+                result = !"null".equals(resultNode.toString()) ? resultNode.toString() : null;
             }
-            if (checked) {
-                return resultNode.toString();
-            }
+            return result;
         } catch (Exception e) {
             //
         }
