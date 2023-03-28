@@ -236,6 +236,7 @@ class IntegrationParams {
             executableIntegrationInfo.put("responseMapping", paramIntegration.getResponseMapping());
             executableIntegrationInfo.put("name", paramIntegration.getConcept());
             executableIntegrationInfo.put("type", paramIntegration.getType());
+            break;
         }
         if (null == executableIntegrationInfo.get("name")) {
             throw new RuntimeException(
