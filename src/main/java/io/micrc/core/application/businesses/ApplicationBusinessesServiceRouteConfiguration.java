@@ -378,12 +378,12 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
         /**
          * 出集成映射(调用时转换映射)
          */
-        private Map<String, String> outMappings;
+        private Map<String, String> paramMappingMap;
 
         /**
          * 入集成映射(返回时转换映射)-转Target的 以target为根端点 PATCH
          */
-        private Map<String, String> enterMappings;
+        private Map<String, String> resultMappingMap;
     }
 
     public static class ResultCheck {
@@ -408,21 +408,16 @@ class LogicInParamsResolve {
 
     public String toLogicParams(LogicIntegration logicIntegration, String commandJson, List<String[]> timePathList, String logicType) {
         Map<String, Object> logicParams = new HashMap<>();
-        logicIntegration.getOutMappings().forEach((key, path) -> {
+        logicIntegration.getParamMappingMap().forEach((key, mapping) -> {
             // 原始结果
-            Object pathValue = JsonUtil.readPath(commandJson, path);
-            if (null == pathValue) {
+            String value = JsonUtil.transAndCheck(mapping, commandJson, null);
+            if (null == value) {
                 return;
             }
-            String outMapping = JsonUtil.writeValueAsString(pathValue);
             if (LogicType.DMN.name().equals(logicType)) {
-                outMapping = TimeReplaceUtil.matchTimePathAndReplaceTime(timePathList, path, outMapping, String.class);
+                value = TimeReplaceUtil.matchTimePathAndReplaceTime(timePathList, "", value, String.class);// 根目录路径为""
             }
-            Object value = JsonUtil.writeValueAsObject(outMapping, Object.class);
-            if (null == value) {
-                throw new RuntimeException(path + " - the params can`t get value, please check the annotation.like integration annotation error or toLogicMappings annotation have error ");
-            }
-            logicParams.put(key, value);
+            logicParams.put(key, JsonUtil.writeValueAsObject(value, Object.class));
         });
         return JsonUtil.writeValueAsStringRetainNull(logicParams);
     }
@@ -431,26 +426,22 @@ class LogicInParamsResolve {
         Object angle = logicResult.get("angle");
         LogicIntegration logicIntegration = JsonUtil.writeValueAsObject(logicIntegrationJson, LogicIntegration.class);
         String resultJson = JsonUtil.writeValueAsString(logicResult);
-        for (Map.Entry<String, String> entry : logicIntegration.getEnterMappings().entrySet()) {
+        for (Map.Entry<String, String> entry : logicIntegration.getResultMappingMap().entrySet()) {
             String targetPath = entry.getKey();
-            String resultPath = entry.getValue();
             // 需要赋值状态执行结果含纬度信息，则状态赋值到对应纬度
             if ("/target/state".equals(targetPath) && null != angle && angle.toString().length() > 0) {
                 targetPath = targetPath + "/" + angle;
             }
-            Object value = JsonUtil.readPath(resultJson, resultPath.startsWith("/") ? resultPath : "/" + resultPath);
+            String value = JsonUtil.transform(entry.getValue(), resultJson);
             if (null == value) {
                 continue;
             }
             // 补全所有目的路径不存在的节点
             commandJson = JsonUtil.supplementNotExistsNode(commandJson, targetPath);
-            // 替换目的路径上的真实值
-            String valueJson = JsonUtil.writeValueAsString(value);
             if (LogicType.DMN.name().equals(logicType)) {
-                valueJson = TimeReplaceUtil.matchTimePathAndReplaceTime(timePathList, targetPath, valueJson, Long.class);
+                value = TimeReplaceUtil.matchTimePathAndReplaceTime(timePathList, targetPath, value, Long.class);
             }
-
-            commandJson = JsonUtil.patch(commandJson, targetPath, valueJson);
+            commandJson = JsonUtil.patch(commandJson, targetPath, value);
         }
         return commandJson;
     }

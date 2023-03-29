@@ -168,16 +168,17 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
             }
             findMicrcTimeField(commandFields, timePaths, new StringBuilder());
             // 处理DMN出入参数映射
-            LogicMapping[] logicMappings = commandLogic.toLogicMappings();
-            TargetMapping[] targetMappings = commandLogic.toTargetMappings();
-            Map<String, String> outMappingMap = new HashMap<>();
-            Arrays.asList(logicMappings).forEach(logicMapping -> outMappingMap.put(logicMapping.name(), logicMapping.mapping()));
-            Map<String, String> enterMappingMap = new HashMap<>();
-            enterMappingMap.put("/event", "event");
-            enterMappingMap.put("/error", "error");
-            enterMappingMap.put("/target/state", "state");
-            Arrays.stream(targetMappings).forEach(targetMapping -> enterMappingMap.put(targetMapping.mapping(), targetMapping.name()));
-            LogicIntegration logicIntegration = LogicIntegration.builder().enterMappings(enterMappingMap).outMappings(outMappingMap).build();
+            Map<String, String> paramMappingMap = Arrays.stream(commandLogic.toLogicMappings())
+                    .collect(Collectors.toMap(LogicMapping::name, mapping -> FileUtils.fileReaderSingleLine(mapping.paramMappingFile(), List.of("jslt")), (p1, p2) -> p2));
+            Map<String, String> resultMappingMap = new HashMap<>();
+            resultMappingMap.put("/event", ".event");
+            resultMappingMap.put("/error", ".error");
+            resultMappingMap.put("/target/state", ".state");
+            Arrays.stream(commandLogic.toTargetMappings())
+                    .forEach(targetMapping -> resultMappingMap.put(targetMapping.path(), FileUtils.fileReaderSingleLine(targetMapping.paramMappingFile(), List.of("jslt"))));
+            LogicIntegration logicIntegration = LogicIntegration.builder()
+                    .resultMappingMap(resultMappingMap)
+                    .paramMappingMap(paramMappingMap).build();
             // 获取Command身上的参数的服务集成注解
             List<CommandParamIntegration> commandParamIntegrations = new ArrayList<>();
             // 其他集成
