@@ -6,12 +6,14 @@ import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.lib.ClassCastUtils;
 import io.micrc.lib.FileUtils;
 import io.micrc.lib.JsonUtil;
+import io.micrc.lib.StringUtil;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangeProperties;
+import org.springframework.data.domain.Example;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
@@ -209,7 +211,7 @@ class IntegrationParams {
                 }
                 executableIntegrationInfo.put("params", params);
                 // 如果能够集成,收集信息,然后会自动跳出循环
-                executableIntegrationInfo.put("aggregation", paramIntegration.getAggregation());
+                executableIntegrationInfo.put("entityPath", paramIntegration.getEntityPath());
                 executableIntegrationInfo.put("method", paramIntegration.getQueryMethod());
             } else if (ParamIntegration.Type.INTEGRATE.equals(paramIntegration.getType())) {
                 String protocolContent = FileUtils.fileReader(paramIntegration.getProtocol(), List.of("json"));
@@ -253,7 +255,10 @@ class IntegrationParams {
      */
     public static Object executeQuery(Exchange exchange, Map<String, Object> body) {
         try {
-            Object repository = exchange.getContext().getRegistry().lookupByName(body.get("aggregation") + "Repository");
+            String entityPath = (String) body.get("entityPath");
+            String[] split = entityPath.split("\\.");
+            String entityName = StringUtil.lowerStringFirst(split[split.length - 1]);
+            Object repository = exchange.getContext().getRegistry().lookupByName(entityName + "Repository");
             Method method = Arrays.stream(repository.getClass().getMethods())
                     .filter(m -> m.getName().equals(body.get("method"))).findFirst().orElseThrow();
             Iterator<Class<?>> parameterTypes = Arrays.stream(method.getParameterTypes()).iterator();
@@ -278,6 +283,10 @@ class IntegrationParams {
                     }
                     pageRequest = pageRequest.withSort(sort);
                     parameters.add(pageRequest);
+                } else if ("org.springframework.data.domain.Example".equals(typeName) || "org.springframework.data.domain.TypedExample".equals(typeName)) {
+                    Object entity = JsonUtil.writeValueAsObject(value, Class.forName(entityPath));
+                    Example<?> example = Example.of(entity);
+                    parameters.add(example);
                 } else {
                     parameters.add(JsonUtil.writeValueAsObject(value, Class.forName(typeName)));
                 }

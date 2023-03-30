@@ -11,6 +11,7 @@ import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteTem
 import io.micrc.core.application.businesses.EnableBusinessesService;
 import io.micrc.lib.FileUtils;
 import io.micrc.lib.JsonUtil;
+import io.micrc.lib.StringUtil;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -148,9 +149,6 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
             // 获取ApplicationService注解参数
             String serviceName = beanDefinition.getBeanClass().getSimpleName();
             String logicName = parameters[0].getType().getSimpleName().substring(0, parameters[0].getType().getSimpleName().length() - 7);
-            String aggregationName = targetFields.get(0).getType().getSimpleName();
-            String repositoryName = lowerStringFirst(aggregationName) + "Repository";
-            String aggregationPath = targetFields.get(0).getType().getName();
             // 获取Command身上的注解
             CommandLogic commandLogic = parameters[0].getType().getAnnotation(CommandLogic.class);
             if (null == commandLogic) {
@@ -211,7 +209,12 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
             // 获取嵌套标识符全类名
             Class<?> repositoryClass = Class.forName(commandLogic.repositoryFullClassName());
             ParameterizedType genericInterface = (ParameterizedType) (repositoryClass.getGenericInterfaces()[0]);
-            String embeddedIdentityFullClassName = genericInterface.getActualTypeArguments()[1].getTypeName();
+            Type[] actualTypeArguments = genericInterface.getActualTypeArguments();
+            String aggregationPath = actualTypeArguments[0].getTypeName();
+            String embeddedIdentityFullClassName = actualTypeArguments[1].getTypeName();
+
+            String[] split = commandLogic.repositoryFullClassName().split("\\.");
+            String repositoryName = StringUtil.lowerStringFirst(split[split.length - 1]);
 
             String logicIntegrationJson = Base64.getEncoder().encodeToString(JsonUtil.writeValueAsString(logicIntegration).getBytes());
 
@@ -226,7 +229,6 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
                             .logicPath(logicPath)
                             .repositoryName(repositoryName)
                             .aggregationPath(aggregationPath)
-                            .logicName(logicName)
                             .logicIntegrationJson(logicIntegrationJson)
                             .embeddedIdentityFullClassName(embeddedIdentityFullClassName)
                             .commandParamIntegrationsJson(JsonUtil.writeValueAsString(commandParamIntegrations))
@@ -284,11 +286,5 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
             routeId = String.valueOf(INDEX.getAndIncrement());
         }
         return ApplicationBusinessesServiceRouteConfiguration.ROUTE_TMPL_BUSINESSES_SERVICE + "-" + routeId;
-    }
-
-    private String lowerStringFirst(String str) {
-        char[] strChars = str.toCharArray();
-        strChars[0] += 32;
-        return String.valueOf(strChars);
     }
 }

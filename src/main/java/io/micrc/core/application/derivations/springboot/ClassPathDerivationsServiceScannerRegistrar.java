@@ -34,6 +34,8 @@ import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -184,8 +186,17 @@ class ApplicationDerivationsServiceScanner extends ClassPathBeanDefinitionScanne
         List<ParamIntegration> paramIntegrations = new ArrayList<>();
         // 查询逻辑解析
         Arrays.stream(queryLogics).forEach(logic -> {
+            Class<?> repositoryClass = null;
+            try {
+                repositoryClass = Class.forName(logic.repositoryFullClassName());
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+            ParameterizedType genericInterface = (ParameterizedType) (repositoryClass.getGenericInterfaces()[0]);
+            Type[] actualTypeArguments = genericInterface.getActualTypeArguments();
+            String entityPath = actualTypeArguments[0].getTypeName();
             List<String> paramMappings = Arrays.stream(logic.paramMappingFile()).map(file -> FileUtils.fileReaderSingleLine(file, List.of("jslt"))).collect(Collectors.toList());
-            paramIntegrations.add(new ParamIntegration(logic.name(), lowerStringFirst(logic.aggregation()), logic.methodName(), paramMappings, logic.order()));
+            paramIntegrations.add(new ParamIntegration(logic.name(), entityPath, logic.methodName(), paramMappings, logic.order()));
         });
         // 专用技术解析
         Arrays.stream(specialTechnologies).forEach(specialTechnology -> {
@@ -219,20 +230,5 @@ class ApplicationDerivationsServiceScanner extends ClassPathBeanDefinitionScanne
             routeId = String.valueOf(INDEX.getAndIncrement());
         }
         return ApplicationDerivationsServiceRouteConfiguration.ROUTE_TMPL_DERIVATIONS_SERVICE + "-" + routeId;
-    }
-
-    /**
-     * 首字母小写
-     *
-     * @param str
-     * @return
-     */
-    private static String lowerStringFirst(String str) {
-        if (str == null || str.length() == 0) {
-            return str;
-        }
-        char[] strChars = str.toCharArray();
-        strChars[0] += 32;
-        return String.valueOf(strChars);
     }
 }

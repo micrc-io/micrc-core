@@ -26,11 +26,11 @@ public class ParamIntegration {
     private String concept;
 
     /**
-     * 聚合
+     * 实体路径
      *
      * @return
      */
-    private String aggregation;
+    private String entityPath;
 
     /**
      * 查询方法
@@ -88,9 +88,9 @@ public class ParamIntegration {
         this.technologyType = technologyType;
     }
 
-    public ParamIntegration(String concept, String aggregation, String queryMethod, List<String> paramMappings, int order) {
+    public ParamIntegration(String concept, String entityPath, String queryMethod, List<String> paramMappings, int order) {
         this.concept = concept;
-        this.aggregation = aggregation;
+        this.entityPath = entityPath;
         this.queryMethod = queryMethod;
         this.paramMappings = paramMappings;
         this.order = order;
