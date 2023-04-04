@@ -207,7 +207,6 @@ public class MessageRouteConfiguration extends RouteBuilder {
             HashMap<String, Object> body = new HashMap<>();
             body.put("messageIds", result);
             body.put("receiver", eventMapping.getMappingKey());
-            // String endpoint = "rest://post:/api/check-idempotent-consumed?host=" + eventMapping.receiverAddress + ":8080";
             String endpoint = "rest://post:/api/check-idempotent-consumed?host=" + eventMapping.receiverAddress;
             String response = producerTemplate.requestBody(endpoint, JsonUtil.writeValueAsString(body), String.class);
             result = JsonUtil.writeValueAsList(response, Long.class);
@@ -231,7 +230,6 @@ public class MessageRouteConfiguration extends RouteBuilder {
         }
         HashMap<String, Object> body = new HashMap<>();
         body.put("messageIds", messageIds);
-        // String endpoint = "rest://post:/api/check-store-removed?host=" + senderAddress + ":8080";
         String endpoint = "rest://post:/api/check-store-removed?host=" + senderAddress;
         String response = producerTemplate.requestBody(endpoint, JsonUtil.writeValueAsString(body), String.class);
         List<Long> unRemoveIds = JsonUtil.writeValueAsList(response, Long.class);

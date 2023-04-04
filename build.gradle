@@ -7,7 +7,7 @@ plugins {
 }
 
 group = 'io.micrc.core'
-version = 'v0.0.1-20230330-1'
+version = 'v0.0.1-20230404-11'
 sourceCompatibility = '11'
 targetCompatibility = '11'
 
@@ -26,6 +26,8 @@ ext {
     set('testcontainers.version', '2.2.10')
     set('jslt.version', '0.1.13')
     set('json-schema-validator.version', '2.2.14')
+    set('jwt.version', '3.4.1')
+    set('shiro.version', '1.7.1')
 }
 
 configurations {
@@ -50,7 +52,7 @@ dependencyManagement {
 
 dependencies {
     // annotation - micrc-annotations: gradle task - publishToMavenLocal
-    implementation "io.micrc.core:micrc-annotations:v0.0.1-20230330-1"
+    implementation "io.micrc.core:micrc-annotations:v0.0.1-20230404-2"
 
     // springboot basic
     implementation "org.springframework.boot:spring-boot-starter"
@@ -128,8 +130,12 @@ dependencies {
     // shedlock for schedule distributed lock
     implementation "net.javacrumbs.shedlock:shedlock-spring:${property('shedlock.version')}"
     implementation "net.javacrumbs.shedlock:shedlock-provider-redis-spring:${property('shedlock.version')}"
-
+    // json-schema-validator
     implementation "com.github.java-json-tools:json-schema-validator:${property('json-schema-validator.version')}"
+    // jwt
+    implementation "org.apache.shiro:shiro-spring-boot-web-starter:${property('shiro.version')}"
+    // shiro
+    implementation "com.auth0:java-jwt:${property('jwt.version')}"
 }
 
 processTestResources {

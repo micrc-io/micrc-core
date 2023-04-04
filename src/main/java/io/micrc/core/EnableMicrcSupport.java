@@ -16,6 +16,7 @@ import io.micrc.core.rpc.springboot.IntegrationInfoScannerRegistrar;
 import io.micrc.core.rpc.springboot.RpcAutoConfiguration;
 import io.micrc.core.rpc.springboot.RpcMockServerAutoConfiguration;
 import io.micrc.core.schedule.springboot.ScheduleAutoConfiguration;
+import io.micrc.core.authorize.AuthorizeAutoConfiguration;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Import;
@@ -52,7 +53,8 @@ import java.lang.annotation.*;
         ScheduleAutoConfiguration.class,
         DynamicExecutorAutoConfiguration.class,
         ClassPathMessageScannerRegistrar.class,
-        MessageAutoConfiguration.class
+        MessageAutoConfiguration.class,
+        AuthorizeAutoConfiguration.class
 })
 public @interface EnableMicrcSupport {
     String[] basePackages() default {};

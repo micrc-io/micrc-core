@@ -8,21 +8,29 @@ import groovy.lang.Binding;
 import groovy.lang.GroovyShell;
 import io.micrc.core._camel.jit.JITDMNResult;
 import io.micrc.core._camel.jit.JITDMNService;
+import io.micrc.core.authorize.MyRealm;
 import io.micrc.core.rpc.ErrorInfo;
 import io.micrc.core.rpc.Result;
+import io.micrc.core.authorize.JwtToken;
+import io.micrc.lib.ClassCastUtils;
 import io.micrc.lib.JsonUtil;
+import io.micrc.lib.JwtUtil;
 import lombok.SneakyThrows;
 import org.apache.camel.*;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.direct.DirectComponent;
 import org.apache.camel.support.ResourceHelper;
+import org.apache.shiro.SecurityUtils;
+import org.apache.shiro.subject.Subject;
 import org.kie.dmn.api.core.DMNDecisionResult;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.util.ResourceUtils;
 import org.springframework.util.StreamUtils;
 import org.springframework.util.StringUtils;
@@ -37,8 +45,8 @@ import javax.xml.xpath.XPathFactory;
 import java.io.ByteArrayInputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -53,6 +61,12 @@ public class CamelComponentTempConfiguration {
 
     @Autowired
     private JITDMNService jitdmnService;
+
+    @Autowired
+    Environment environment;
+
+    @javax.annotation.Resource(name = "memoryDbTemplate")
+    RedisTemplate<Object, Object> redisTemplate;
 
     @Bean
     public RoutesBuilder jsonMappingComp() {
@@ -245,6 +259,61 @@ public class CamelComponentTempConfiguration {
         return body;
     }
 
+
+    @Bean("authorize")
+    public DirectComponent authorize() {
+        return new DirectComponent();
+    }
+
+    @Bean
+    public RoutesBuilder authorizeBuilders() {
+        return new RouteBuilder() {
+            @Override
+            public void configure() throws Exception {
+                from("authorize://authentication")
+                        .process(exchange -> {
+                            String applicationName = environment.getProperty("spring.application.name");
+                            if (!"security-service".equals(applicationName)) {
+                                throw new RuntimeException("the application of execute authentication must be [security-service]");
+                            }
+                            String body = exchange.getIn().getBody(String.class);
+                            String username = (String) JsonUtil.readPath(body, "/username");
+                            if (username == null) {
+                                throw new RuntimeException("[username] must not be null");
+                            }
+                            List<String> permissions = ClassCastUtils.castArrayList(JsonUtil.readPath(body, "/permissions"), String.class);
+                            if (permissions == null) {
+                                throw new RuntimeException("[permissions] must not be null");
+                            }
+                            String token = JwtUtil.createToken(username, permissions.toArray(new String[0]));
+                            Subject subject = SecurityUtils.getSubject();
+                            JwtToken jwtToken = new JwtToken(token);
+                            subject.login(jwtToken);
+                            exchange.getIn().setBody(JsonUtil.writeValueAsString(token));
+                            String key = MyRealm.USER_PERMISSIONS_KEY_PREFIX + username;
+                            redisTemplate.opsForValue().set(key, permissions);
+                        })
+                        .end();
+
+                from("authorize://decertification")
+                        .process(exchange -> {
+                            String applicationName = environment.getProperty("spring.application.name");
+                            if (!"security-service".equals(applicationName)) {
+                                throw new RuntimeException("the application of execute decertification must be [security-service]");
+                            }
+                            String body = exchange.getIn().getBody(String.class);
+                            String username = (String) JsonUtil.readPath(body, "/username");
+                            if (username == null) {
+                                throw new RuntimeException("[username] must not be null");
+                            }
+                            String key = MyRealm.USER_PERMISSIONS_KEY_PREFIX + username;
+                            redisTemplate.delete(key);
+                        })
+                        .end();
+            }
+        };
+    }
+
     @Bean("error-handle")
     public DirectComponent errorHandle() {
         return new DirectComponent();
@@ -299,13 +368,13 @@ public class CamelComponentTempConfiguration {
 
             private String getErrorMessage(Exchange exchange) {
                 Throwable throwable = exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Throwable.class);
-                Throwable causeThrowable = Objects.requireNonNullElse(throwable.getCause(), throwable);
-                String message;
-                if (InvocationTargetException.class.equals(causeThrowable.getClass())) {
-                    message = ((InvocationTargetException) causeThrowable).getTargetException().getLocalizedMessage();
-                } else {
-                    message = causeThrowable.getLocalizedMessage();
+                if (!StringUtils.hasText(throwable.getLocalizedMessage())) {
+                    throwable = throwable.getCause();
                 }
+                if (InvocationTargetException.class.equals(throwable.getClass())) {
+                    throwable = ((InvocationTargetException) throwable).getTargetException();
+                }
+                String message = throwable.getLocalizedMessage();
                 log.error(message);
                 return message;
             }
