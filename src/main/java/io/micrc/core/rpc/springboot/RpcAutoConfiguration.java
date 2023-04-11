@@ -1,6 +1,8 @@
 package io.micrc.core.rpc.springboot;
 
 import io.micrc.core.rpc.RpcRestRouteConfiguration;
+import org.apache.camel.CamelContext;
+import org.apache.camel.Component;
 import org.apache.camel.RoutesBuilder;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.direct.DirectComponent;
@@ -8,9 +10,14 @@ import org.apache.camel.component.rest.RestComponent;
 import org.apache.camel.component.rest.openapi.RestOpenApiComponent;
 import org.apache.camel.component.rest.openapi.springboot.RestOpenApiComponentAutoConfiguration;
 import org.apache.camel.component.rest.springboot.RestComponentAutoConfiguration;
+import org.apache.camel.component.undertow.UndertowComponent;
+import org.apache.camel.spring.boot.SpringBootCamelContext;
+import org.apache.camel.spring.spi.CamelBeanPostProcessor;
 import org.apache.camel.support.jsse.SSLContextParameters;
 import org.apache.camel.support.jsse.TrustManagersParameters;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -71,11 +78,7 @@ public class RpcAutoConfiguration {
         RestOpenApiComponent component = new RestOpenApiComponent();
         component.setComponentName("undertow");
         // 设置信任全部证书
-        SSLContextParameters parameters = new SSLContextParameters();
-        TrustManagersParameters trustManagersParameters = new TrustManagersParameters();
-        trustManagersParameters.setTrustManager(new TrustALLManager());
-        parameters.setTrustManagers(trustManagersParameters);
-        component.setSslContextParameters(parameters);
+        component.setSslContextParameters(getSSLContextParameters());
         // 桥接错误
         component.setBridgeErrorHandler(true);
         return component;
@@ -86,9 +89,19 @@ public class RpcAutoConfiguration {
         RestOpenApiComponent component = new RestOpenApiComponent();
         component.setComponentName("undertow");
         component.setBasePath("/api");
+        // 设置信任全部证书
+        component.setSslContextParameters(getSSLContextParameters());
         // 桥接错误
         component.setBridgeErrorHandler(true);
         return component;
+    }
+
+    private SSLContextParameters getSSLContextParameters() {
+        SSLContextParameters parameters = new SSLContextParameters();
+        TrustManagersParameters trustManagersParameters = new TrustManagersParameters();
+        trustManagersParameters.setTrustManager(new TrustALLManager());
+        parameters.setTrustManagers(trustManagersParameters);
+        return parameters;
     }
 
     private class TrustALLManager implements X509TrustManager {

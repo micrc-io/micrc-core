@@ -86,18 +86,37 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .to("direct://handle-request")
                 // 2.动态集成
                 .to("direct://dynamic-integration")
-                // 3.复制资源
-                .to("direct://copy-source")
-                // 4.解析时间
-                .to("direct://parse-time")
-                // 5.执行逻辑
-                .to("logic://logic-execute")
-                // 6.存储实体
-                .to("direct://save-entity")
-                // 7.存储消息
-                .to("direct://save-message")
-                // 8.处理结果
+                // 3.数据处理
+                .to("direct://executor-data")
+                // 4.处理结果
                 .to("direct://handle-result")
+                .end();
+
+        from("direct://executor-data-one")
+                // 3.1.复制资源
+                .to("direct://copy-source")
+                // 3.2.解析时间
+                .to("direct://parse-time")
+                // 3.3.执行逻辑
+                .to("logic://logic-execute")
+                // 3.4.存储实体
+                .to("direct://save-entity")
+                // 3.5.存储消息
+                .to("direct://save-message")
+                .end();
+
+        from("direct://executor-data")
+                .choice()
+                .when(simple("${exchange.properties.get(batchName)}").isNull())
+                .to("direct://executor-data-one")
+                .endChoice()
+                .otherwise()
+                .setBody(exchangeProperty("batchIntegrateResult"))
+                .split(new SplitList()).parallelProcessing()
+                .setProperty("integrateResult", body())
+                .bean(IntegrationCommandParams.class, "batchIntegrate")
+                .to("direct://executor-data-one")
+                .endChoice()
                 .end();
 
         from("direct://handle-request")
@@ -350,6 +369,8 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
          */
         private boolean ignoreIfParamAbsent;
 
+        private boolean batchFlag;
+
         /**
          * 请求映射文件
          *
@@ -466,8 +487,11 @@ class IntegrationCommandParams {
         Map<String, CommandParamIntegration> unIntegrateParams = ClassCastUtils.castHashMap(
                 properties.get("unIntegrateParams"), String.class, CommandParamIntegration.class);
         properties.put("unIntegrateParams", unIntegrateParams);
-
-        Map<String, Object> currentIntegration = executableIntegrationInfo(unIntegrateParams, (String) properties.get("commandJson"));
+        // 存在批量处理的集成，跳出当前循环
+        if (properties.containsKey("batchIntegrate")) {
+            return null;
+        }
+        Map<String, Object> currentIntegration = executableIntegrationInfo(unIntegrateParams, (String) properties.get("commandJson"), false);
         if (null == currentIntegration) {
             // 清除中间变量
             properties.remove("currentIntegrateParam");
@@ -476,6 +500,22 @@ class IntegrationCommandParams {
             properties.remove("commandParamIntegrations");
             return null;
         }
+        properties.put("currentIntegrateParam", currentIntegration);
+        return "direct://integration-params";
+    }
+
+    public static String batchIntegrate(@ExchangeProperties Map<String, Object> properties) {
+        Object integrateResult = properties.get("integrateResult");
+        String commandJson = (String) properties.get("commandJson");
+        String batchName = (String) properties.get("batchName");
+        Map<String, CommandParamIntegration> batchIntegrate = ClassCastUtils.castHashMap(
+                properties.get("batchIntegrate"), String.class, CommandParamIntegration.class);
+        properties.put("unIntegrateParams", batchIntegrate);
+        properties.remove("batchIntegrate");
+
+
+        commandJson = JsonUtil.patch(commandJson, "/" + batchName, JsonUtil.writeValueAsString(integrateResult));
+        Map<String, Object> currentIntegration = executableIntegrationInfo(batchIntegrate, commandJson, false);
         properties.put("currentIntegrateParam", currentIntegration);
         return "direct://integration-params";
     }
@@ -506,6 +546,18 @@ class IntegrationCommandParams {
         }
         String data = JsonUtil.transform(unIntegrateParams.get(name).getResponseMapping(), JsonUtil.writeValueAsString(body));
         log.info("业务已集成：{}，结果：{}", name, data);
+
+        // 判断返回结果是否需要进行批处理
+        boolean batchFlag = unIntegrateParams.get(name).isBatchFlag();
+        if (batchFlag) {
+            unIntegrateParams.remove(name);
+            // 记录需要批量处理的集成
+            exchange.getProperties().put("batchIntegrate", unIntegrateParams);
+            exchange.setProperty("batchName", name);
+            List<?> list = JsonUtil.writeValueAsList(data, Class.forName((String) properties.get("aggregationPath")));
+            exchange.setProperty("batchIntegrateResult", list);
+            return;
+        }
         commandJson = JsonUtil.patch(commandJson, "/" + name, data);
         exchange.getProperties().put("commandJson", commandJson);
         unIntegrateParams.remove(name);
@@ -520,7 +572,7 @@ class IntegrationCommandParams {
      * @return
      */
     public static Map<String, Object> executableIntegrationInfo(Map<String, CommandParamIntegration> unIntegrateParams,
-                                                                String commandJson) {
+                                                                String commandJson, Boolean isBatchExecutor) {
         if (unIntegrateParams.isEmpty()) {
             return null;
         }
@@ -528,6 +580,10 @@ class IntegrationCommandParams {
         Map<String, Object> executableIntegrationInfo = new HashMap<>();
         for (String key : unIntegrateParams.keySet()) {
             CommandParamIntegration commandParamIntegration = unIntegrateParams.get(key);
+            // 批处理集成放在后面进行处理
+            if (!commandParamIntegration.isBatchFlag() == isBatchExecutor) {
+                continue;
+            }
             String protocolContent = null;
             if (StringUtils.hasText(commandParamIntegration.getProtocol())) {
                 protocolContent = FileUtils.fileReader(commandParamIntegration.getProtocol(), List.of("json"));
@@ -557,6 +613,10 @@ class IntegrationCommandParams {
             break;
         }
         if (null == executableIntegrationInfo.get("paramName")) {
+            // 是否存在批处理的集成
+            if (!isBatchExecutor && unIntegrateParams.values().stream().anyMatch(CommandParamIntegration::isBatchFlag)) {
+                return executableIntegrationInfo(unIntegrateParams, commandJson, true);
+            }
             // 是否只剩下了可选集成
             if (unIntegrateParams.values().stream().allMatch(CommandParamIntegration::isIgnoreIfParamAbsent)) {
                 log.info("业务忽略集成：{}", String.join(",", unIntegrateParams.keySet()));

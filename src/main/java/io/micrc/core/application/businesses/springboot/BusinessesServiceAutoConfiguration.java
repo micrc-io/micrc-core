@@ -66,4 +66,14 @@ public class BusinessesServiceAutoConfiguration {
         DirectComponent logic = new DirectComponent();
         return logic;
     }
+
+    @Bean("executor-data-one")
+    public DirectComponent executorDataOne() {
+        return new DirectComponent();
+    }
+
+    @Bean("executor-data")
+    public DirectComponent executorData() {
+        return new DirectComponent();
+    }
 }

@@ -149,7 +149,7 @@ public class JsonUtil {
                 ProcessingReport processingMessages = JSON_VALIDATOR.validateUnchecked(JsonUtil.readTree(hashMap), resultNode);
                 result = processingMessages.isSuccess() ? resultNode.toString() : null;
             } else {
-                result = !"null".equals(resultNode.toString()) ? resultNode.toString() : null;
+                result = "null".equals(resultNode.toString()) || "{}".equals(resultNode.toString()) ? null : resultNode.toString();
             }
             return result;
         } catch (Exception e) {
