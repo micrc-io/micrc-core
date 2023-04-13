@@ -158,6 +158,19 @@ public class JsonUtil {
         return null;
     }
 
+    public static Boolean hasPath(String json, String path) {
+        JsonNode jsonNode = readTree(json);
+        String[] paths = path.split("/");
+        boolean hasPath = false;
+        for (String p : paths) {
+            hasPath = jsonNode.has(p);
+            if (hasPath) {
+                jsonNode = jsonNode.get(p);
+            }
+        }
+        return hasPath;
+    }
+
     public static Object readPath(String json, String path) {
         try {
             JsonNode jsonNode = readTree(json).at(path);

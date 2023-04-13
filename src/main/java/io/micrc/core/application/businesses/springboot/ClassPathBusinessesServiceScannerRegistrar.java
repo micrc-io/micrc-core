@@ -12,6 +12,7 @@ import io.micrc.core.application.businesses.EnableBusinessesService;
 import io.micrc.lib.FileUtils;
 import io.micrc.lib.JsonUtil;
 import io.micrc.lib.StringUtil;
+import liquibase.pro.packaged.S;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -31,6 +32,7 @@ import org.springframework.core.type.filter.AnnotationTypeFilter;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import javax.persistence.OneToMany;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -142,6 +144,13 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
             if (targetFields.size() != 1) {
                 throw new RuntimeException("the " + parameters[0].getType() + " don`t have only one target field, please check this command....");
             }
+            // 判断target中是否存在级联操作
+            Field targetField = targetFields.get(0);
+            Field[] entityFields = targetField.getType().getDeclaredFields();
+            Set<String> fieldNames = Arrays.stream(entityFields)
+                    .filter(field -> null != field.getAnnotation(OneToMany.class))
+                    .map(Field::getName)
+                    .collect(Collectors.toSet());
             // 获取批量事件标识字段名称和名称
             AtomicReference<String> batchPropertyPath = new AtomicReference<>();
             Arrays.stream(commandFields).filter(field -> null != field.getAnnotation(BatchProperty.class)).findFirst()
@@ -234,6 +243,7 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
                             .embeddedIdentityFullClassName(embeddedIdentityFullClassName)
                             .commandParamIntegrationsJson(JsonUtil.writeValueAsString(commandParamIntegrations))
                             .timePathsJson(JsonUtil.writeValueAsString(timePaths))
+                            .fieldNames(JsonUtil.writeValueAsString(fieldNames))
                             .build());
         }
         holders.clear();
