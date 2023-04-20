@@ -8,10 +8,7 @@ import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteCon
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.LogicIntegration;
 import io.micrc.core.persistence.snowflake.SnowFlakeIdentity;
 import io.micrc.core.rpc.LogicRequest;
-import io.micrc.lib.ClassCastUtils;
-import io.micrc.lib.FileUtils;
-import io.micrc.lib.JsonUtil;
-import io.micrc.lib.TimeReplaceUtil;
+import io.micrc.lib.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -24,10 +21,8 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Field;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.lang.reflect.Method;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -82,7 +77,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .setProperty("aggregationPath", simple("{{aggregationPath}}"))
                 .setProperty("logicIntegrationJson").groovy("new String(java.util.Base64.getDecoder().decode('{{logicIntegrationJson}}'))")
                 .setProperty("timePathsJson", simple("{{timePathsJson}}"))
-                .setProperty("fieldNames", simple("{{fieldNames}}"))
+                .setProperty("fieldMap", simple("{{fieldMap}}"))
                 .transacted()
                 // 1.处理请求
                 .to("direct://handle-request")
@@ -166,33 +161,42 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                         properties.put("commandJson", commandJson);
                     }
                     // 查看是否存在级联操作
-                    String fieldNameArray = (String) properties.get("fieldNames");
-                    List<String> filedNames = JsonUtil.writeValueAsList(fieldNameArray, String.class);
-                    if (!filedNames.isEmpty()) {
-                        for (String filedName : filedNames) {
-                            if(JsonUtil.hasPath(commandJson, "/target/" + filedName + "/identity/id")) {
+                    String fieldStr = (String) properties.get("fieldMap");
+                    Map<String, String> fieldMap = JsonUtil.writeValueAsObject(fieldStr, Map.class);
+                    if (!fieldMap.isEmpty()) {
+                        HashMap<String, Object> batchMap = new HashMap<>();
+                        HashMap<String, Object> oneMap = new HashMap<>();
+                        for (Map.Entry<String, String> entry : fieldMap.entrySet()) {
+                            String filedName = entry.getKey();
+                            String node = JsonUtil.readTree(commandJson).at("/target/" + filedName).toString();
+                            if(JsonUtil.hasPath(node, "/identity/id")) {
                                 // 多对一
-                                Object identity = JsonUtil.readPath(commandJson, "/target/" + filedName + "/identity/id");
+                                Object identity = JsonUtil.readPath(node, "/identity/id");
                                 if (identity == null) {
-                                    commandJson = JsonUtil.add(commandJson, "/target/" + filedName + "/identity/id",
+                                    node = JsonUtil.add(node, "/identity/id",
                                             String.valueOf(SnowFlakeIdentity.getInstance().nextId()));
                                 }
+                                // 将node转换成对应的实体
+                                oneMap.put(filedName, node);
                             } else {
                                 // 一对多
-                                JsonNode node = JsonUtil.readTree(commandJson).at("/target/" + filedName);
-                                List<Object> list = JsonUtil.writeValueAsList(node.toString(), Object.class);
+                                List<Object> list = JsonUtil.writeValueAsList(node, Object.class);
                                 for (int i = 0; i < list.size(); i++) {
                                     String entityJson = JsonUtil.writeValueAsString(list.get(i));
                                     Object identity = JsonUtil.readPath(entityJson, "/identity/id");
                                     if (identity == null) {
                                         entityJson = JsonUtil.add(entityJson, "/identity/id", String.valueOf(SnowFlakeIdentity.getInstance().nextId()));
-                                        list.set(i, entityJson);
                                     }
+                                    list.set(i, entityJson);
                                 }
-                                commandJson = JsonUtil.patch(commandJson, "/target/" + filedName, JsonUtil.writeValueAsString(list));
+                                // 将node转换成对应的实体
+                                batchMap.put(filedName, list.toString());
                             }
+                            commandJson = JsonUtil.patch(commandJson, "/target/" + filedName, "null");
                         }
                         properties.put("commandJson", commandJson);
+                        properties.put("batchMap", JsonUtil.writeValueAsString(batchMap));
+                        properties.put("oneMap", JsonUtil.writeValueAsString(oneMap));
                     }
                 })
                 .setBody(exchangeProperty("commandJson"))
@@ -200,7 +204,39 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .to("json-patch://select")
                 .marshal().json().convertBodyTo(String.class)
                 .setHeader("CamelJacksonUnmarshalType").exchangeProperty("aggregationPath")
+                .choice()
+                // 不存在级联操作
+                .when(simple("${exchange.properties.get(fieldMap)}").isEqualTo("{}"))
                 .to("dataformat:jackson:unmarshal?allow-unmarshall-type=true")
+                .endChoice()
+                .otherwise()
+                .process(exchange -> {
+                    String entityPath = exchange.getIn().getHeader("CamelJacksonUnmarshalType", String.class);
+                    Class<?> entityClass = Class.forName(entityPath);
+                    String fieldStr = (String) exchange.getProperties().get("fieldMap");
+                    Map<String, String> fieldMap = JsonUtil.writeValueAsObject(fieldStr, Map.class);
+                    String oneStr = (String) exchange.getProperties().get("oneMap");
+                    Map<String, Object> oneMap = JsonUtil.writeValueAsObject(oneStr, Map.class);
+                    String batchStr = (String) exchange.getProperties().get("batchMap");
+                    Map<String, Object> batchMap = JsonUtil.writeValueAsObject(batchStr, Map.class);
+                    Method[] methods = entityClass.getMethods();
+                    Object entity = JsonUtil.writeValueAsObject(exchange.getIn().getBody(String.class), entityClass);
+                    for (Map.Entry<String, String> entry : fieldMap.entrySet()) {
+                        String key = entry.getKey();
+                        Class<?> clazz = Class.forName(entry.getValue());
+                        Method method = Arrays.stream(methods)
+                                .filter(m -> m.getName().startsWith("set") && m.getName().contains(StringUtil.upperStringFirst(key)))
+                                .findFirst().orElseThrow();
+                        if(batchMap.containsKey(key)) {
+                            method.invoke(entity, JsonUtil.writeValueAsList(batchMap.get(key).toString(), clazz));
+                        } else {
+                            method.invoke(entity, JsonUtil.writeValueAsObject(oneMap.get(key).toString(), clazz));
+                        }
+                    }
+                    exchange.getIn().setBody(entity);
+                })
+                .endChoice()
+                .end()
                 .removeHeader("pointer")
                 .toD("bean://${exchange.properties.get(repositoryName)}?method=save");
 
@@ -385,7 +421,10 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
          */
         protected String logicPath;
 
-        protected String fieldNames;
+        /**
+         * 存在级联操作的字段
+         */
+        protected String fieldMap;
     }
 
     @Data
@@ -459,6 +498,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
 /**
  * 逻辑执行参数处理
  */
+@Slf4j
 class LogicInParamsResolve {
 
     public String toLogicParams(LogicIntegration logicIntegration, String commandJson, List<String[]> timePathList, String logicType) {
@@ -467,6 +507,8 @@ class LogicInParamsResolve {
             // 原始结果
             String value = JsonUtil.transAndCheck(mapping, commandJson, null);
             if (null == value) {
+                // dmn 入参为null 也需要保留
+                logicParams.put(key, null);
                 return;
             }
             if (LogicType.DMN.name().equals(logicType)) {
@@ -474,10 +516,13 @@ class LogicInParamsResolve {
             }
             logicParams.put(key, JsonUtil.writeValueAsObject(value, Object.class));
         });
-        return JsonUtil.writeValueAsStringRetainNull(logicParams);
+        String params = JsonUtil.writeValueAsStringRetainNull(logicParams);
+        log.info("业务规则执行条件：{}", params);
+        return params;
     }
 
     public String toTargetParams(Map<String, Object> logicResult, String commandJson, String logicIntegrationJson, List<String[]> timePathList, String logicType) {
+        log.info("业务规则执行结果：{}", logicResult);
         Object angle = logicResult.get("angle");
         LogicIntegration logicIntegration = JsonUtil.writeValueAsObject(logicIntegrationJson, LogicIntegration.class);
         String resultJson = JsonUtil.writeValueAsString(logicResult);
@@ -548,7 +593,16 @@ class IntegrationCommandParams {
         properties.remove("batchIntegrate");
 
         commandJson = JsonUtil.patch(commandJson, "/" + batchName, JsonUtil.writeValueAsString(integrateResult));
+        properties.put("commandJson", commandJson);
         Map<String, Object> currentIntegration = executableIntegrationInfo(batchIntegrate, commandJson, false);
+        if (null == currentIntegration) {
+            // 清除中间变量
+            properties.remove("currentIntegrateParam");
+            properties.remove("unIntegrateParams");
+            properties.remove("commandParamIntegrationsJson");
+            properties.remove("commandParamIntegrations");
+            return null;
+        }
         properties.put("currentIntegrateParam", currentIntegration);
         return "direct://integration-params";
     }

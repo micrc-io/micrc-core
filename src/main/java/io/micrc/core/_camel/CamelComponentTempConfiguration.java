@@ -194,7 +194,7 @@ public class CamelComponentTempConfiguration {
                             Binding binding = new Binding();
                             binding.setProperty("params", exchange.getIn().getBody());
                             Object retVal = new GroovyShell(binding).evaluate(script);
-                            exchange.getIn().setBody(retVal);
+                            exchange.getIn().setBody(JsonUtil.writeValueAsString(retVal));
                             exchange.getIn().removeHeader("groovy");
                         })
                         .end();

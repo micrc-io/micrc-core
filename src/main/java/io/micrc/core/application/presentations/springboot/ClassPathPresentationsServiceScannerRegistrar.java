@@ -10,6 +10,7 @@ import io.micrc.core.application.presentations.EnablePresentationsService;
 import io.micrc.core.application.presentations.ParamIntegration;
 import io.micrc.lib.FileUtils;
 import io.micrc.lib.JsonUtil;
+import io.micrc.lib.StringUtil;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -181,8 +182,9 @@ class ApplicationPresentationsServiceScanner extends ClassPathBeanDefinitionScan
             ParameterizedType genericInterface = (ParameterizedType) (repositoryClass.getGenericInterfaces()[0]);
             Type[] actualTypeArguments = genericInterface.getActualTypeArguments();
             String entityPath = actualTypeArguments[0].getTypeName();
+            String repositoryName = StringUtil.lowerStringFirst(repositoryClass.getSimpleName());
             List<String> paramMappings = Arrays.stream(logic.paramMappingFile()).map(file -> FileUtils.fileReaderSingleLine(file, List.of("jslt"))).collect(Collectors.toList());
-            paramIntegrations.add(new ParamIntegration(logic.name(), entityPath, logic.methodName(), paramMappings, logic.order()));
+            paramIntegrations.add(new ParamIntegration(logic.name(), repositoryName, entityPath, logic.methodName(), paramMappings, logic.order()));
         });
         // 集成解析
         Arrays.stream(integrations).forEach(integration -> {

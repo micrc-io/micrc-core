@@ -7,12 +7,13 @@ plugins {
 }
 
 group = 'io.micrc.core'
-version = 'v0.0.1-20230413-9'
+version = 'v0.0.1-20230420-7'
 sourceCompatibility = '11'
 targetCompatibility = '11'
 
 ext {
     set('camel.version', '3.18.1')
+    set('groovy-json.version', '3.0.9')
     set('cm.version', '2.1.3')
     set('hibernate.version', '5.6.10.Final')
     set('caffeine.version', '2.9.3')
@@ -89,6 +90,7 @@ dependencies {
     implementation "org.apache.camel.springboot:camel-bean-starter:${property('camel.version')}"
     // groovy support for groovy script in route
     implementation "org.apache.camel.springboot:camel-groovy-starter:${property('camel.version')}"
+    implementation "org.codehaus.groovy:groovy-json:${property('groovy-json.version')}"
 
     // json jackson support for tansform
     implementation "org.apache.camel.springboot:camel-jackson-starter:${property('camel.version')}"

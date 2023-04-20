@@ -147,10 +147,9 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
             // 判断target中是否存在级联操作
             Field targetField = targetFields.get(0);
             Field[] entityFields = targetField.getType().getDeclaredFields();
-            Set<String> fieldNames = Arrays.stream(entityFields)
+            Map<String, String> filedMap = Arrays.stream(entityFields)
                     .filter(field -> null != field.getAnnotation(OneToMany.class))
-                    .map(Field::getName)
-                    .collect(Collectors.toSet());
+                    .collect(Collectors.toMap(Field::getName, filed -> ((ParameterizedType) filed.getGenericType()).getActualTypeArguments()[0].getTypeName()));
             // 获取批量事件标识字段名称和名称
             AtomicReference<String> batchPropertyPath = new AtomicReference<>();
             Arrays.stream(commandFields).filter(field -> null != field.getAnnotation(BatchProperty.class)).findFirst()
@@ -180,7 +179,7 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
             Map<String, String> resultMappingMap = new HashMap<>();
             resultMappingMap.put("/event", ".event");
             resultMappingMap.put("/error", ".error");
-            resultMappingMap.put("/target/state", ".state");
+//            resultMappingMap.put("/target/state", ".state");
             Arrays.stream(commandLogic.toTargetMappings())
                     .forEach(targetMapping -> resultMappingMap.put(targetMapping.path(), FileUtils.fileReaderSingleLine(targetMapping.paramMappingFile(), List.of("jslt"))));
             LogicIntegration logicIntegration = LogicIntegration.builder()
@@ -243,7 +242,7 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
                             .embeddedIdentityFullClassName(embeddedIdentityFullClassName)
                             .commandParamIntegrationsJson(JsonUtil.writeValueAsString(commandParamIntegrations))
                             .timePathsJson(JsonUtil.writeValueAsString(timePaths))
-                            .fieldNames(JsonUtil.writeValueAsString(fieldNames))
+                            .fieldMap(JsonUtil.writeValueAsString(filedMap))
                             .build());
         }
         holders.clear();

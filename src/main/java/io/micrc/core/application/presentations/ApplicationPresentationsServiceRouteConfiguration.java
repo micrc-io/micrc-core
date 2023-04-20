@@ -212,6 +212,7 @@ class IntegrationParams {
                 executableIntegrationInfo.put("params", params);
                 // 如果能够集成,收集信息,然后会自动跳出循环
                 executableIntegrationInfo.put("entityPath", paramIntegration.getEntityPath());
+                executableIntegrationInfo.put("repositoryName", paramIntegration.getRepositoryName());
                 executableIntegrationInfo.put("method", paramIntegration.getQueryMethod());
             } else if (ParamIntegration.Type.INTEGRATE.equals(paramIntegration.getType())) {
                 String protocolContent = FileUtils.fileReader(paramIntegration.getProtocol(), List.of("json"));
@@ -256,13 +257,14 @@ class IntegrationParams {
     public static Object executeQuery(Exchange exchange, Map<String, Object> body) {
         try {
             String entityPath = (String) body.get("entityPath");
-            String[] split = entityPath.split("\\.");
-            String entityName = StringUtil.lowerStringFirst(split[split.length - 1]);
-            Object repository = exchange.getContext().getRegistry().lookupByName(entityName + "Repository");
+            String repositoryName = (String) body.get("repositoryName");
+            List<Object> params = ClassCastUtils.castArrayList(body.get("params"), Object.class);
+            Object repository = exchange.getContext().getRegistry().lookupByName(repositoryName);
             Method method = Arrays.stream(repository.getClass().getMethods())
-                    .filter(m -> m.getName().equals(body.get("method"))).findFirst().orElseThrow();
+                    .filter(m -> m.getName().equals(body.get("method")) && m.getParameterCount() == params.size())
+                    .findFirst().orElseThrow();
             Iterator<Class<?>> parameterTypes = Arrays.stream(method.getParameterTypes()).iterator();
-            Iterator<Object> parameterValues = (ClassCastUtils.castArrayList(body.get("params"), Object.class)).iterator();
+            Iterator<Object> parameterValues = params.iterator();
             // 解析查询参数
             ArrayList<Object> parameters = new ArrayList<>();
             while (parameterTypes.hasNext()) {

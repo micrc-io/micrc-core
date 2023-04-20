@@ -16,4 +16,13 @@ public class StringUtil {
         strChars[0] += 32;
         return String.valueOf(strChars);
     }
+
+    public static String upperStringFirst(String str) {
+        if (str == null || str.length() == 0) {
+            return str;
+        }
+        char[] strChars = str.toCharArray();
+        strChars[0] -= 32;
+        return String.valueOf(strChars);
+    }
 }
