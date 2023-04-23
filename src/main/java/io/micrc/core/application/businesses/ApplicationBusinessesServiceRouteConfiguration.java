@@ -81,24 +81,24 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .transacted()
                 // 1.处理请求
                 .to("direct://handle-request")
-                // 2.动态集成
+                // 2.解析时间
+                .to("direct://parse-time")
+                // 3.动态集成
                 .to("direct://dynamic-integration")
-                // 3.数据处理
+                // 4.数据处理
                 .to("direct://executor-data")
-                // 4.处理结果
+                // 5.处理结果
                 .to("direct://handle-result")
                 .end();
 
         from("direct://executor-data-one")
                 // 3.1.复制资源
                 .to("direct://copy-source")
-                // 3.2.解析时间
-                .to("direct://parse-time")
-                // 3.3.执行逻辑
+                // 3.2.执行逻辑
                 .to("logic://logic-execute")
-                // 3.4.存储实体
+                // 3.3.存储实体
                 .to("direct://save-entity")
-                // 3.5.存储消息
+                // 3.4.存储消息
                 .to("direct://save-message")
                 .end();
 

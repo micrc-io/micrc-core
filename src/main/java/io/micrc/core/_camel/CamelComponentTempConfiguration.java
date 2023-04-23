@@ -13,6 +13,7 @@ import io.micrc.core.rpc.ErrorInfo;
 import io.micrc.core.rpc.Result;
 import io.micrc.core.authorize.JwtToken;
 import io.micrc.lib.ClassCastUtils;
+import io.micrc.lib.EncryptUtils;
 import io.micrc.lib.JsonUtil;
 import io.micrc.lib.JwtUtil;
 import lombok.SneakyThrows;
@@ -253,13 +254,6 @@ public class CamelComponentTempConfiguration {
         };
     }
 
-    @Consume("direct://test")
-    public Object test(@Body Object body) {
-        System.out.println("测试" + JsonUtil.writeValueAsString(body));
-        return body;
-    }
-
-
     @Bean("authorize")
     public DirectComponent authorize() {
         return new DirectComponent();
@@ -308,6 +302,27 @@ public class CamelComponentTempConfiguration {
                             }
                             String key = MyRealm.USER_PERMISSIONS_KEY_PREFIX + username;
                             redisTemplate.delete(key);
+                        })
+                        .end();
+
+                from("authorize://pbkdf2Encrypt")
+                        .process(exchange -> {
+                            String body = exchange.getIn().getBody(String.class);
+                            String data = (String) JsonUtil.readPath(body, "/data");
+                            if (data == null) {
+                                throw new RuntimeException("[data] must not be null");
+                            }
+                            String salt = (String) JsonUtil.readPath(body, "/salt");
+                            if (salt == null) {
+                                throw new RuntimeException("[salt] must not be null");
+                            }
+                            exchange.getIn().setBody(EncryptUtils.pbkdf2(data, salt));
+                        })
+                        .end();
+
+                from("authorize://generateSalt")
+                        .process(exchange -> {
+                            exchange.getIn().setBody(EncryptUtils.generateSalt());
                         })
                         .end();
             }
