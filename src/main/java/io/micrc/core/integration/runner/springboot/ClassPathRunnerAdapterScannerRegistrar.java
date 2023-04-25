@@ -123,7 +123,7 @@ class ApplicationRunnerAdapterScanner extends ClassPathBeanDefinitionScanner {
                 continue;
             }
             String serviceName = runnerAdapter.serviceName();
-            String servicePath = beanClass.getPackageName().replace("infrastructure.runner", "application.business") + "." + serviceName;
+            String servicePath = beanClass.getPackageName().replace("infrastructure.runner", "application.businesses") + "." + serviceName;
             Class<?> service = Class.forName(servicePath);
             Method[] serviceMethods = service.getDeclaredMethods();
             Class<?>[] serviceMethodParameterTypes = serviceMethods[0].getParameterTypes();
