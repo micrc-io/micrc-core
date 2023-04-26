@@ -274,7 +274,7 @@ public class CamelComponentTempConfiguration {
                                 throw new RuntimeException("the application of execute authentication must be [security-service]");
                             }
                             String body = exchange.getIn().getBody(String.class);
-                            String username = (String) JsonUtil.readPath(body, "/username/username");// /概念名/模型中属性名
+                            String username = (String) JsonUtil.readPath(body, "/username");
                             if (username == null) {
                                 throw new RuntimeException("[username] must not be null");
                             }
@@ -286,9 +286,7 @@ public class CamelComponentTempConfiguration {
                             Subject subject = SecurityUtils.getSubject();
                             JwtToken jwtToken = new JwtToken(token);
                             subject.login(jwtToken);
-                            HashMap<String, Object> hashMap = new HashMap<>();
-                            hashMap.put("token", token);// 属性名，属性值
-                            exchange.getIn().setBody(JsonUtil.writeValueAsString(hashMap));
+                            exchange.getIn().setBody(JsonUtil.writeValueAsString(token));
                             String key = MyRealm.USER_PERMISSIONS_KEY_PREFIX + username;
                             redisTemplate.opsForValue().set(key, permissions);
                         })
@@ -301,7 +299,7 @@ public class CamelComponentTempConfiguration {
                                 throw new RuntimeException("the application of execute decertification must be [security-service]");
                             }
                             String body = exchange.getIn().getBody(String.class);
-                            String username = (String) JsonUtil.readPath(body, "/username/username");// /概念名/模型中属性名
+                            String username = (String) JsonUtil.readPath(body, "/username");
                             if (username == null) {
                                 throw new RuntimeException("[username] must not be null");
                             }
@@ -313,25 +311,21 @@ public class CamelComponentTempConfiguration {
                 from("authorize://pbkdf2Encrypt")
                         .process(exchange -> {
                             String body = exchange.getIn().getBody(String.class);
-                            String password = (String) JsonUtil.readPath(body, "/password/password");// /概念名/模型中属性名
+                            String password = (String) JsonUtil.readPath(body, "/password");
                             if (password == null) {
                                 throw new RuntimeException("[password] must not be null");
                             }
-                            String salt = (String) JsonUtil.readPath(body, "/salt/salt");// /概念名/模型中属性名
+                            String salt = (String) JsonUtil.readPath(body, "/salt");
                             if (salt == null) {
                                 throw new RuntimeException("[salt] must not be null");
                             }
-                            HashMap<String, Object> hashMap = new HashMap<>();
-                            hashMap.put("password", EncryptUtils.pbkdf2(password, salt));// 属性名，属性值
-                            exchange.getIn().setBody(JsonUtil.writeValueAsString(hashMap));
+                            exchange.getIn().setBody(JsonUtil.writeValueAsString(EncryptUtils.pbkdf2(password, salt)));
                         })
                         .end();
 
                 from("authorize://generateSalt")
                         .process(exchange -> {
-                            HashMap<String, Object> hashMap = new HashMap<>();
-                            hashMap.put("salt", EncryptUtils.generateSalt());// 属性名，属性值
-                            exchange.getIn().setBody(JsonUtil.writeValueAsString(hashMap));
+                            exchange.getIn().setBody(JsonUtil.writeValueAsString(EncryptUtils.generateSalt()));
                         })
                         .end();
             }

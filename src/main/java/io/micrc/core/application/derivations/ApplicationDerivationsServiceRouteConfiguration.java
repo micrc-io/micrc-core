@@ -6,7 +6,6 @@ import io.micrc.core.annotations.application.derivations.TechnologyType;
 import io.micrc.lib.ClassCastUtils;
 import io.micrc.lib.FileUtils;
 import io.micrc.lib.JsonUtil;
-import io.micrc.lib.StringUtil;
 import io.micrc.lib.TimeReplaceUtil;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -32,6 +31,7 @@ import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 /**
@@ -251,19 +251,18 @@ class IntegrationParams {
             }
             ParamIntegration paramIntegration = JsonUtil.writeObjectAsObject(unIntegrateParams.get(checkNumber), ParamIntegration.class);
             // 转换请求参数
-            LinkedHashMap<String, Object> paramMap = new LinkedHashMap<>();
+            AtomicReference<String> value = new AtomicReference<>();
             if (ParamIntegration.Type.SPECIAL_TECHNOLOGY.equals(paramIntegration.getType())
                     || ParamIntegration.Type.GENERAL_TECHNOLOGY.equals(paramIntegration.getType())) {
-                paramIntegration.getParamMappingMap().forEach((name, mapping) -> {
-                    String value = JsonUtil.transAndCheck(mapping, param, null);
+                paramIntegration.getParamMappings().stream().findFirst().ifPresent(mapping -> {
+                    value.set(JsonUtil.transAndCheck(mapping, param, null));
                     // 需要执行DMN的时候，时间格式需要转换
                     if (TechnologyType.DMN.equals(paramIntegration.getTechnologyType())) {
-                        value = TimeReplaceUtil.matchTimePathAndReplaceTime(timePathList, "", value, String.class);// 根目录路径为""
+                        value.set(TimeReplaceUtil.matchTimePathAndReplaceTime(timePathList, "", value.get(), String.class));// 根目录路径为""
                     }
-                    paramMap.put(name, JsonUtil.writeValueAsObject(value, Object.class));
                 });
                 // 检查当前查询是否可执行
-                if (paramMap.values().stream().anyMatch(Objects::isNull)) {
+                if (null == value.get()) {
                     continue;
                 }
             }
@@ -285,7 +284,7 @@ class IntegrationParams {
                     routeContent = (String) JsonUtil.readPath(param, paramIntegration.getContentPath());
                 }
                 executableIntegrationInfo.put("logic", routeContent); // 路由内容为null时，会根据technologyType执行内置路由
-                executableIntegrationInfo.put("params", JsonUtil.writeValueAsString(paramMap));
+                executableIntegrationInfo.put("params", value.get());
                 executableIntegrationInfo.put("technologyType", paramIntegration.getTechnologyType());
                 if (TechnologyType.ROUTE.equals(paramIntegration.getTechnologyType())) {
                     String routeName = findRouteName(routeContent);
@@ -302,7 +301,7 @@ class IntegrationParams {
                     continue;
                 }
                 executableIntegrationInfo.put("logic", routeContent);
-                executableIntegrationInfo.put("params", JsonUtil.writeValueAsString(paramMap));
+                executableIntegrationInfo.put("params", value.get());
                 String routeName = findRouteName(routeContent);
                 executableIntegrationInfo.put("routeName", routeName);
             }
