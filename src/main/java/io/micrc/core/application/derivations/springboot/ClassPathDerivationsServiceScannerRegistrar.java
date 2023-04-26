@@ -5,7 +5,6 @@ import io.micrc.core.annotations.application.derivations.DerivationsService;
 import io.micrc.core.annotations.application.derivations.GeneralTechnology;
 import io.micrc.core.annotations.application.derivations.QueryLogic;
 import io.micrc.core.annotations.application.derivations.SpecialTechnology;
-import io.micrc.core.annotations.application.derivations.TechnologyParam;
 import io.micrc.core.application.derivations.ApplicationDerivationsServiceRouteConfiguration;
 import io.micrc.core.application.derivations.ApplicationDerivationsServiceRouteConfiguration.ApplicationDerivationsServiceDefinition;
 import io.micrc.core.application.derivations.ApplicationDerivationsServiceRouteTemplateParameterSource;
@@ -202,18 +201,16 @@ class ApplicationDerivationsServiceScanner extends ClassPathBeanDefinitionScanne
         });
         // 专用技术解析
         Arrays.stream(specialTechnologies).forEach(specialTechnology -> {
-            Map<String, String> map = Arrays.stream(specialTechnology.technologyParams())
-                    .collect(Collectors.toMap(TechnologyParam::name, param -> FileUtils.fileReaderSingleLine(param.paramMappingFile(), List.of("jslt")), (p1, p2) -> p2));
+            String mapping = FileUtils.fileReaderSingleLine(specialTechnology.paramMappingFile(), List.of("jslt"));
             paramIntegrations.add(new ParamIntegration(specialTechnology.name(),
-                    specialTechnology.scriptContentPath(), specialTechnology.scriptFilePath(), map,
+                    specialTechnology.scriptContentPath(), specialTechnology.scriptFilePath(), List.of(mapping),
                     specialTechnology.order(), ParamIntegration.Type.SPECIAL_TECHNOLOGY, specialTechnology.technologyType()));
         });
         // 通用技术解析
         Arrays.stream(generalTechnologies).forEach(generalTechnology -> {
-            Map<String, String> map = Arrays.stream(generalTechnology.technologyParams())
-                    .collect(Collectors.toMap(TechnologyParam::name, param -> FileUtils.fileReaderSingleLine(param.paramMappingFile(), List.of("jslt")), (p1, p2) -> p2));
+            String mapping = FileUtils.fileReaderSingleLine(generalTechnology.paramMappingFile(), List.of("jslt"));
             paramIntegrations.add(new ParamIntegration(generalTechnology.name(),
-                    generalTechnology.routeContentPath(), generalTechnology.routeXmlFilePath(), map,
+                    generalTechnology.routeContentPath(), generalTechnology.routeXmlFilePath(), List.of(mapping),
                     generalTechnology.order(), ParamIntegration.Type.GENERAL_TECHNOLOGY, null));
         });
         // 按照优先级排序

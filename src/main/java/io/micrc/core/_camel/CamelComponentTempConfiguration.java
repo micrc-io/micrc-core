@@ -21,6 +21,7 @@ import org.apache.camel.*;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.direct.DirectComponent;
 import org.apache.camel.support.ResourceHelper;
+import org.apache.camel.util.json.JsonObject;
 import org.apache.shiro.SecurityUtils;
 import org.apache.shiro.subject.Subject;
 import org.kie.dmn.api.core.DMNDecisionResult;
@@ -46,6 +47,8 @@ import javax.xml.xpath.XPathFactory;
 import java.io.ByteArrayInputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
+import java.util.AbstractMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -275,7 +278,7 @@ public class CamelComponentTempConfiguration {
                             if (username == null) {
                                 throw new RuntimeException("[username] must not be null");
                             }
-                            List<String> permissions = ClassCastUtils.castArrayList(JsonUtil.readPath(body, "/permissions"), String.class);
+                            List<String> permissions = ClassCastUtils.castArrayList(JsonUtil.readPath(body, "/permissions"), String.class);// 概念名
                             if (permissions == null) {
                                 throw new RuntimeException("[permissions] must not be null");
                             }
@@ -308,21 +311,21 @@ public class CamelComponentTempConfiguration {
                 from("authorize://pbkdf2Encrypt")
                         .process(exchange -> {
                             String body = exchange.getIn().getBody(String.class);
-                            String data = (String) JsonUtil.readPath(body, "/data");
-                            if (data == null) {
-                                throw new RuntimeException("[data] must not be null");
+                            String password = (String) JsonUtil.readPath(body, "/password");
+                            if (password == null) {
+                                throw new RuntimeException("[password] must not be null");
                             }
                             String salt = (String) JsonUtil.readPath(body, "/salt");
                             if (salt == null) {
                                 throw new RuntimeException("[salt] must not be null");
                             }
-                            exchange.getIn().setBody(EncryptUtils.pbkdf2(data, salt));
+                            exchange.getIn().setBody(JsonUtil.writeValueAsString(EncryptUtils.pbkdf2(password, salt)));
                         })
                         .end();
 
                 from("authorize://generateSalt")
                         .process(exchange -> {
-                            exchange.getIn().setBody(EncryptUtils.generateSalt());
+                            exchange.getIn().setBody(JsonUtil.writeValueAsString(EncryptUtils.generateSalt()));
                         })
                         .end();
             }
