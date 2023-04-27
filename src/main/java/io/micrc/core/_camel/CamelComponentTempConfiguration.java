@@ -305,6 +305,9 @@ public class CamelComponentTempConfiguration {
                             }
                             String key = MyRealm.USER_PERMISSIONS_KEY_PREFIX + username;
                             redisTemplate.delete(key);
+                            Boolean has = redisTemplate.hasKey(key);
+                            boolean success = has == null || !has;
+                            exchange.getIn().setBody(JsonUtil.writeValueAsString(success));
                         })
                         .end();
 
