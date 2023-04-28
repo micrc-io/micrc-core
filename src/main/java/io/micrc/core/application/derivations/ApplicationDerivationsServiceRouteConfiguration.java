@@ -30,6 +30,8 @@ import javax.xml.xpath.XPathFactory;
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.lang.reflect.ParameterizedType;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -337,11 +339,13 @@ class IntegrationParams {
             Method method = Arrays.stream(repository.getClass().getMethods())
                     .filter(m -> m.getName().equals(body.get("method")) && m.getParameterCount() == params.size())
                     .findFirst().orElseThrow();
+            Iterator<Parameter> parameterIterator = Arrays.stream(method.getParameters()).iterator();
             Iterator<Class<?>> parameterTypes = Arrays.stream(method.getParameterTypes()).iterator();
             Iterator<Object> parameterValues = params.iterator();
             // 解析查询参数
             ArrayList<Object> parameters = new ArrayList<>();
             while (parameterTypes.hasNext()) {
+                Parameter parameter = parameterIterator.next();
                 String typeName = parameterTypes.next().getName();
                 String value = (String) parameterValues.next();
                 if ("org.springframework.data.domain.Pageable".equals(typeName) || "org.springframework.data.domain.PageRequest".equals(typeName)) {
@@ -363,6 +367,11 @@ class IntegrationParams {
                     Object entity = JsonUtil.writeValueAsObject(value, Class.forName(entityPath));
                     Example<?> example = Example.of(entity);
                     parameters.add(example);
+                } else if ("java.util.List".equals(typeName)) {
+                    // todo，有问题，需要获取参数范型
+                    ParameterizedType parameterizedType = (ParameterizedType) parameter.getParameterizedType();
+//                    Type[] actualTypeArguments = parameterizedType.getActualTypeArguments();
+//                    parameters.add(JsonUtil.writeValueAsList(value, Class.forName()));
                 } else {
                     parameters.add(JsonUtil.writeValueAsObject(value, Class.forName(typeName)));
                 }
