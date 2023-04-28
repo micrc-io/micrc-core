@@ -12,7 +12,6 @@ import io.micrc.core.application.derivations.EnableDerivationsService;
 import io.micrc.core.application.derivations.ParamIntegration;
 import io.micrc.lib.FileUtils;
 import io.micrc.lib.JsonUtil;
-import io.micrc.lib.StringUtil;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -34,8 +33,6 @@ import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -186,18 +183,8 @@ class ApplicationDerivationsServiceScanner extends ClassPathBeanDefinitionScanne
         List<ParamIntegration> paramIntegrations = new ArrayList<>();
         // 查询逻辑解析
         Arrays.stream(queryLogics).forEach(logic -> {
-            Class<?> repositoryClass = null;
-            try {
-                repositoryClass = Class.forName(logic.repositoryFullClassName());
-            } catch (ClassNotFoundException e) {
-                throw new RuntimeException(e);
-            }
-            ParameterizedType genericInterface = (ParameterizedType) (repositoryClass.getGenericInterfaces()[0]);
-            Type[] actualTypeArguments = genericInterface.getActualTypeArguments();
-            String entityPath = actualTypeArguments[0].getTypeName();
-            String repositoryName = StringUtil.lowerStringFirst(repositoryClass.getSimpleName());
             List<String> paramMappings = Arrays.stream(logic.paramMappingFile()).map(file -> FileUtils.fileReaderSingleLine(file, List.of("jslt"))).collect(Collectors.toList());
-            paramIntegrations.add(new ParamIntegration(logic.name(), repositoryName, entityPath, logic.methodName(), paramMappings, logic.order()));
+            paramIntegrations.add(new ParamIntegration(logic.name(), logic.repositoryFullClassName(), logic.methodName(), paramMappings, logic.order()));
         });
         // 专用技术解析
         Arrays.stream(specialTechnologies).forEach(specialTechnology -> {

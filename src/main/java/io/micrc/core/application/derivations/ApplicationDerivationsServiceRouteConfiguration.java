@@ -6,6 +6,7 @@ import io.micrc.core.annotations.application.derivations.TechnologyType;
 import io.micrc.lib.ClassCastUtils;
 import io.micrc.lib.FileUtils;
 import io.micrc.lib.JsonUtil;
+import io.micrc.lib.StringUtil;
 import io.micrc.lib.TimeReplaceUtil;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -30,8 +31,8 @@ import javax.xml.xpath.XPathFactory;
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -275,8 +276,7 @@ class IntegrationParams {
                     continue;
                 }
                 executableIntegrationInfo.put("params", params);
-                executableIntegrationInfo.put("entityPath", paramIntegration.getEntityPath());
-                executableIntegrationInfo.put("repositoryName", paramIntegration.getRepositoryName());
+                executableIntegrationInfo.put("repositoryPath", paramIntegration.getRepositoryPath());
                 executableIntegrationInfo.put("method", paramIntegration.getQueryMethod());
             } else if (ParamIntegration.Type.SPECIAL_TECHNOLOGY.equals(paramIntegration.getType())) {
                 String routeContent = null;
@@ -330,25 +330,34 @@ class IntegrationParams {
      *
      * @return
      */
-    public static Object executeQuery(Exchange exchange, Map<String, Object> body) throws NoSuchMethodException {
+    public static Object executeQuery(Exchange exchange, Map<String, Object> body) {
         try {
-            String entityPath = (String) body.get("entityPath");
-            String repositoryName = (String) body.get("repositoryName");
+            Class<?> repositoryClass = Class.forName((String) body.get("repositoryPath"));
+            ParameterizedType genericInterface = (ParameterizedType) (repositoryClass.getGenericInterfaces()[0]);
+            Type[] actualTypeArguments = genericInterface.getActualTypeArguments();
+            String entityPath = actualTypeArguments[0].getTypeName();
+            String idPath = actualTypeArguments[1].getTypeName();
             List<Object> params = ClassCastUtils.castArrayList(body.get("params"), Object.class);
+            String repositoryName = StringUtil.lowerStringFirst(repositoryClass.getSimpleName());
             Object repository = exchange.getContext().getRegistry().lookupByName(repositoryName);
-            Method method = Arrays.stream(repository.getClass().getMethods())
+            Method method = Arrays.stream(repositoryClass.getMethods())
                     .filter(m -> m.getName().equals(body.get("method")) && m.getParameterCount() == params.size())
                     .findFirst().orElseThrow();
-            Iterator<Parameter> parameterIterator = Arrays.stream(method.getParameters()).iterator();
-            Iterator<Class<?>> parameterTypes = Arrays.stream(method.getParameterTypes()).iterator();
+            Iterator<Type> types = Arrays.stream(method.getGenericParameterTypes()).iterator();
             Iterator<Object> parameterValues = params.iterator();
             // 解析查询参数
             ArrayList<Object> parameters = new ArrayList<>();
-            while (parameterTypes.hasNext()) {
-                Parameter parameter = parameterIterator.next();
-                String typeName = parameterTypes.next().getName();
+            while (types.hasNext()) {
+                Type type = types.next();
+                String typeName = getTruthName(type.getTypeName(), entityPath, idPath);
+                String actualTypeName = "java.lang.Object";
+                if (type instanceof ParameterizedType) {
+                    ParameterizedType parameterizedType = (ParameterizedType) type;
+                    typeName = parameterizedType.getRawType().getTypeName();
+                    actualTypeName = getTruthName(parameterizedType.getActualTypeArguments()[0].getTypeName(), entityPath, idPath);
+                }
                 String value = (String) parameterValues.next();
-                if ("org.springframework.data.domain.Pageable".equals(typeName) || "org.springframework.data.domain.PageRequest".equals(typeName)) {
+                if ("org.springframework.data.domain.Pageable".equals(typeName)) {
                     Object page = JsonUtil.readPath(value, "/page");
                     Object size = JsonUtil.readPath(value, "/size");
                     PageRequest pageRequest = PageRequest.of((int) page - 1, (int) size);
@@ -363,15 +372,12 @@ class IntegrationParams {
                     }
                     pageRequest = pageRequest.withSort(sort);
                     parameters.add(pageRequest);
-                } else if ("org.springframework.data.domain.Example".equals(typeName) || "org.springframework.data.domain.TypedExample".equals(typeName)) {
-                    Object entity = JsonUtil.writeValueAsObject(value, Class.forName(entityPath));
+                } else if ("org.springframework.data.domain.Example".equals(typeName)) {
+                    Object entity = JsonUtil.writeValueAsObject(value, Class.forName(actualTypeName));
                     Example<?> example = Example.of(entity);
                     parameters.add(example);
-                } else if ("java.util.List".equals(typeName)) {
-                    // todo，有问题，需要获取参数范型
-                    ParameterizedType parameterizedType = (ParameterizedType) parameter.getParameterizedType();
-//                    Type[] actualTypeArguments = parameterizedType.getActualTypeArguments();
-//                    parameters.add(JsonUtil.writeValueAsList(value, Class.forName()));
+                } else if ("java.util.List".equals(typeName) || "java.lang.Iterable".equals(typeName)) {
+                    parameters.add(JsonUtil.writeValueAsList(value, Class.forName(actualTypeName)));
                 } else {
                     parameters.add(JsonUtil.writeValueAsObject(value, Class.forName(typeName)));
                 }
@@ -379,6 +385,16 @@ class IntegrationParams {
             return method.invoke(repository, parameters.toArray());
         } catch (IllegalAccessException | InvocationTargetException | ClassNotFoundException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private static String getTruthName(String name, String entityPath, String idPath) {
+        if ("I".equals(name)) {
+            return idPath;
+        } else if ("S".equals(name)) {
+            return entityPath;
+        } else {
+            return name;
         }
     }
 }

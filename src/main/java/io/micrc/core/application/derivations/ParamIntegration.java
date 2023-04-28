@@ -25,18 +25,11 @@ public class ParamIntegration {
     private String concept;
 
     /**
-     * 实体路径
+     * 仓库路径
      *
      * @return
      */
-    private String entityPath;
-
-    /**
-     * 仓库名称
-     *
-     * @return
-     */
-    private String repositoryName;
+    private String repositoryPath;
 
     /**
      * 查询方法
@@ -87,10 +80,9 @@ public class ParamIntegration {
         this.technologyType = technologyType;
     }
 
-    public ParamIntegration(String concept, String repositoryName, String entityPath, String queryMethod, List<String> paramMappings, int order) {
+    public ParamIntegration(String concept, String repositoryPath, String queryMethod, List<String> paramMappings, int order) {
         this.concept = concept;
-        this.repositoryName = repositoryName;
-        this.entityPath = entityPath;
+        this.repositoryPath = repositoryPath;
         this.queryMethod = queryMethod;
         this.paramMappings = paramMappings;
         this.order = order;
