@@ -69,6 +69,11 @@ public class AuthorizeAutoConfiguration {
         //设置匹配路径
         LinkedHashMap<String, String> filterChainDefinitionMap = new LinkedHashMap<>();
         filterChainDefinitionMap.put("/api/auth/login", "anon");// 登录地址
+        // swagger地址
+        filterChainDefinitionMap.put("/swagger-ui/**", "anon");
+        filterChainDefinitionMap.put("/v3/api-docs/swagger-config", "anon");
+        filterChainDefinitionMap.put("/api/apidoc/**", "anon");
+
         filterChainDefinitionMap.put("/**", "jwt");
         filter.setLoginUrl("/api/auth/login");// 登录地址
         filter.setSuccessUrl("/auth/getInfo");
