@@ -41,6 +41,9 @@ configurations {
 repositories {
     mavenLocal()
     mavenCentral()
+    maven {
+        url 'https://jitpack.io'
+    }
 }
 
 dependencyManagement {
@@ -51,7 +54,8 @@ dependencyManagement {
 
 dependencies {
     // annotation - micrc-annotations: gradle task - publishToMavenLocal
-    implementation "io.micrc.core:micrc-annotations:v0.0.1-20230426-3"
+    // implementation "io.micrc.core:micrc-annotations:v0.0.1-20230426-3"
+    implementation "com.github.micrc-io:micrc-annotations:v0.0.1"
 
     // springboot basic
     implementation "org.springframework.boot:spring-boot-starter"
