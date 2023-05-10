@@ -53,9 +53,8 @@ dependencyManagement {
 }
 
 dependencies {
-    // annotation - micrc-annotations: gradle task - publishToMavenLocal
     // implementation "io.micrc.core:micrc-annotations:v0.0.1-20230426-3"
-    implementation "com.github.micrc-io:micrc-annotations:v0.0.1"
+    implementation "com.github.micrc-io:micrc-annotations:v0.0.3"
 
     // springboot basic
     implementation "org.springframework.boot:spring-boot-starter"
@@ -142,12 +141,6 @@ dependencies {
     implementation "com.auth0:java-jwt:${property('jwt.version')}"
 }
 
-processTestResources {
-    filesMatching('micrc.properties') {
-        expand([version: 'v0.0.1'])
-    }
-}
-
 task sourcesJar(type: Jar) {
     from sourceSets.main.allJava
     classifier = 'sources'
@@ -159,17 +152,6 @@ publishing {
         mavenJava(MavenPublication) {
             from components.java
             artifact sourcesJar
-        }
-    }
-
-    repositories {
-        maven {
-            name = 'Github-Packages'
-            url = uri("https://maven.pkg.github.com/micrc-io/micrc-core")
-            credentials {
-                username = System.getenv("GITHUB_ACTOR")
-                password = System.getenv("GITHUB_TOKEN")
-            }
         }
     }
 }
