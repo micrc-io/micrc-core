@@ -40,9 +40,6 @@ configurations {
 
 repositories {
     mavenLocal()
-    maven {
-        url "${ouxxa_nexus}"
-    }
     mavenCentral()
 }
 
@@ -154,20 +151,13 @@ task sourcesJar(type: Jar) {
 
 // 执行publishToMavenLocal后，其他工程可正常引入
 publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            from components.java
-            artifact sourcesJar
-        }
-    }
-
     repositories {
         maven {
-            name = 'colibriNexus'
-            url = uri("${colibri_nexus}")
+            name = 'Github-Packages'
+            url = uri("https://maven.pkg.github.com/micrc-io/micrc-gradle-plugin")
             credentials {
-                username = "${colibri_nexus_user}"
-                password = "${colibri_nexus_pass}"
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
             }
         }
     }
