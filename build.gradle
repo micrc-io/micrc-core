@@ -151,6 +151,13 @@ task sourcesJar(type: Jar) {
 
 // 执行publishToMavenLocal后，其他工程可正常引入
 publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            artifact sourcesJar
+        }
+    }
+
     repositories {
         maven {
             name = 'Github-Packages'
