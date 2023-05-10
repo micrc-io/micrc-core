@@ -1,0 +1,10 @@
+
+databaseChangeLog:
+  - includeAll:
+      path: db/snapshot/${version}
+      errorIfMissingOrEmpty: false
+      relativeToChangelogFile: false
+  - includeAll:
+      path: db/changelog/${version}
+      errorIfMissingOrEmpty: false
+      relativeToChangelogFile: false

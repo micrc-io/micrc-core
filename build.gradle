@@ -2,20 +2,34 @@ plugins {
     id 'java'
     id 'idea'
     id 'maven-publish'
-    id 'org.springframework.boot' version '2.7.3'
+    id 'org.springframework.boot' version '2.7.11' apply false
     id 'io.spring.dependency-management' version '1.0.13.RELEASE'
-    id 'io.github.gradle-nexus.publish-plugin' version '1.1.0'
 }
 
 group = 'io.micrc.core'
-version = '0.0.1'
+version = 'v0.0.1-20230510-2'
 sourceCompatibility = '11'
-
-bootJar.enabled = false
-jar.enabled = true
+targetCompatibility = '11'
 
 ext {
     set('camel.version', '3.18.1')
+    set('groovy-json.version', '3.0.9')
+    set('cm.version', '2.1.3')
+    set('hibernate.version', '5.6.10.Final')
+    set('caffeine.version', '2.9.3')
+    set('ehcache.version', '3.10.0')
+    set('shedlock.version', '4.42.0')
+    set('json-patch.version', '1.13')
+    set('springdoc.version', '1.6.11')
+    set('rabbitmq-mock.version', '1.1.1')
+    set('mockserver.version', '5.14.0')
+    set('embedded-redis.version', '0.7.3')
+    set('testcontainers.version', '2.2.10')
+    set('jslt.version', '0.1.13')
+    set('json-schema-validator.version', '2.2.14')
+    set('jwt.version', '3.4.1')
+    set('shiro.version', '1.7.1')
+    set('mysql-connector-java.version', '8.0.30')
 }
 
 configurations {
@@ -26,38 +40,116 @@ configurations {
 
 repositories {
     mavenLocal()
-    mavenCentral()
     maven {
-        url "${colibri_nexus}"
-        credentials {
-            username "${colibri_nexus_user}"
-            password "${colibri_nexus_pass}"
-        }
+        url "${ouxxa_nexus}"
     }
+    mavenCentral()
 }
 
 dependencyManagement {
     imports {
-        mavenBom "org.apache.camel.springboot:camel-spring-boot-bom:${property('camel.version')}"
+        mavenBom org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES
     }
 }
 
 dependencies {
-    // annotation
-    implementation "io.micrc.core:micrc-annotations:0.0.1"
+    // annotation - micrc-annotations: gradle task - publishToMavenLocal
+    implementation "io.micrc.core:micrc-annotations:v0.0.1-20230426-3"
+
+    // springboot basic
+    implementation "org.springframework.boot:spring-boot-starter"
+    implementation "org.springframework.boot:spring-boot-starter-aop"
+    implementation "org.springframework.boot:spring-boot-starter-web"
+    // metrics
+    implementation "org.springframework.boot:spring-boot-starter-actuator"
+    // unit/integrate test
+    testImplementation "org.springframework.boot:spring-boot-starter-test"
 
     // for lombok
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
+    compileOnly "org.projectlombok:lombok"
+    annotationProcessor "org.projectlombok:lombok"
+    testCompileOnly "org.projectlombok:lombok"
+    testAnnotationProcessor "org.projectlombok:lombok"
+
+    // for k8s configmap and secret
+    runtimeOnly "org.springframework.cloud:spring-cloud-starter-kubernetes-fabric8-config:${property('cm.version')}"
 
     // persistence
-    implementation "com.h2database:h2"
+    runtimeOnly "mysql:mysql-connector-java:${property('mysql-connector-java.version')}"
+    // jpa support for repository and query
+    implementation "org.springframework.boot:spring-boot-starter-data-jpa"
+    // jdbc support for event store, tracker and idempotent store
+    implementation "org.apache.camel.springboot:camel-spring-jdbc-starter:${property('camel.version')}"
+    // db for defaul
+    implementation "com.playtika.testcontainers:embedded-mysql:${property('testcontainers.version')}"
+    // db migration
+    implementation "org.liquibase:liquibase-core"
 
-    // integration
-    implementation "org.apache.camel.springboot:camel-spring-boot-starter"
-    implementation "org.apache.camel.springboot:camel-bean-starter"
+    // integration camel for spring-boot base
+    implementation "org.apache.camel.springboot:camel-spring-boot-starter:${property('camel.version')}"
+    // bean integration for bean integrate in route
+    implementation "org.apache.camel.springboot:camel-bean-starter:${property('camel.version')}"
+    // groovy support for groovy script in route
+    implementation "org.apache.camel.springboot:camel-groovy-starter:${property('camel.version')}"
+    implementation "org.codehaus.groovy:groovy-json:${property('groovy-json.version')}"
 
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    // json jackson support for tansform
+    implementation "org.apache.camel.springboot:camel-jackson-starter:${property('camel.version')}"
+    // jslt support for json(domain object) mapping
+    implementation "com.schibsted.spt.data:jslt:${property('jslt.version')}"
+    // json patch support for custom router with json-pointer and json-patch
+    implementation "com.github.java-json-tools:json-patch:${property('json-patch.version')}"
+
+    // http/websocket endpoints producing, used by rest openapi component
+    implementation "org.apache.camel.springboot:camel-undertow-starter:${property('camel.version')}"
+    // http endpoints consuming, used by rest component
+    implementation "org.apache.camel.springboot:camel-servlet-starter:${property('camel.version')}"
+    // openapi producer - derivatives producer adapter
+    implementation "org.apache.camel.springboot:camel-rest-openapi-starter:${property('camel.version')}"
+    // rest consumer - presentations and derivatives consumer adapter
+    implementation "org.apache.camel.springboot:camel-rest-starter:${property('camel.version')}"
+    // rest api doc
+    implementation "org.springdoc:springdoc-openapi-ui:${property('springdoc.version')}"
+    // mock server for rpc producer
+    implementation "org.mock-server:mockserver-netty-no-dependencies:${property('mockserver.version')}"
+    // message endpoints for consuming and producing - message producer and consumer adapter
+    implementation "org.springframework.boot:spring-boot-starter-amqp"
+    // embedded rabbitmq
+    implementation "com.playtika.testcontainers:embedded-rabbitmq:${property('testcontainers.version')}"
+
+    // embedded kafka
+    implementation "com.playtika.testcontainers:embedded-kafka:${property('testcontainers.version')}"
+    // JIT runtime
+    implementation "org.kie.kogito:kogito-dmn:1.29.0.Final"
+
+    // spring kafka
+    implementation "org.springframework.kafka:spring-kafka"
+
+    // caffeine, redis for cache and schedule
+    implementation "org.springframework.boot:spring-boot-starter-cache"
+    implementation "org.springframework.boot:spring-boot-starter-data-redis"
+    // caffeine cache
+    implementation "com.github.ben-manes.caffeine:caffeine:${property('caffeine.version')}"
+    // shedlock for schedule distributed lock
+    implementation "net.javacrumbs.shedlock:shedlock-spring:${property('shedlock.version')}"
+    implementation "net.javacrumbs.shedlock:shedlock-provider-redis-spring:${property('shedlock.version')}"
+    // json-schema-validator
+    implementation "com.github.java-json-tools:json-schema-validator:${property('json-schema-validator.version')}"
+    // jwt
+    implementation "org.apache.shiro:shiro-spring-boot-web-starter:${property('shiro.version')}"
+    // shiro
+    implementation "com.auth0:java-jwt:${property('jwt.version')}"
+}
+
+processTestResources {
+    filesMatching('micrc.properties') {
+        expand([version: 'v0.0.1'])
+    }
+}
+
+task sourcesJar(type: Jar) {
+    from sourceSets.main.allJava
+    classifier = 'sources'
 }
 
 // 执行publishToMavenLocal后，其他工程可正常引入
@@ -65,17 +157,18 @@ publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
+            artifact sourcesJar
         }
     }
-}
 
-nexusPublishing {
     repositories {
-        create("colibri") {
-            nexusUrl.set(uri("${colibri_nexus}"))
-            snapshotRepositoryUrl.set(uri("${colibri_nexus}"))
-            username.set("${colibri_nexus_user}")
-            password.set("${colibri_nexus_pass}")
+        maven {
+            name = 'colibriNexus'
+            url = uri("${colibri_nexus}")
+            credentials {
+                username = "${colibri_nexus_user}"
+                password = "${colibri_nexus_pass}"
+            }
         }
     }
 }

@@ -1,0 +1,47 @@
+
+databaseChangeLog:
+  - changeSet:
+      id: create-table-user-0.0.1
+      author: demo
+      preConditions:
+        - onFail: MARK_RAN
+          not:
+            - tableExists:
+                tableName: users
+      changes:
+        - createTable:
+            tableName: users
+            remarks: table of user
+            columns:
+              - column:
+                  name: userId
+                  type: BIGINT
+                  remarks: id of user
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: user_pkey
+              - column:
+                  name: username
+                  type: VARCHAR(200)
+                  remarks: name of user
+                  constraints:
+                    nullable: false
+              - column:
+                  name: first_name
+                  type: VARCHAR(300)
+                  remarks: first name of user
+                  constraints:
+                    nullable: true
+              - column:
+                  name: last_name
+                  type: VARCHAR(300)
+                  remarks: last name of user
+                  constraints:
+                    nullable: true
+              - column:
+                  name: full_name
+                  type: VARCHAR(1000)
+                  remarks: full name of user
+                  constraints:
+                    nullable: true
