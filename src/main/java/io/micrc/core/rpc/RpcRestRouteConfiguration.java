@@ -56,6 +56,8 @@ public class RpcRestRouteConfiguration extends MicrcRouteBuilder {
                 .setProperty("requestBody", body())
                 .bean(IntegrationsInfo.class, "get(${exchange.properties.get(protocolFilePath)})")
                 .setProperty("integrationInfo", body())
+                // todo,衍生集成专用TOKEN
+                .setHeader("Authorization", constant("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9ucyI6WyIqIl0sImV4cCI6MzM2MzQ1NjExNSwidXNlcm5hbWUiOiJ0ZXN0In0.omwX_yOvVkwu9VLFZOQwnZbtyncqnLR331M9DzgRPjM"))
                 .setBody(exchangeProperty("requestBody"))
                 .removeProperty("requestBody")
                 // 因衍生服务提供端会自行添加/api的基础路径,故在集成衍生时,则使用自行协议,添加/api头

@@ -389,7 +389,7 @@ public class CamelComponentTempConfiguration {
 
             private String getErrorMessage(Exchange exchange) {
                 Throwable throwable = exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Throwable.class);
-                if (!StringUtils.hasText(throwable.getLocalizedMessage())) {
+                if (!StringUtils.hasText(throwable.getLocalizedMessage()) && null != throwable.getCause()) {
                     throwable = throwable.getCause();
                 }
                 if (InvocationTargetException.class.equals(throwable.getClass())) {

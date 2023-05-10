@@ -7,7 +7,7 @@ plugins {
 }
 
 group = 'io.micrc.core'
-version = 'v0.0.1-20230426-11'
+version = 'v0.0.1-20230510-2'
 sourceCompatibility = '11'
 targetCompatibility = '11'
 
@@ -29,6 +29,7 @@ ext {
     set('json-schema-validator.version', '2.2.14')
     set('jwt.version', '3.4.1')
     set('shiro.version', '1.7.1')
+    set('mysql-connector-java.version', '8.0.30')
 }
 
 configurations {
@@ -74,7 +75,7 @@ dependencies {
     runtimeOnly "org.springframework.cloud:spring-cloud-starter-kubernetes-fabric8-config:${property('cm.version')}"
 
     // persistence
-    runtimeOnly "mysql:mysql-connector-java"
+    runtimeOnly "mysql:mysql-connector-java:${property('mysql-connector-java.version')}"
     // jpa support for repository and query
     implementation "org.springframework.boot:spring-boot-starter-data-jpa"
     // jdbc support for event store, tracker and idempotent store
