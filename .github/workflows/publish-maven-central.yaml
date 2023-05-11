@@ -1,0 +1,48 @@
+name: Publish to maven-central repository
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout latest code
+        uses: actions/checkout@v3
+
+      - name: Setup JDK 11
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'corretto'
+          java-version: 11
+
+      - name: Setup build cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle
+
+      - name: Setup GPG signing secret key ring file
+        env:
+          SIGNING_PRIVATE_KEY: ${{ secrets.SIGNING_PRIVATE_KEY }}
+        run: |
+          echo "$SIGNING_PRIVATE_KEY" > ~/.gradle/signing-secret-key.gpg.base64
+          base64 -d ~/.gradle/signing-secret-key.gpg.base64 > ~/.gradle/signing-secret-key.gpg
+
+      - name: Publish artifact
+        env:
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+          SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
+          SIGNING_PASSPHRASE: ${{ secrets.SIGNING_PASSPHRASE }}
+        run: |
+          NEW_VERSION=$(echo "${GITHUB_REF}" | cut -d "/" -f3)
+          echo "New version: ${NEW_VERSION}"
+          echo "Github username: ${GITHUB_ACTOR}"
+          ./gradlew -Pversion=${NEW_VERSION} \
+            -Psigning.keyId=$SIGNING_KEY_ID \
+            -Psigning.password=$SIGNING_PASSPHRASE \
+            -Psigning.secretKeyRingFile=$(echo ~/.gradle/signing-secret-key.gpg) \
+          publish
