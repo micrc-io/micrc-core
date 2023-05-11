@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'idea'
     id 'maven-publish'
+    id 'signing'
     id 'org.springframework.boot' version '2.7.11' apply false
     id 'io.spring.dependency-management' version '1.0.13.RELEASE'
 }
@@ -41,9 +42,6 @@ configurations {
 repositories {
     mavenLocal()
     mavenCentral()
-    maven {
-        url 'https://jitpack.io'
-    }
 }
 
 dependencyManagement {
@@ -53,8 +51,8 @@ dependencyManagement {
 }
 
 dependencies {
-    // implementation "io.micrc.core:micrc-annotations:v0.0.1-20230426-3"
-    implementation "com.github.micrc-io:micrc-annotations:v0.0.3"
+    implementation "io.micrc.core:micrc-annotations:v0.0.1"
+    // implementation "com.github.micrc-io:micrc-annotations:v0.0.3"
 
     // springboot basic
     implementation "org.springframework.boot:spring-boot-starter"
@@ -146,12 +144,62 @@ task sourcesJar(type: Jar) {
     classifier = 'sources'
 }
 
-// 执行publishToMavenLocal后，其他工程可正常引入
+task javadocJar(type: Jar) {
+    from javadoc
+    classifier = 'javadoc'
+}
+
+javadoc {
+    options {
+        encoding 'UTF-8'
+        charSet 'UTF-8'
+        tags = ['date']
+    }
+}
+
 publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
             artifact sourcesJar
+            artifact javadocJar
+            pom {
+                name = 'Micrc Core'
+                description = 'A runtime library supports the execution of adapters, application logic, and domain logic under the Hexagon architecture'
+                url = 'https://github.com/micrc-io/micrc-core'
+                licenses {
+                    license {
+                        name = 'The MIT License (MIT)'
+                        url = 'https://www.mit-license.org/'
+                    }
+                }
+                developers {
+                    developer {
+                        name = 'micrc'
+                        email = 'operator@ttyys.io'
+                    }
+                }
+                scm {
+                    url = 'https://github.com/micrc-io/micrc-core'
+                    connection = 'scm:git@https://github.com/micrc-io/micrc-core.git'
+                    developerConnection = 'scm:git@https://github.com/micrc-io/micrc-core.git'
+                }
+            }
         }
     }
+    repositories {
+        mavenCentral {
+            def releasesRepoUrl = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2"
+            def snapshotsRepoUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots"
+            url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+            credentials {
+                username System.getenv('OSSRH_USERNAME')
+                password System.getenv('OSSRH_PASSWORD')
+            }
+        }
+    }
+}
+
+signing {
+    sign publishing.publications.mavenJava
 }
