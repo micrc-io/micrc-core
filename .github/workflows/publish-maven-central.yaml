@@ -30,6 +30,7 @@ jobs:
         env:
           SIGNING_PRIVATE_KEY: ${{ secrets.SIGNING_PRIVATE_KEY }}
         run: |
+          mkdir ~/.gradle
           echo "$SIGNING_PRIVATE_KEY" > ~/.gradle/signing-secret-key.gpg.base64
           base64 -d ~/.gradle/signing-secret-key.gpg.base64 > ~/.gradle/signing-secret-key.gpg
 
