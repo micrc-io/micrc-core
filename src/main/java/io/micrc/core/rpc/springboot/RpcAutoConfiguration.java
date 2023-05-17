@@ -84,18 +84,6 @@ public class RpcAutoConfiguration {
         return component;
     }
 
-    @Bean("rest-openapi-derive")
-    public RestOpenApiComponent restOpenapiDeriveComponent() {
-        RestOpenApiComponent component = new RestOpenApiComponent();
-        component.setComponentName("undertow");
-        component.setBasePath("/api");
-        // 设置信任全部证书
-        component.setSslContextParameters(getSSLContextParameters());
-        // 桥接错误
-        component.setBridgeErrorHandler(true);
-        return component;
-    }
-
     private SSLContextParameters getSSLContextParameters() {
         SSLContextParameters parameters = new SSLContextParameters();
         TrustManagersParameters trustManagersParameters = new TrustManagersParameters();

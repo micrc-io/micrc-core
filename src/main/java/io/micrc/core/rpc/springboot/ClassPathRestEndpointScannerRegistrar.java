@@ -1,5 +1,6 @@
 package io.micrc.core.rpc.springboot;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import io.micrc.core.EnableMicrcSupport;
 import io.micrc.core.annotations.integration.command.CommandAdapter;
 import io.micrc.core.annotations.integration.derivation.DerivationsAdapter;
@@ -138,6 +139,9 @@ class RpcCommandScanner extends ClassPathBeanDefinitionScanner {
             String protocolPath = commandAdapter.protocolPath();
             String routeProtocol = commandAdapter.routeProtocol();
             String openapiProtocolJson = FileUtils.fileReader(protocolPath, List.of("json"));
+            JsonNode protocolNode = JsonUtil.readTree(openapiProtocolJson);
+            JsonNode serversNode = protocolNode.at("/servers").get(0);
+            String url = serversNode.at("/url").textValue();
             Map<String, Object> pathsMap = ClassCastUtils.castHashMap(
                     JsonUtil.writeValueAsObject(JsonUtil.readTree(openapiProtocolJson).at("/paths").toString(),
                             HashMap.class),
@@ -155,7 +159,7 @@ class RpcCommandScanner extends ClassPathBeanDefinitionScanner {
                     .adapterName(adapterName)
                     .protocolPath(protocolPath)
                     .method(methodName)
-                    .address(path)
+                    .address(url + path)
                     .routeProtocol(routeProtocol)
                     .templateId(RpcRestRouteConfiguration.ROUTE_TMPL_REST)
                     .build();
@@ -216,6 +220,9 @@ class RpcDerivationScanner extends ClassPathBeanDefinitionScanner {
             String protocolPath = derivationsAdapter.protocolPath();
             String routeProtocol = derivationsAdapter.routeProtocol();
             String openapiProtocolJson = FileUtils.fileReader(protocolPath, List.of("json"));
+            JsonNode protocolNode = JsonUtil.readTree(openapiProtocolJson);
+            JsonNode serversNode = protocolNode.at("/servers").get(0);
+            String url = serversNode.at("/url").textValue();
             Map<String, Object> pathsMap = ClassCastUtils.castHashMap(
                     JsonUtil.writeValueAsObject(JsonUtil.readTree(openapiProtocolJson).at("/paths").toString(),
                             HashMap.class),
@@ -233,7 +240,7 @@ class RpcDerivationScanner extends ClassPathBeanDefinitionScanner {
                     .adapterName(adapterName)
                     .protocolPath(protocolPath)
                     .method(methodName)
-                    .address(path)
+                    .address(url + path)
                     .routeProtocol(routeProtocol)
                     .templateId(RpcRestRouteConfiguration.ROUTE_TMPL_REST)
                     .build();
@@ -294,6 +301,9 @@ class RpcPresentationScanner extends ClassPathBeanDefinitionScanner {
             String protocolPath = presentationsAdapter.protocolPath();
             String routeProtocol = presentationsAdapter.routeProtocol();
             String openapiProtocolJson = FileUtils.fileReader(protocolPath, List.of("json"));
+            JsonNode protocolNode = JsonUtil.readTree(openapiProtocolJson);
+            JsonNode serversNode = protocolNode.at("/servers").get(0);
+            String url = serversNode.at("/url").textValue();
             Map<String, Object> pathsMap = ClassCastUtils.castHashMap(
                     JsonUtil.writeValueAsObject(JsonUtil.readTree(openapiProtocolJson).at("/paths").toString(),
                             HashMap.class),
@@ -311,7 +321,7 @@ class RpcPresentationScanner extends ClassPathBeanDefinitionScanner {
                     .adapterName(adapterName)
                     .protocolPath(protocolPath)
                     .method(methodName)
-                    .address(path)
+                    .address(url + path)
                     .routeProtocol(routeProtocol)
                     .templateId(RpcRestRouteConfiguration.ROUTE_TMPL_REST)
                     .build();

@@ -1,5 +1,6 @@
 package io.micrc.core.rpc.springboot;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import io.micrc.lib.JsonUtil;
 import org.apache.commons.logging.Log;
 import org.springframework.boot.SpringApplication;
@@ -81,11 +82,14 @@ public class RpcEnvironmentProcessor implements EnvironmentPostProcessor {
                 String apidocUrl = base.getURI().relativize(resource.getURI()).getPath()
                         .replace(".json", "");
                 String openApiBodyContent = StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8);
+                JsonNode protocolNode = JsonUtil.readTree(openApiBodyContent);
+                JsonNode serversNode = protocolNode.at("/servers").get(0);
+                String url = serversNode.at("/url").textValue();
                 Map<String, Object> pathsMap = JsonUtil.writeObjectAsObject(JsonUtil.readTree(openApiBodyContent).at("/paths"), HashMap.class);
                 Map<String, Object> apiPathsMap = new HashMap<>();
                 pathsMap.keySet().forEach(key -> {
                     if (!key.contains("/api/")) {
-                        apiPathsMap.put("/api" + key, pathsMap.get(key));
+                        apiPathsMap.put("/api" + url + key, pathsMap.get(key));
                     }
                     if (key.contains("/api/")) {
                         apiPathsMap.put(key, pathsMap.get(key));

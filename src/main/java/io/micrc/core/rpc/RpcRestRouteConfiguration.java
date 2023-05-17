@@ -1,11 +1,16 @@
 package io.micrc.core.rpc;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
+import io.micrc.lib.FileUtils;
+import io.micrc.lib.JsonUtil;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 
 import java.util.*;
 
@@ -17,6 +22,9 @@ import java.util.*;
  * @since 0.0.1
  */
 public class RpcRestRouteConfiguration extends MicrcRouteBuilder {
+
+    @Autowired
+    private Environment env;
 
     public static final String ROUTE_TMPL_REST =
             RpcRestRouteConfiguration.class.getName() + ".rest";
@@ -60,8 +68,25 @@ public class RpcRestRouteConfiguration extends MicrcRouteBuilder {
                 .setHeader("Authorization", constant("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9ucyI6WyIqIl0sImV4cCI6MzM2MzQ1NjExNSwidXNlcm5hbWUiOiJ0ZXN0In0.omwX_yOvVkwu9VLFZOQwnZbtyncqnLR331M9DzgRPjM"))
                 .setBody(exchangeProperty("requestBody"))
                 .removeProperty("requestBody")
-                // 因衍生服务提供端会自行添加/api的基础路径,故在集成衍生时,则使用自行协议,添加/api头
-                .toD("rest-openapi-derive://${exchange.properties.get(integrationInfo).getProtocolFilePath()}#${exchange.properties.get(integrationInfo).getOperationId()}?host=${exchange.properties.get(integrationInfo).getHost()}")
+                .process(exchange -> {
+                    String protocolFilePath = exchange.getProperty("integrationInfo", IntegrationsInfo.Integration.class).getProtocolFilePath();
+                    String protocolContent = FileUtils.fileReader(protocolFilePath, List.of("json"));
+                    JsonNode protocolNode = JsonUtil.readTree(protocolContent);
+                    JsonNode serversNode = protocolNode.at("/servers").get(0);
+                    String url = serversNode.at("/url").textValue();
+                    exchange.setProperty("_url", "/api" + url);
+                    String xHost = serversNode.at("/x-host").textValue();
+                    Optional<String> profileStr = Optional.ofNullable(env.getProperty("application.profiles"));
+                    List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
+                    String host = null;
+                    if (profiles.contains("default") || profiles.contains("local")) {
+                        host = "http://localhost:1080";
+                    } else {
+                        host = spliceHost(xHost, profiles);
+                    }
+                    exchange.setProperty("_host", host);
+                })
+                .toD("rest-openapi-ssl://${exchange.properties.get(integrationInfo).getProtocolFilePath()}#${exchange.properties.get(integrationInfo).getOperationId()}?host=${exchange.properties.get(_host)}&basePath=${exchange.properties.get(_url)}")
                 .convertBodyTo(String.class)
                 .end();
 
@@ -76,6 +101,20 @@ public class RpcRestRouteConfiguration extends MicrcRouteBuilder {
                 .to("{{routeProtocol}}://{{adapterName}}")
                 .marshal().json().convertBodyTo(String.class)
                 .end();
+    }
+
+    private String spliceHost(String xHost, List<String> profiles) {
+        if (xHost == null) {
+            throw new RuntimeException("x-host not exists");
+        }
+        String[] split = xHost.split("\\.");
+        if (split.length != 3) {
+            throw new RuntimeException("x-host invalid");
+        }
+        String product = split[0];
+        String domain = split[1];
+        String context = split[2];
+        return context + "-service." + product + "-" + domain + "-" + profiles.get(0) + ".svc.cluster.local";
     }
 
 
