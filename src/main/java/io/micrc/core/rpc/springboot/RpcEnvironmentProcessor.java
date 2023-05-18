@@ -83,19 +83,15 @@ public class RpcEnvironmentProcessor implements EnvironmentPostProcessor {
                         .replace(".json", "");
                 String openApiBodyContent = StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8);
                 JsonNode protocolNode = JsonUtil.readTree(openApiBodyContent);
-                JsonNode serversNode = protocolNode.at("/servers").get(0);
-                String url = serversNode.at("/url").textValue();
-                Map<String, Object> pathsMap = JsonUtil.writeObjectAsObject(JsonUtil.readTree(openApiBodyContent).at("/paths"), HashMap.class);
-                Map<String, Object> apiPathsMap = new HashMap<>();
-                pathsMap.keySet().forEach(key -> {
-                    if (!key.contains("/api/")) {
-                        apiPathsMap.put("/api" + url + key, pathsMap.get(key));
-                    }
-                    if (key.contains("/api/")) {
-                        apiPathsMap.put(key, pathsMap.get(key));
-                    }
-                });
-                openApiBodyContent = JsonUtil.patch(openApiBodyContent, "/paths", JsonUtil.writeValueAsStringRetainNull(apiPathsMap));
+                JsonNode serverNode = protocolNode.at("/servers").get(0);
+                String serverJson = JsonUtil.writeValueAsString(serverNode);
+                String url = serverNode.at("/url").textValue();
+                if (!url.startsWith("/api/")) {
+                    url = "/api" + url;
+                }
+                serverJson = JsonUtil.patch(serverJson, "/url", JsonUtil.writeValueAsString(url));
+                List<HashMap> servers = List.of(JsonUtil.writeValueAsObject(serverJson, HashMap.class));
+                openApiBodyContent = JsonUtil.patch(openApiBodyContent, "/servers", JsonUtil.writeValueAsString(servers));
                 APIDOCS.put(APIDOC_BASE_URI + apidocUrl,
                         openApiBodyContent);
                 properties.setProperty("springdoc.swagger-ui.urls[" + i + "].url",

@@ -1,6 +1,5 @@
 package io.micrc.core.application.presentations;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.lib.ClassCastUtils;
@@ -221,20 +220,8 @@ class IntegrationParams {
                 if (null == body) {
                     continue;
                 }
-                // 集成
-                JsonNode protocolNode = JsonUtil.readTree(protocolContent);
                 // 如果能够集成,收集信息,然后会自动跳出循环
                 executableIntegrationInfo.put("protocol", paramIntegration.getProtocol());
-                // 收集host
-                JsonNode urlNode = protocolNode
-                        .at("/servers").get(0)
-                        .at("/url");
-                executableIntegrationInfo.put("host", urlNode.textValue());
-                // 收集operationId
-                JsonNode operationNode = protocolNode
-                        .at("/paths").elements().next().elements().next()
-                        .at("/operationId");
-                executableIntegrationInfo.put("operationId", operationNode.textValue());
                 executableIntegrationInfo.put("params", JsonUtil.writeValueAsObject(body, Object.class));
             }
             executableIntegrationInfo.put("responseMapping", paramIntegration.getResponseMapping());

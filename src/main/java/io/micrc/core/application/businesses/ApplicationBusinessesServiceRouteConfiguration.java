@@ -1,6 +1,5 @@
 package io.micrc.core.application.businesses;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
 import io.micrc.core.annotations.application.businesses.LogicType;
@@ -20,7 +19,6 @@ import org.apache.camel.support.ExpressionAdapter;
 import org.springframework.beans.BeanUtils;
 import org.springframework.util.StringUtils;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -679,19 +677,6 @@ class IntegrationCommandParams {
             String body = JsonUtil.transAndCheck(commandParamIntegration.getRequestMapping(), commandJson, protocolContent);
             if (null == body) {
                 continue;
-            }
-            if (StringUtils.hasText(commandParamIntegration.getProtocol())) {
-                JsonNode protocolNode = JsonUtil.readTree(protocolContent);
-                // 收集host
-                JsonNode urlNode = protocolNode
-                        .at("/servers").get(0)
-                        .at("/url");
-                executableIntegrationInfo.put("host", urlNode.textValue());
-                // 收集operationId
-                JsonNode operationNode = protocolNode
-                        .at("/paths").elements().next().elements().next()
-                        .at("/operationId");
-                executableIntegrationInfo.put("operationId", operationNode.textValue());
             }
             // 如果能够集成,收集信息,然后会自动跳出循环
             executableIntegrationInfo.put("paramName", commandParamIntegration.getParamName());
