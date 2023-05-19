@@ -114,7 +114,7 @@ public class RpcRestRouteConfiguration extends MicrcRouteBuilder {
         String product = split[0];
         String domain = split[1];
         String context = split[2];
-        return context + "-service." + product + "-" + domain + "-" + profiles.get(0) + ".svc.cluster.local";
+        return "http://" + context + "-service." + product + "-" + domain + "-" + profiles.get(0) + ".svc.cluster.local";
     }
 
 
