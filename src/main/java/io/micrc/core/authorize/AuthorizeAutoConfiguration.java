@@ -19,9 +19,11 @@ import org.springframework.core.io.Resource;
 import javax.servlet.DispatcherType;
 import javax.servlet.Filter;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 
 @Configuration
@@ -73,18 +75,21 @@ public class AuthorizeAutoConfiguration {
         //设置匹配路径
         LinkedHashMap<String, String> filterChainDefinitionMap = new LinkedHashMap<>();
         Properties properties = loadMicrcProperties();
-        String loginUrl = properties.getProperty("login.url");
+        Optional<String> publicUri = Optional.ofNullable(properties.getProperty("micrc.public.uri"));
         // swagger地址
         filterChainDefinitionMap.put("/swagger-ui/**", "anon");
         filterChainDefinitionMap.put("/v3/api-docs/swagger-config", "anon");
         filterChainDefinitionMap.put("/api/apidoc/**", "anon");
-        if (loginUrl != null) {
-            filterChainDefinitionMap.put(loginUrl, "anon");// 登录地址
-            filter.setLoginUrl(loginUrl);// 登录地址
-        }
+        // public uri
+        Arrays.stream(publicUri.orElse("").split(",")).forEach(it -> {
+            filterChainDefinitionMap.put(it, "anon");
+        });
+
         filterChainDefinitionMap.put("/**", "jwt");
-        filter.setSuccessUrl("/auth/getInfo");
-        filter.setUnauthorizedUrl("/auth/error");
+        // is it necessary??
+        // filter.setLoginUrl(loginUrl); // 未认证跳转
+        // filter.setSuccessUrl("/auth/getInfo"); // 成功跳转
+        // filter.setUnauthorizedUrl("/auth/error"); // 未授权跳转
         filter.setFilterChainDefinitionMap(filterChainDefinitionMap);
         //返回
         return filter;
