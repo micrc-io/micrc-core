@@ -76,15 +76,7 @@ public class RpcRestRouteConfiguration extends MicrcRouteBuilder {
                     String url = serversNode.at("/url").textValue();
                     exchange.setProperty("_url", "/api" + url);
                     String xHost = serversNode.at("/x-host").textValue();
-                    Optional<String> profileStr = Optional.ofNullable(env.getProperty("application.profiles"));
-                    List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
-                    String host = null;
-                    if (profiles.contains("default") || profiles.contains("local")) {
-                        host = "http://localhost:1080";
-                    } else {
-                        host = spliceHost(xHost, profiles);
-                    }
-                    exchange.setProperty("_host", host);
+                    exchange.setProperty("_host", spliceHost(xHost));
                 })
                 .toD("rest-openapi-ssl://${exchange.properties.get(integrationInfo).getProtocolFilePath()}#${exchange.properties.get(integrationInfo).getOperationId()}?host=${exchange.properties.get(_host)}&basePath=${exchange.properties.get(_url)}")
                 .convertBodyTo(String.class)
@@ -103,7 +95,12 @@ public class RpcRestRouteConfiguration extends MicrcRouteBuilder {
                 .end();
     }
 
-    private String spliceHost(String xHost, List<String> profiles) {
+    private String spliceHost(String xHost) {
+        Optional<String> profileStr = Optional.ofNullable(env.getProperty("application.profiles"));
+        List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
+        if (profiles.contains("default") || profiles.contains("local")) {
+            return "http://localhost:1080";
+        }
         if (xHost == null) {
             throw new RuntimeException("x-host not exists");
         }
@@ -114,6 +111,10 @@ public class RpcRestRouteConfiguration extends MicrcRouteBuilder {
         String product = split[0];
         String domain = split[1];
         String context = split[2];
+        if (domain.equals(env.getProperty("micrc.domain"))
+                && context.equals(Objects.requireNonNull(env.getProperty("spring.application.name")).replace("-service", ""))) {
+            return "http://localhost:" + env.getProperty("local.server.port");
+        }
         return "http://" + context + "-service." + product + "-" + domain + "-" + profiles.get(0) + ".svc.cluster.local";
     }
 

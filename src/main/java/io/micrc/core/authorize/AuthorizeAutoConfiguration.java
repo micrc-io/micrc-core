@@ -13,12 +13,16 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.DependsOn;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 
 import javax.servlet.DispatcherType;
 import javax.servlet.Filter;
+import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Properties;
 
 @Configuration
 public class AuthorizeAutoConfiguration {
@@ -68,19 +72,33 @@ public class AuthorizeAutoConfiguration {
         filter.setFilters(filterMap);
         //设置匹配路径
         LinkedHashMap<String, String> filterChainDefinitionMap = new LinkedHashMap<>();
-        filterChainDefinitionMap.put("/api/auth/login", "anon");// 登录地址
+        Properties properties = loadMicrcProperties();
+        String loginUrl = properties.getProperty("login.url");
         // swagger地址
         filterChainDefinitionMap.put("/swagger-ui/**", "anon");
         filterChainDefinitionMap.put("/v3/api-docs/swagger-config", "anon");
         filterChainDefinitionMap.put("/api/apidoc/**", "anon");
-
+        if (loginUrl != null) {
+            filterChainDefinitionMap.put(loginUrl, "anon");// 登录地址
+            filter.setLoginUrl(loginUrl);// 登录地址
+        }
         filterChainDefinitionMap.put("/**", "jwt");
-        filter.setLoginUrl("/api/auth/login");// 登录地址
         filter.setSuccessUrl("/auth/getInfo");
         filter.setUnauthorizedUrl("/auth/error");
         filter.setFilterChainDefinitionMap(filterChainDefinitionMap);
         //返回
         return filter;
+    }
+
+    private Properties loadMicrcProperties() {
+        Resource resource = new ClassPathResource("micrc.properties");
+        Properties properties = new Properties();
+        try {
+            properties.load(resource.getInputStream());
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable loading properties from 'micrc.properties'", e);
+        }
+        return properties;
     }
 
     @Bean

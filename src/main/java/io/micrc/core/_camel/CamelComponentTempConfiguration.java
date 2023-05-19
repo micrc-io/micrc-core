@@ -21,7 +21,6 @@ import org.apache.camel.*;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.direct.DirectComponent;
 import org.apache.camel.support.ResourceHelper;
-import org.apache.camel.util.json.JsonObject;
 import org.apache.shiro.SecurityUtils;
 import org.apache.shiro.subject.Subject;
 import org.kie.dmn.api.core.DMNDecisionResult;
@@ -47,8 +46,6 @@ import javax.xml.xpath.XPathFactory;
 import java.io.ByteArrayInputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
-import java.util.AbstractMap;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -269,10 +266,6 @@ public class CamelComponentTempConfiguration {
             public void configure() throws Exception {
                 from("authorize://authentication")
                         .process(exchange -> {
-                            String applicationName = environment.getProperty("spring.application.name");
-                            if (!"security-service".equals(applicationName)) {
-                                throw new RuntimeException("the application of execute authentication must be [security-service]");
-                            }
                             String body = exchange.getIn().getBody(String.class);
                             String username = (String) JsonUtil.readPath(body, "/username");
                             if (username == null) {
@@ -294,10 +287,6 @@ public class CamelComponentTempConfiguration {
 
                 from("authorize://decertification")
                         .process(exchange -> {
-                            String applicationName = environment.getProperty("spring.application.name");
-                            if (!"security-service".equals(applicationName)) {
-                                throw new RuntimeException("the application of execute decertification must be [security-service]");
-                            }
                             String body = exchange.getIn().getBody(String.class);
                             String username = (String) JsonUtil.readPath(body, "/username");
                             if (username == null) {
