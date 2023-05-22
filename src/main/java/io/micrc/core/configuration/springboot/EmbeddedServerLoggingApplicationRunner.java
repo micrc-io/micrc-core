@@ -25,9 +25,14 @@ public class EmbeddedServerLoggingApplicationRunner implements ApplicationRunner
         List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
         if (profiles.contains("default")) {
             loggingEmbeddedMysql();
-            loggingEmbeddedRabbitmq();
+//            loggingEmbeddedRabbitmq();
+            loggingEmbeddedKafka();
             loggingEmbeddedRedis();
         }
+    }
+
+    private void loggingEmbeddedKafka() {
+        // todo, print server port
     }
 
     private void loggingEmbeddedMysql() {
@@ -39,14 +44,14 @@ public class EmbeddedServerLoggingApplicationRunner implements ApplicationRunner
         log.info("Mysql server start on: {}. \nurl: {}\nuser/pass: {}/{}", server, url, username, password);
     }
 
-    private void loggingEmbeddedRabbitmq() {
-        String username = env.getProperty("spring.rabbitmq.username");
-        String password = env.getProperty("spring.rabbitmq.password");
-        String server = env.getProperty("spring.rabbitmq.host") + ":" + env.getProperty("spring.rabbitmq.port");
-        String managerUrl = "http://localhost:" + env.getProperty("micrc.embedded.rabbitmq.httpPort");
-        log.info("RabbitMQ server start on: {}. \nuser/pass: {}/{}", server, username, password);
-        log.info("RabbitMQ manager ui start on: {}. \nuser/pass: {}/{}", managerUrl, username, password);
-    }
+//    private void loggingEmbeddedRabbitmq() {
+//        String username = env.getProperty("spring.rabbitmq.username");
+//        String password = env.getProperty("spring.rabbitmq.password");
+//        String server = env.getProperty("spring.rabbitmq.host") + ":" + env.getProperty("spring.rabbitmq.port");
+//        String managerUrl = "http://localhost:" + env.getProperty("micrc.embedded.rabbitmq.httpPort");
+//        log.info("RabbitMQ server start on: {}. \nuser/pass: {}/{}", server, username, password);
+//        log.info("RabbitMQ manager ui start on: {}. \nuser/pass: {}/{}", managerUrl, username, password);
+//    }
 
     private void loggingEmbeddedRedis() {
         String username = "";

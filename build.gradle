@@ -22,7 +22,7 @@ ext {
     set('shedlock.version', '4.42.0')
     set('json-patch.version', '1.13')
     set('springdoc.version', '1.6.11')
-    set('rabbitmq-mock.version', '1.1.1')
+//    set('rabbitmq-mock.version', '1.1.1')
     set('mockserver.version', '5.14.0')
     set('embedded-redis.version', '0.7.3')
     set('testcontainers.version', '2.2.10')
@@ -114,7 +114,7 @@ dependencies {
     implementation "org.springframework.kafka:spring-kafka"
     // embedded kafka
     implementation "com.playtika.testcontainers:embedded-kafka:${property('testcontainers.version')}"
-    implementation "org.springframework.boot:spring-boot-starter-amqp" // clean when code delete
+    // implementation "org.springframework.boot:spring-boot-starter-amqp" // clean when code delete
     // embedded rabbitmq
     // implementation "com.playtika.testcontainers:embedded-rabbitmq:${property('testcontainers.version')}"
 

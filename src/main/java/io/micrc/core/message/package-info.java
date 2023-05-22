@@ -1,5 +1,5 @@
 /**
- * message infrastructure. rabbitmq msg send(common) and listener(per protocol)
+ * message infrastructure. msg send(common) and listener(per protocol)
  *
  * @author weiguan
  * @date 2022-09-08 04:48
