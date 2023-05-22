@@ -77,9 +77,17 @@ public class RpcAutoConfiguration {
     public RestOpenApiComponent restOpenapiSSlComponent() {
         RestOpenApiComponent component = new RestOpenApiComponent();
         component.setComponentName("undertow");
-        // 设置信任全部证书
+        // // 设置信任全部证书
+        // component.setSslContextParameters(getSSLContextParameters());
+        // // 桥接错误
+        // component.setBridgeErrorHandler(true);
+        return component;
+    }
+
+    @Bean("undertow")
+    public UndertowComponent undertowComponent() {
+        UndertowComponent component = new UndertowComponent();
         component.setSslContextParameters(getSSLContextParameters());
-        // 桥接错误
         component.setBridgeErrorHandler(true);
         return component;
     }

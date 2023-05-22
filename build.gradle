@@ -3,7 +3,7 @@ plugins {
     id 'idea'
     id 'maven-publish'
     id 'signing'
-    id 'org.springframework.boot' version '2.7.11' apply false
+    id 'org.springframework.boot' version '2.7.12' apply false
     id 'io.spring.dependency-management' version '1.0.13.RELEASE'
 }
 
@@ -111,17 +111,15 @@ dependencies {
     // mock server for rpc producer
     implementation "org.mock-server:mockserver-netty-no-dependencies:${property('mockserver.version')}"
     // message endpoints for consuming and producing - message producer and consumer adapter
-    implementation "org.springframework.boot:spring-boot-starter-amqp"
-    // embedded rabbitmq
-    implementation "com.playtika.testcontainers:embedded-rabbitmq:${property('testcontainers.version')}"
-
+    implementation "org.springframework.kafka:spring-kafka"
     // embedded kafka
     implementation "com.playtika.testcontainers:embedded-kafka:${property('testcontainers.version')}"
+    implementation "org.springframework.boot:spring-boot-starter-amqp" // clean when code delete
+    // embedded rabbitmq
+    // implementation "com.playtika.testcontainers:embedded-rabbitmq:${property('testcontainers.version')}"
+
     // JIT runtime
     implementation "org.kie.kogito:kogito-dmn:1.29.0.Final"
-
-    // spring kafka
-    implementation "org.springframework.kafka:spring-kafka"
 
     // caffeine, redis for cache and schedule
     implementation "org.springframework.boot:spring-boot-starter-cache"

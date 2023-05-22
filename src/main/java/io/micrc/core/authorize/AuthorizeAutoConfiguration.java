@@ -15,6 +15,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
+import org.springframework.util.StringUtils;
 
 import javax.servlet.DispatcherType;
 import javax.servlet.Filter;
@@ -75,15 +76,15 @@ public class AuthorizeAutoConfiguration {
         //设置匹配路径
         LinkedHashMap<String, String> filterChainDefinitionMap = new LinkedHashMap<>();
         Properties properties = loadMicrcProperties();
-        Optional<String> publicUri = Optional.ofNullable(properties.getProperty("micrc.public.uri"));
+        Optional<String> publicUri = Optional.ofNullable(properties.getProperty("micrc.api.public.uris"));
         // swagger地址
         filterChainDefinitionMap.put("/swagger-ui/**", "anon");
         filterChainDefinitionMap.put("/v3/api-docs/swagger-config", "anon");
         filterChainDefinitionMap.put("/api/apidoc/**", "anon");
         // public uri
-        Arrays.stream(publicUri.orElse("").split(",")).forEach(it -> {
-            filterChainDefinitionMap.put(it, "anon");
-        });
+        Arrays.stream(publicUri.orElse("").split(","))
+            .filter(StringUtils::hasText)
+            .forEach(it -> filterChainDefinitionMap.put(it, "anon"));
 
         filterChainDefinitionMap.put("/**", "jwt");
         // is it necessary??

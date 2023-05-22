@@ -3,7 +3,6 @@ org.springframework.boot.env.EnvironmentPostProcessor=\
   io.micrc.core.persistence.springboot.PersistenceEnvironmentProcessor,\
   io.micrc.core.cache.springboot.CacheEnvironmentProcessor,\
   io.micrc.core.rpc.springboot.RpcEnvironmentProcessor,\
-  io.micrc.core.message.rabbit.springboot.RabbitMessageEnvironmentProcessor,\
   io.micrc.core.message.springboot.MessageEnvironmentProcessor
 
 org.springframework.cloud.bootstrap.BootstrapConfiguration=\

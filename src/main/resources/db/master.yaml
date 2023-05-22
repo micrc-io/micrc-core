@@ -6,6 +6,6 @@ databaseChangeLog:
   - include:
       file: schema/message/message-schema.yaml
       relativeToChangelogFile: false
-  - include:
-      file: schema/message/rabbit-message-schema.yaml
-      relativeToChangelogFile: false
+#   - include:
+#       file: schema/message/rabbit-message-schema.yaml
+#       relativeToChangelogFile: false
