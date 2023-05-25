@@ -119,9 +119,9 @@ public class ValidateCodeUtil {
     }
 
     /**
-     * @return String 返回base64
-     * @MethodName: getRandomCode
-     * @Description: 生成Base64图片验证码
+     * 生成验证码
+     *
+     * @return
      */
     public static Validate getRandomCode() {
         Validate validate = new Validate();
