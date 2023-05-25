@@ -8,7 +8,7 @@ plugins {
 }
 
 group = 'io.micrc.core'
-version = 'v0.0.6'
+version = 'v0.0.7'
 sourceCompatibility = '11'
 targetCompatibility = '11'
 
@@ -160,7 +160,7 @@ publishing {
         mavenJava(MavenPublication) {
             from components.java
             artifact sourcesJar
-            artifact javadocJar
+//            artifact javadocJar
             pom {
                 name = 'Micrc Core'
                 description = 'A runtime library supports the execution of adapters, application logic, and domain logic under the Hexagon architecture'

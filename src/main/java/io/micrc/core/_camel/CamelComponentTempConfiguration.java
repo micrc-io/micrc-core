@@ -16,6 +16,7 @@ import io.micrc.lib.ClassCastUtils;
 import io.micrc.lib.EncryptUtils;
 import io.micrc.lib.JsonUtil;
 import io.micrc.lib.JwtUtil;
+import io.micrc.lib.ValidateCodeUtil;
 import lombok.SneakyThrows;
 import org.apache.camel.*;
 import org.apache.camel.builder.RouteBuilder;
@@ -49,6 +50,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 使用路由和direct组件，临时实现各种没有的camel组件
@@ -59,6 +61,8 @@ import java.util.Optional;
  */
 @Configuration
 public class CamelComponentTempConfiguration {
+
+    public static final String USER_VERIFY_KEY_PREFIX = "USER:VERIFY:";
 
     @Autowired
     private JITDMNService jitdmnService;
@@ -318,6 +322,32 @@ public class CamelComponentTempConfiguration {
                 from("authorize://generateSalt")
                         .process(exchange -> {
                             exchange.getIn().setBody(JsonUtil.writeValueAsString(EncryptUtils.generateSalt()));
+                        })
+                        .end();
+
+                from("authorize://generateVerifyCode")
+                        .process(exchange -> {
+                            ValidateCodeUtil.Validate randomCode = ValidateCodeUtil.getRandomCode();
+                            redisTemplate.opsForValue().set(USER_VERIFY_KEY_PREFIX + randomCode.getKey(), randomCode.getValue(),5 , TimeUnit.MINUTES);
+                            exchange.getIn().setBody(JsonUtil.writeValueAsString(randomCode));
+                        })
+                        .end();
+
+                from("authorize://compareVerifyCode")
+                        .process(exchange -> {
+                            String body = exchange.getIn().getBody(String.class);
+                            String key = (String) JsonUtil.readPath(body, "/key");
+                            if (key == null) {
+                                throw new RuntimeException("[key] must not be null");
+                            }
+                            String value = (String) JsonUtil.readPath(body, "/value");
+                            if (value == null) {
+                                throw new RuntimeException("[value] must not be null");
+                            }
+                            key = USER_VERIFY_KEY_PREFIX + key;
+                            String truthValue = (String) redisTemplate.opsForValue().get(key);
+                            exchange.getIn().setBody(JsonUtil.writeValueAsString(value.equals(truthValue)));
+                            redisTemplate.delete(key);
                         })
                         .end();
             }
