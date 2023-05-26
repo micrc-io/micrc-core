@@ -6,7 +6,8 @@ org.springframework.boot.env.EnvironmentPostProcessor=\
   io.micrc.core.message.springboot.MessageEnvironmentProcessor
 
 org.springframework.cloud.bootstrap.BootstrapConfiguration=\
-  io.micrc.testcontainers.redistack.EmbeddedRedistackBootstrapConfiguration
+  io.micrc.testcontainers.redistack.EmbeddedRedistackBootstrapConfiguration,\
+  io.micrc.testcontainers.kafdrop.EmbeddedKafdropBootstrapConfiguration
 
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
   io.micrc.testcontainers.redistack.EmbeddedRedistackTestOperationsAutoConfiguration,\

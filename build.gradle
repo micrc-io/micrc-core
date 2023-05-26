@@ -8,7 +8,7 @@ plugins {
 }
 
 group = 'io.micrc.core'
-version = 'v0.0.7'
+version = 'v0.0.8'
 sourceCompatibility = '11'
 targetCompatibility = '11'
 
@@ -25,7 +25,7 @@ ext {
 //    set('rabbitmq-mock.version', '1.1.1')
     set('mockserver.version', '5.14.0')
     set('embedded-redis.version', '0.7.3')
-    set('testcontainers.version', '2.2.10')
+    set('testcontainers.version', '2.3.2')
     set('jslt.version', '0.1.13')
     set('json-schema-validator.version', '2.2.14')
     set('jwt.version', '3.4.1')

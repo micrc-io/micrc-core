@@ -41,14 +41,17 @@ public class MessageEnvironmentProcessor implements EnvironmentPostProcessor {
             // embedded kafka
             properties.setProperty("embedded.kafka.enabled", "true");
             properties.setProperty("embedded.kafka.reuseContainer", "true");
-            // properties.setProperty("embedded.kafka.dockerImageVersion", "cp-kafka:7.2.1");
+            // properties.setProperty("embedded.kafka.dockerImage", "bitnami/kafka");
+            // properties.setProperty("embedded.kafka.dockerImageVersion", "3.3.1-debian-11-r22");
             properties.setProperty("embedded.kafka.waitTimeoutInSeconds", "60");
+            properties.setProperty("embedded.kafka.topicsToCreate", "deadLetter");
+
+            properties.setProperty("micrc.embedded.kafka.brokerList", "${embedded.kafka.brokerList}");
         }
         if (profiles.contains("default")) {
             // default kafka config
             // use plaintext
-            // properties.setProperty("spring.kafka.bootstrap-servers", "${embedded.kafka.brokerList}");
-            properties.setProperty("spring.kafka.bootstrap-servers", "10.0.0.101:9092");
+            properties.setProperty("spring.kafka.bootstrap-servers", "${embedded.kafka.brokerList}");
             // use saslPlaintext
             // properties.setProperty("spring.kafka.bootstrap.servers", "${embedded.kafka.saslPlaintext.brokerList}");
             // properties.setProperty("spring.kafka.sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"${embedded.kafka.saslPlaintext.user}\" password=\"${embedded.kafka.saslPlaintext.password}\"");
