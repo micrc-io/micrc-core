@@ -8,6 +8,7 @@ import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteCon
 import io.micrc.core.persistence.snowflake.SnowFlakeIdentity;
 import io.micrc.core.rpc.LogicRequest;
 import io.micrc.lib.*;
+import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -102,15 +103,28 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
 
         from("direct://executor-data")
                 .choice()
-                .when(simple("${exchange.properties.get(batchName)}").isNull())
-                .to("direct://executor-data-one")
+                .when(simple("${exchange.properties.get(batchNamePath)}").isNull())
+                    .to("direct://executor-data-one")
                 .endChoice()
                 .otherwise()
-                .setBody(exchangeProperty("batchIntegrateResult"))
-                .split(new SplitList()).parallelProcessing()
-                .setProperty("integrateResult", body())
-                .bean(IntegrationCommandParams.class, "batchIntegrate")
-                .to("direct://executor-data-one")
+                    .setBody(exchangeProperty("batchIntegrateResult"))
+                    .split(new SplitList())
+                        .bean(JsonUtil.class, "writeValueAsString")
+                        .setHeader("path", simple("${exchange.properties.get(batchNamePath)}"))
+                        .setHeader("value", body())
+                        .setBody(exchangeProperty("commandJson"))
+                        .to("json-patch://patch")
+                        .setProperty("commandJson", body())
+                        .process(exchange -> {
+                            // 需要批处理的全部标记为未完成，并初始化
+                            List<CommandParamIntegration> batchIntegrate = ClassCastUtils.castArrayList(
+                                    exchange.getProperty("batchIntegrate", List.class), CommandParamIntegration.class)
+                                    .stream().peek(ba -> ba.setIntegrationComplete(false)).collect(Collectors.toList());
+                            exchange.setProperty("commandParamIntegrations", batchIntegrate);
+                        })
+                        .dynamicRouter(method(IntegrationCommandParams.class, "dynamicIntegrate"))
+                        .to("direct://executor-data-one")
+                    .end()
                 .endChoice()
                 .end();
 
@@ -127,7 +141,13 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 });
 
         from("direct://dynamic-integration")
-                .dynamicRouter(method(IntegrationCommandParams.class, "integrate"));
+                .process(exchange -> {
+                    // 初始化需要的集成
+                    List<CommandParamIntegration> commandParamIntegrations = JsonUtil.writeValueAsList(
+                            (String) exchange.getProperties().get("commandParamIntegrationsJson"), CommandParamIntegration.class);
+                    exchange.setProperty("commandParamIntegrations", commandParamIntegrations);
+                })
+                .dynamicRouter(method(IntegrationCommandParams.class, "dynamicIntegrate"));
 
         from("direct://parse-time")
                 .setBody(exchangeProperty("timePathsJson"))
@@ -246,22 +266,22 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .setBody(exchangeProperty("commandJson"))
                 .choice()
                 .when(simple("${exchange.properties.get(eventName)}").isNull())
-                // nothing to do
+                    // nothing to do
                 .endChoice()
                 .when(constant("").isEqualTo(simple("${exchange.properties.get(batchPropertyPath)}")))
-                .to("eventstore://store")
+                    .to("eventstore://store")
                 .endChoice()
                 .otherwise()
-                .setHeader("pointer", constant("/event/eventBatchData"))
-                .to("json-patch://select")
-                .split(new SplitList()).parallelProcessing()
-                .bean(JsonUtil.class, "writeValueAsString")
-                .setHeader("path", simple("${exchange.properties.get(batchPropertyPath)}"))
-                .setHeader("value", body())
-                .setBody(exchangeProperty("commandJson"))
-                .to("json-patch://add")
-                .to("eventstore://store")
-                .end()
+                    .setHeader("pointer", constant("/event/eventBatchData"))
+                    .to("json-patch://select")
+                    .split(new SplitList()).parallelProcessing()
+                        .bean(JsonUtil.class, "writeValueAsString")
+                        .setHeader("path", simple("${exchange.properties.get(batchPropertyPath)}"))
+                        .setHeader("value", body())
+                        .setBody(exchangeProperty("commandJson"))
+                        .to("json-patch://add")
+                        .to("eventstore://store")
+                    .end()
                 .endChoice()
                 .end();
 
@@ -269,16 +289,16 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .setBody(exchangeProperty("currentIntegrateParam"))
                 .choice()
                 .when(constant("").isEqualTo(simple("${exchange.properties.get(currentIntegrateParam).get(protocol)}")))
-                .setBody(simple("${in.body.get(integrateParams).get(id)}"))
-                .marshal().json().convertBodyTo(String.class)
-                .setHeader("CamelJacksonUnmarshalType").simple("${exchange.properties.get(embeddedIdentityFullClassName)}")
-                .to("dataformat:jackson:unmarshal?allow-unmarshall-type=true")
-                .toD("bean://${exchange.properties.get(repositoryName)}?method=findById")
+                    .setBody(simple("${in.body.get(integrateParams).get(id)}"))
+                    .marshal().json().convertBodyTo(String.class)
+                    .setHeader("CamelJacksonUnmarshalType").simple("${exchange.properties.get(embeddedIdentityFullClassName)}")
+                    .to("dataformat:jackson:unmarshal?allow-unmarshall-type=true")
+                    .toD("bean://${exchange.properties.get(repositoryName)}?method=findById")
                 .endChoice()
                 .otherwise()
-                .setBody(simple("${in.body.get(integrateParams)}"))
-                .setProperty("protocolFilePath", simple("${exchange.properties.get(currentIntegrateParam).get(protocol)}"))
-                .to("req://integration")
+                    .setBody(simple("${in.body.get(integrateParams)}"))
+                    .setProperty("protocolFilePath", simple("${exchange.properties.get(currentIntegrateParam).get(protocol)}"))
+                    .to("req://integration")
                 .endChoice()
                 .end()
                 .bean(IntegrationCommandParams.class, "processResult")
@@ -288,9 +308,9 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .routeId("logic://logic-execute")
                 .choice()
                 .when(exchangeProperty("logicType").isEqualTo("DMN"))
-                .to("logic://logic-execute-dmn")
+                    .to("logic://logic-execute-dmn")
                 .when(exchangeProperty("logicType").isEqualTo("GROOVY_SHELL"))
-                .to("logic://logic-execute-groovy")
+                    .to("logic://logic-execute-groovy")
                 .endChoice()
                 .end();
 
@@ -310,8 +330,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .setHeader("logic", simple("${exchange.properties.get(logicName)}/logic"))
                 .bean(LogicRequest.class, "request")
                 .unmarshal().json(HashMap.class)
-                .bean(LogicInParamsResolve.class,
-                        "toTargetParams(${body}, ${exchange.properties.get(commandJson)}, ${exchange.properties.get(logicIntegrationJson)}, ${exchange.properties.get(timePaths)}, ${exchange.properties.get(logicType)})")
+                .bean(LogicInParamsResolve.class, "toTargetParams(${body}, ${exchange.properties.get(commandJson)}, ${exchange.properties.get(logicIntegrationJson)}, ${exchange.properties.get(timePaths)}, ${exchange.properties.get(logicType)})")
                 .setProperty("commandJson", body())
                 // 2.3 执行后置校验
                 .setHeader("logic", simple("${exchange.properties.get(logicName)}/after"))
@@ -331,8 +350,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .setHeader("groovy", simple("${exchange.properties.get(logicPath)}"))
                 .to("dynamic-groovy://execute")
                 .unmarshal().json(HashMap.class)
-                .bean(LogicInParamsResolve.class,
-                        "toTargetParams(${body}, ${exchange.properties.get(commandJson)}, ${exchange.properties.get(logicIntegrationJson)}, ${exchange.properties.get(timePaths)}, ${exchange.properties.get(logicType)})")
+                .bean(LogicInParamsResolve.class, "toTargetParams(${body}, ${exchange.properties.get(commandJson)}, ${exchange.properties.get(logicIntegrationJson)}, ${exchange.properties.get(timePaths)}, ${exchange.properties.get(logicType)})")
                 .setProperty("commandJson", body())
                 .end();
     }
@@ -440,6 +458,9 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
          */
         private boolean ignoreIfParamAbsent;
 
+        @Builder.Default
+        private Boolean integrationComplete = false;
+
         private boolean batchFlag;
 
         /**
@@ -515,15 +536,15 @@ class LogicInParamsResolve {
             logicParams.put(key, JsonUtil.writeValueAsObject(value, Object.class));
         });
         String params = JsonUtil.writeValueAsStringRetainNull(logicParams);
-        log.info("业务规则执行条件：{}", params);
+        log.info("业务执行条件：{}", params);
         return params;
     }
 
     public String toTargetParams(Map<String, Object> logicResult, String commandJson, String logicIntegrationJson, List<String[]> timePathList, String logicType) {
-        log.info("业务规则执行结果：{}", logicResult);
         Object angle = logicResult.get("angle");
         LogicIntegration logicIntegration = JsonUtil.writeValueAsObject(logicIntegrationJson, LogicIntegration.class);
         String resultJson = JsonUtil.writeValueAsString(logicResult);
+        log.info("业务执行结果：{}", resultJson);
         for (Map.Entry<String, String> entry : logicIntegration.getResultMappingMap().entrySet()) {
             String targetPath = entry.getKey();
             // 需要赋值状态执行结果含纬度信息，则状态赋值到对应纬度
@@ -548,51 +569,18 @@ class LogicInParamsResolve {
 @Slf4j
 class IntegrationCommandParams {
 
-    public static String integrate(@ExchangeProperties Map<String, Object> properties) {
+    public static String dynamicIntegrate(@ExchangeProperties Map<String, Object> properties) {
         // 1.判断是否有需要集成的参数
         List<CommandParamIntegration> commandParamIntegrations = ClassCastUtils.castArrayList(properties
                 .get("commandParamIntegrations"), CommandParamIntegration.class);
-        // 初始化动态路由集成控制信息
-        if (null == commandParamIntegrations) {
-            commandParamIntegrations = JsonUtil.writeValueAsList(
-                    (String) properties.get("commandParamIntegrationsJson"), CommandParamIntegration.class);
-            properties.put("commandParamIntegrations", commandParamIntegrations);
-            Map<String, CommandParamIntegration> unIntegrateParams = commandParamIntegrations.stream()
-                    .collect(Collectors.toMap(CommandParamIntegration::getParamName, integrate -> integrate));
-            properties.put("unIntegrateParams", unIntegrateParams);
-        }
-        Map<String, CommandParamIntegration> unIntegrateParams = ClassCastUtils.castHashMap(
-                properties.get("unIntegrateParams"), String.class, CommandParamIntegration.class);
+        List<CommandParamIntegration> unIntegrateParams = commandParamIntegrations.stream()
+                .filter(i -> !i.getIntegrationComplete()).collect(Collectors.toList());
         properties.put("unIntegrateParams", unIntegrateParams);
-        // 存在批量处理的集成，跳出当前循环
-        if (properties.containsKey("batchIntegrate")) {
+        if (unIntegrateParams.size() == 0) {
             return null;
         }
-        Map<String, Object> currentIntegration = executableIntegrationInfo(unIntegrateParams, (String) properties.get("commandJson"), false);
-        if (null == currentIntegration) {
-            // 清除中间变量
-            properties.remove("currentIntegrateParam");
-            properties.remove("unIntegrateParams");
-            properties.remove("commandParamIntegrationsJson");
-            properties.remove("commandParamIntegrations");
-            return null;
-        }
-        properties.put("currentIntegrateParam", currentIntegration);
-        return "direct://integration-params";
-    }
-
-    public static String batchIntegrate(@ExchangeProperties Map<String, Object> properties) {
-        Object integrateResult = properties.get("integrateResult");
-        String commandJson = (String) properties.get("commandJson");
-        String batchName = (String) properties.get("batchName");
-        Map<String, CommandParamIntegration> batchIntegrate = ClassCastUtils.castHashMap(
-                properties.get("batchIntegrate"), String.class, CommandParamIntegration.class);
-        properties.put("unIntegrateParams", batchIntegrate);
-        properties.remove("batchIntegrate");
-
-        commandJson = JsonUtil.patch(commandJson, "/" + batchName, JsonUtil.writeValueAsString(integrateResult));
-        properties.put("commandJson", commandJson);
-        Map<String, Object> currentIntegration = executableIntegrationInfo(batchIntegrate, commandJson, false);
+        log.info("业务未集成：{}", unIntegrateParams.stream().map(CommandParamIntegration::getParamName).collect(Collectors.joining(",")));
+        Map<String, Object> currentIntegration = findExecutable(unIntegrateParams, (String) properties.get("commandJson"));
         if (null == currentIntegration) {
             // 清除中间变量
             properties.remove("currentIntegrateParam");
@@ -612,42 +600,46 @@ class IntegrationCommandParams {
      */
     public static void processResult(Exchange exchange) throws Exception {
         Map<String, Object> properties = exchange.getProperties();
+        List<CommandParamIntegration> commandParamIntegrations = ClassCastUtils.castArrayList(exchange.getProperties().get("commandParamIntegrations"), CommandParamIntegration.class);
         Object body = exchange.getIn().getBody();
         if (body instanceof byte[]) {
             body = new String((byte[]) body);
         }
         String commandJson = (String) properties.get("commandJson");
         Map<String, Object> current = ClassCastUtils.castHashMap(properties.get("currentIntegrateParam"), String.class, Object.class);
-        Map<String, CommandParamIntegration> unIntegrateParams = ClassCastUtils.castHashMap(exchange.getProperty("unIntegrateParams", Map.class), String.class, CommandParamIntegration.class);
         String name = (String) current.get("paramName");
         String protocol = (String) current.get("protocol");
         if ("".equals(protocol)) {
-            body = ((Optional<?>) body).orElseThrow();
+            body = ((Optional<?>) body).orElse(null);
         } else {
             if (!"200".equals(JsonUtil.readPath((String) body, "/code"))) {
                 throw new RuntimeException("Integrate [" + name + "] error: " + JsonUtil.readPath((String) body, "/message"));
             }
             body = JsonUtil.readPath((String) body, "/data");
         }
-        String data = JsonUtil.transform(unIntegrateParams.get(name).getResponseMapping(), JsonUtil.writeValueAsString(body));
-        log.info("业务已集成：{}，结果：{}", name, data);
-
+        // 将上次执行的结果放回至原有属性集成参数之中
+        CommandParamIntegration find = commandParamIntegrations.stream()
+                .filter(paramIntegration -> name.equals(paramIntegration.getParamName()))
+                .findFirst().orElseThrow();
+        String data = JsonUtil.transform(find.getResponseMapping(), JsonUtil.writeValueAsString(body));
         // 判断返回结果是否需要进行批处理
-        boolean batchFlag = unIntegrateParams.get(name).isBatchFlag();
-        if (batchFlag) {
-            unIntegrateParams.remove(name);
+        log.info("业务已集成：{}，结果：{}", name, data);
+        find.setIntegrationComplete(true);
+        if (find.isBatchFlag()) {
+            exchange.setProperty("batchNamePath", "/" + name);
+            exchange.setProperty("batchIntegrateResult", JsonUtil.writeValueAsList(data, Class.forName((String) properties.get("aggregationPath"))));
             // 记录需要批量处理的集成
-            exchange.getProperties().put("batchIntegrate", unIntegrateParams);
-            exchange.setProperty("batchName", name);
-            List<?> list = JsonUtil.writeValueAsList(data, Class.forName((String) properties.get("aggregationPath")));
-            exchange.setProperty("batchIntegrateResult", list);
-            return;
+            exchange.getProperties().put("batchIntegrate", commandParamIntegrations.stream()
+                    .filter(other -> !other.getIntegrationComplete()).collect(Collectors.toList()));
+            // 清空未集成
+            commandParamIntegrations.stream().filter(other -> !other.getIntegrationComplete())
+                    .forEach(other -> other.setIntegrationComplete(true));
+        } else {
+            commandJson = JsonUtil.patch(commandJson, "/" + name, data);
+            exchange.getProperties().put("commandJson", commandJson);
         }
-        commandJson = JsonUtil.patch(commandJson, "/" + name, data);
-        exchange.getProperties().put("commandJson", commandJson);
-        unIntegrateParams.remove(name);
-        exchange.getProperties().put("currentIntegrateParam", current);
-        exchange.getProperties().put("unIntegrateParams", unIntegrateParams);
+        // 更新未集成
+        exchange.getProperties().put("commandParamIntegrations", commandParamIntegrations);
     }
 
     /**
@@ -656,48 +648,48 @@ class IntegrationCommandParams {
      * @param unIntegrateParams
      * @return
      */
-    public static Map<String, Object> executableIntegrationInfo(Map<String, CommandParamIntegration> unIntegrateParams,
-                                                                String commandJson, Boolean isBatchExecutor) {
-        if (unIntegrateParams.isEmpty()) {
+    public static Map<String, Object> findExecutable(List<CommandParamIntegration> unIntegrateParams, String commandJson) {
+        Map<String, Object> executableIntegrationInfo = new HashMap<>();
+        for (CommandParamIntegration commandParamIntegration : unIntegrateParams) {
+            // 优先处理非批量集成
+            if (commandParamIntegration.isBatchFlag()) {
+                continue;
+            }
+            String body = transformBody(commandJson, commandParamIntegration, executableIntegrationInfo);
+            if (null != body) {
+                break;
+            }
+        }
+        // 没有可以进行的集成则处理批处理集成
+        if (null == executableIntegrationInfo.get("paramName")) {
+            unIntegrateParams.stream().filter(CommandParamIntegration::isBatchFlag).findFirst().ifPresent(batchIntegration -> {
+                transformBody(commandJson, batchIntegration, executableIntegrationInfo);
+            });
+        }
+        if (null != executableIntegrationInfo.get("paramName")) {
+            log.info("业务可集成：{}，参数：{}", executableIntegrationInfo.get("paramName"), JsonUtil.writeValueAsString(executableIntegrationInfo.get("integrateParams")));
+            return executableIntegrationInfo;
+        }
+        // 是否只剩下了可选集成
+        if (unIntegrateParams.stream().allMatch(CommandParamIntegration::isIgnoreIfParamAbsent)) {
+            log.info("业务不集成：{}", unIntegrateParams.stream().map(CommandParamIntegration::getParamName).collect(Collectors.joining(",")));
             return null;
         }
-        log.info("业务未集成：{}", String.join(",", unIntegrateParams.keySet()));
-        Map<String, Object> executableIntegrationInfo = new HashMap<>();
-        for (String key : unIntegrateParams.keySet()) {
-            CommandParamIntegration commandParamIntegration = unIntegrateParams.get(key);
-            // 批处理集成放在后面进行处理
-            if (!commandParamIntegration.isBatchFlag() == isBatchExecutor) {
-                continue;
-            }
-            String protocolContent = null;
-            if (StringUtils.hasText(commandParamIntegration.getProtocol())) {
-                protocolContent = FileUtils.fileReader(commandParamIntegration.getProtocol(), List.of("json"));
-            }
-            // 获取当前查询的每个参数
-            String body = JsonUtil.transAndCheck(commandParamIntegration.getRequestMapping(), commandJson, protocolContent);
-            if (null == body) {
-                continue;
-            }
-            // 如果能够集成,收集信息,然后会自动跳出循环
-            executableIntegrationInfo.put("paramName", commandParamIntegration.getParamName());
-            executableIntegrationInfo.put("protocol", commandParamIntegration.getProtocol());
-            executableIntegrationInfo.put("integrateParams", JsonUtil.writeValueAsObject(body, Object.class));
-            break;
+        throw new RuntimeException("the integration file have error, command need integrate, but the param can not use... ");
+    }
+
+    private static String transformBody(String commandJson, CommandParamIntegration commandParamIntegration, Map<String, Object> map) {
+        String protocolContent = null;
+        if (StringUtils.hasText(commandParamIntegration.getProtocol())) {
+            protocolContent = FileUtils.fileReader(commandParamIntegration.getProtocol(), List.of("json"));
         }
-        if (null == executableIntegrationInfo.get("paramName")) {
-            // 是否存在批处理的集成
-            if (!isBatchExecutor && unIntegrateParams.values().stream().anyMatch(CommandParamIntegration::isBatchFlag)) {
-                return executableIntegrationInfo(unIntegrateParams, commandJson, true);
-            }
-            // 是否只剩下了可选集成
-            if (unIntegrateParams.values().stream().allMatch(CommandParamIntegration::isIgnoreIfParamAbsent)) {
-                log.info("业务忽略集成：{}", String.join(",", unIntegrateParams.keySet()));
-                return null;
-            }
-            throw new RuntimeException(
-                    "the integration file have error, command need integrate, but the param can not use... ");
+        // 获取当前查询的每个参数
+        String body = JsonUtil.transAndCheck(commandParamIntegration.getRequestMapping(), commandJson, protocolContent);
+        if (body != null) {
+            map.put("paramName", commandParamIntegration.getParamName());
+            map.put("protocol", commandParamIntegration.getProtocol());
+            map.put("integrateParams", JsonUtil.writeValueAsObject(body, Object.class));
         }
-        log.info("业务可集成：{}，参数：{}", executableIntegrationInfo.get("paramName"), executableIntegrationInfo.get("integrateParams"));
-        return executableIntegrationInfo;
+        return body;
     }
 }
