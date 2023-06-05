@@ -62,16 +62,25 @@ public class ApplicationPresentationsServiceRouteConfiguration extends MicrcRout
                 .setProperty("paramIntegrationsJson", simple("{{paramIntegrationsJson}}"))
                 .setProperty("assembler", simple("{{assembler}}"))
                 // 1.处理请求
-                .setProperty("param", simple("${in.body}"))
+                .to("direct://handle-request-presentation")
                 // 2.动态集成
-                .dynamicRouter(method(IntegrationParams.class, "dynamicIntegrate"))
+                .to("direct://dynamic-integration-presentation")
                 // 3.处理结果
                 .to("direct://handle-result-presentation")
                 .end();
 
+        from("direct://handle-request-presentation")
+                .setProperty("param", body())
+                .setHeader("path", constant("/_param"))
+                .setHeader("value", body())
+                .setBody(constant("{}"))
+                .to("json-patch://add")
+                .setProperty("buffer", body())
+                .end();
+
         from("direct://presentations-integration")
                 // 得到需要集成的集成参数，todo,封装进动态路由
-                .bean(IntegrationParams.class, "findExecutable(${exchange.properties.get(unIntegrateParams)}, ${exchange.properties.get(param)})")
+                .bean(IntegrationParams.class, "findExecutable")
                 .setProperty("current", body())
                 // 构造发送
                 .choice()
@@ -87,8 +96,11 @@ public class ApplicationPresentationsServiceRouteConfiguration extends MicrcRout
                   // 处理返回
                 .bean(IntegrationParams.class, "processResult");
 
+        from("direct://dynamic-integration-presentation")
+                .dynamicRouter(method(IntegrationParams.class, "dynamicIntegrate"));
+
         from("direct://handle-result-presentation")
-                .setBody(exchangeProperty("param"))
+                .setBody(exchangeProperty("buffer"))
                 .setHeader("mappingContent", exchangeProperty("assembler"))
                 .to("json-mapping://content");
     }
@@ -164,10 +176,7 @@ class IntegrationParams {
         if (body instanceof byte[]) {
             body = new String((byte[]) body);
         }
-        String param = (String) properties.get("param");
-        if (null == param) {
-            param = "{}";
-        }
+        String buffer = (String) properties.get("buffer");
         Map<String, Object> current = ClassCastUtils.castHashMap(properties.get("current"), String.class, Object.class);
         String name = (String) current.get("name");
         ParamIntegration.Type currentIntegrateType = (ParamIntegration.Type) current.get("type");
@@ -186,20 +195,26 @@ class IntegrationParams {
                 .findFirst().orElseThrow();
         // 标识该参数已成功
         find.setIntegrationComplete(true);
-        param = JsonUtil.add(param, "/" + find.getConcept(), data);
-        exchange.getProperties().put("param", param);
+        buffer = JsonUtil.add(buffer, "/" + find.getConcept(), data);
+        exchange.getProperties().put("buffer", buffer);
         exchange.getProperties().put("paramIntegrations", paramIntegrations);
     }
 
     /**
      * 得到一个可执行的集成的集成信息
      *
-     * @param unIntegrateParams
-     * @param param
+     * @param exchange
      * @return
      */
-    public static Map<String, Object> findExecutable(List<ParamIntegration> unIntegrateParams, String param) {
-
+    public static Map<String, Object> findExecutable(Exchange exchange) {
+        List<ParamIntegration> unIntegrateParams = ClassCastUtils.castArrayList(exchange.getProperty("unIntegrateParams"), ParamIntegration.class);
+        Object current = exchange.getProperty("current");
+        String param;
+        if (null == current) {
+            param = exchange.getProperty("param", String.class);
+        } else {
+            param = exchange.getProperty("buffer", String.class);
+        }
         Map<String, Object> executableIntegrationInfo = new HashMap<>();
         for (ParamIntegration paramIntegration : unIntegrateParams) {
             // 获取当前查询的每个参数
@@ -242,8 +257,9 @@ class IntegrationParams {
      *
      * @return
      */
-    public static Object executeQuery(Exchange exchange, Map<String, Object> body) {
+    public static Object executeQuery(Exchange exchange) {
         try {
+            HashMap<String, Object> body = exchange.getIn().getBody(HashMap.class);
             Class<?> repositoryClass = Class.forName((String) body.get("repositoryPath"));
             ParameterizedType genericInterface = (ParameterizedType) (repositoryClass.getGenericInterfaces()[0]);
             Type[] actualTypeArguments = genericInterface.getActualTypeArguments();

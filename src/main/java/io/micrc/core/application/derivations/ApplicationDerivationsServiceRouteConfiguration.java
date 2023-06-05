@@ -78,7 +78,7 @@ public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteB
                 .setProperty("assembler", simple("{{assembler}}"))
                 .setProperty("timePathsJson", simple("{{timePathsJson}}"))
                 // 1.处理请求
-                .setProperty("param", simple("${in.body}"))
+                .to("direct://handle-request-derivation")
                 // 2.解析时间
                 .to("direct://parse-time-derivation")
                 // 3.动态集成
@@ -87,9 +87,18 @@ public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteB
                 .to("direct://handle-result-derivation")
                 .end();
 
+        from("direct://handle-request-derivation")
+                .setProperty("param", body())
+                .setHeader("path", constant("/_param"))
+                .setHeader("value", body())
+                .setBody(constant("{}"))
+                .to("json-patch://add")
+                .setProperty("buffer", body())
+                .end();
+
         from("direct://derivations-integration")
                 // 得到需要集成的集成参数，todo,封装进动态路由
-                .bean(IntegrationParams.class, "findExecutable(${exchange.properties.get(unIntegrateParams)}, ${exchange.properties.get(param)}, ${exchange.properties.get(timePaths)})")
+                .bean(IntegrationParams.class, "findExecutable")
                 .setProperty("current", body())
                 // 构造发送
                 .choice()
@@ -121,11 +130,10 @@ public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteB
                 .setProperty("timePaths", body());
 
         from("direct://dynamic-integration-derivation")
-                .setBody(exchangeProperty("param"))
                 .dynamicRouter(method(IntegrationParams.class, "dynamicIntegrate"));
 
         from("direct://handle-result-derivation")
-                .setBody(exchangeProperty("param"))
+                .setBody(exchangeProperty("buffer"))
                 .setHeader("mappingContent", exchangeProperty("assembler"))
                 .to("json-mapping://content");
     }
@@ -206,7 +214,7 @@ class IntegrationParams {
         if (body instanceof byte[]) {
             body = new String((byte[]) body);
         }
-        String param = (String) properties.get("param");
+        String buffer = (String) properties.get("buffer");
         List<String[]> timePathList = ClassCastUtils.castArrayList(properties.get("timePaths"), String[].class);
         Map<String, Object> current = ClassCastUtils.castHashMap(properties.get("current"), String.class, Object.class);
         String name = (String) current.get("name");
@@ -230,20 +238,28 @@ class IntegrationParams {
         if (TechnologyType.DMN.equals(current.get("technologyType"))) {
             value = TimeReplaceUtil.matchTimePathAndReplaceTime(timePathList, path, value, Long.class);
         }
-        param = JsonUtil.add(param, path, value);
-        exchange.getProperties().put("param", param);
+        buffer = JsonUtil.add(buffer, path, value);
+        exchange.getProperties().put("buffer", buffer);
         exchange.getProperties().put("paramIntegrations", paramIntegrations);
     }
 
     /**
      * 得到一个可执行的集成的集成信息
      *
-     * @param unIntegrateParams
-     * @param param
+     * @param exchange
      * @return
      */
-    public static Map<String, Object> findExecutable(List<ParamIntegration> unIntegrateParams, String param, List<String[]> timePathList)
+    public static Map<String, Object> findExecutable(Exchange exchange)
             throws XPathExpressionException, IOException, SAXException, ParserConfigurationException {
+        List<ParamIntegration> unIntegrateParams = ClassCastUtils.castArrayList(exchange.getProperty("unIntegrateParams"), ParamIntegration.class);
+        List<String[]> timePathList = ClassCastUtils.castArrayList(exchange.getProperty("timePaths"), String[].class);
+        Object current = exchange.getProperty("current");
+        String param;
+        if (null == current) {
+            param = exchange.getProperty("param", String.class);
+        } else {
+            param = exchange.getProperty("buffer", String.class);
+        }
         Map<String, Object> executableIntegrationInfo = new HashMap<>();
         int checkNumber = -1;
         do {
@@ -330,8 +346,9 @@ class IntegrationParams {
      *
      * @return
      */
-    public static Object executeQuery(Exchange exchange, Map<String, Object> body) {
+    public static Object executeQuery(Exchange exchange) {
         try {
+            HashMap<String, Object> body = exchange.getIn().getBody(HashMap.class);
             Class<?> repositoryClass = Class.forName((String) body.get("repositoryPath"));
             ParameterizedType genericInterface = (ParameterizedType) (repositoryClass.getGenericInterfaces()[0]);
             Type[] actualTypeArguments = genericInterface.getActualTypeArguments();
