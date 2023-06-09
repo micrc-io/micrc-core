@@ -21,6 +21,11 @@ import java.util.Objects;
 public class MyRealm extends AuthorizingRealm {
 
     /**
+     * TOKEN过期时间
+     */
+    public static final Long TOKEN_EXPIRE_TIME = 4 * 60 * 60 * 1000L;
+
+    /**
      * 用户权限前缀
      */
     public static final String USER_PERMISSIONS_KEY_PREFIX = "USER:PERMISSIONS:";

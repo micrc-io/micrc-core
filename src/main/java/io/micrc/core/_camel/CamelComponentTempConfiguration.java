@@ -279,13 +279,13 @@ public class CamelComponentTempConfiguration {
                             if (permissions == null) {
                                 throw new RuntimeException("[permissions] must not be null");
                             }
-                            String token = JwtUtil.createToken(username, permissions.toArray(new String[0]));
+                            String token = JwtUtil.createToken(username, permissions.toArray(new String[0]), MyRealm.TOKEN_EXPIRE_TIME);
                             Subject subject = SecurityUtils.getSubject();
                             JwtToken jwtToken = new JwtToken(token);
                             subject.login(jwtToken);
                             exchange.getIn().setBody(JsonUtil.writeValueAsString(token));
                             String key = MyRealm.USER_PERMISSIONS_KEY_PREFIX + username;
-                            redisTemplate.opsForValue().set(key, permissions);
+                            redisTemplate.opsForValue().set(key, permissions, MyRealm.TOKEN_EXPIRE_TIME, TimeUnit.MILLISECONDS);
                         })
                         .end();
 
