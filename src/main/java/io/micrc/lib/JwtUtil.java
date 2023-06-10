@@ -4,10 +4,8 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTCreator;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
-import com.auth0.jwt.exceptions.TokenExpiredException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 
-import java.io.UnsupportedEncodingException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -15,14 +13,10 @@ import java.util.Map;
 public class JwtUtil {
     public static final String KEY = "1qaz@WSX";
 
-    public static String createToken(String username, String[] permissions) throws UnsupportedEncodingException {
-        return createToken(username, permissions, null);
-    }
-
     /**
      * 创建token
      */
-    public static String createToken(String username, String[] permissions, Long time) throws UnsupportedEncodingException {
+    public static String createToken(String username, String[] permissions, Long time) {
         //设置token头部
         Map<String, Object> map = new HashMap<>();
         map.put("alg","HS256");
@@ -44,7 +38,7 @@ public class JwtUtil {
     /**
      * 校验token是否正确
      */
-    public static boolean verify(String token, String username) throws UnsupportedEncodingException, TokenExpiredException {
+    public static boolean verify(String token, String username) {
         //通过KEY利用HMAC256解码
         Algorithm algorithm = Algorithm.HMAC256(KEY);
         /*

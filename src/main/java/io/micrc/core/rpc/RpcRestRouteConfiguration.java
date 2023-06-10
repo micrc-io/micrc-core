@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
+import org.springframework.http.HttpHeaders;
 
 import java.util.*;
 
@@ -65,7 +66,7 @@ public class RpcRestRouteConfiguration extends MicrcRouteBuilder {
                 .bean(IntegrationsInfo.class, "get(${exchange.properties.get(protocolFilePath)})")
                 .setProperty("integrationInfo", body())
                 // todo,衍生集成专用TOKEN
-                .setHeader("Authorization", constant("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9ucyI6WyIqIl0sImV4cCI6MzM2MzQ1NjExNSwidXNlcm5hbWUiOiJ0ZXN0In0.omwX_yOvVkwu9VLFZOQwnZbtyncqnLR331M9DzgRPjM"))
+                .setHeader(HttpHeaders.AUTHORIZATION, constant("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9ucyI6WyIqIl0sImV4cCI6MzM2MzQ1NjExNSwidXNlcm5hbWUiOiJ0ZXN0In0.omwX_yOvVkwu9VLFZOQwnZbtyncqnLR331M9DzgRPjM"))
                 .setBody(exchangeProperty("requestBody"))
                 .removeProperty("requestBody")
                 .process(exchange -> {

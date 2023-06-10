@@ -1,11 +1,14 @@
 package io.micrc.core.authorize;
 
+import com.auth0.jwt.exceptions.TokenExpiredException;
 import io.micrc.core.rpc.Result;
 import io.micrc.lib.JsonUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.shiro.SecurityUtils;
 import org.apache.shiro.subject.Subject;
 import org.apache.shiro.web.filter.AccessControlFilter;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.RequestMethod;
 
@@ -16,6 +19,7 @@ import javax.servlet.http.HttpServletRequestWrapper;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
+@Slf4j
 public class JwtFilter extends AccessControlFilter {
 
     @Override
@@ -42,28 +46,31 @@ public class JwtFilter extends AccessControlFilter {
     protected boolean onAccessDenied(ServletRequest servletRequest, ServletResponse servletResponse) throws Exception {
         Subject subject = SecurityUtils.getSubject();
         HttpServletRequestWrapper wrapper = (HttpServletRequestWrapper) servletRequest;
-        String token = wrapper.getHeader("Authorization");
+        String token = wrapper.getHeader(HttpHeaders.AUTHORIZATION);
+        HttpStatus httpStatus = HttpStatus.UNAUTHORIZED;
         if (StringUtils.isNotBlank(token)) {
-            JwtToken jwtToken = new JwtToken(token);
             try {
+                JwtToken jwtToken = new JwtToken(token);
                 subject.login(jwtToken);
                 return true;
             } catch (Exception e) {
-                writeUnauthorizedResponse((HttpServletResponse) servletResponse);
-                return false;
+                if (e.getCause() != null && e.getCause() instanceof TokenExpiredException) {
+                    httpStatus = HttpStatus.FORBIDDEN;
+                } else {
+                    log.error("subject login error: {}", e.getLocalizedMessage());
+                }
             }
-        } else {
-            writeUnauthorizedResponse((HttpServletResponse) servletResponse);
-            return false;
         }
+        writeResponse((HttpServletResponse) servletResponse, httpStatus);
+        return false;
     }
 
-    private static void writeUnauthorizedResponse(HttpServletResponse httpServletResponse) throws IOException {
-        httpServletResponse.setStatus(200);
+    private static void writeResponse(HttpServletResponse httpServletResponse, HttpStatus httpStatus) throws IOException {
+        httpServletResponse.setStatus(HttpStatus.OK.value());
         httpServletResponse.setHeader("Content-Type", "application/json");
         Result<?> result = new Result<>();
-        result.setCode("401");
-        result.setMessage("Unauthorized");
+        result.setCode(String.valueOf(httpStatus.value()));
+        result.setMessage(httpStatus.getReasonPhrase());
         httpServletResponse.getWriter().write(JsonUtil.writeValueAsString(result));
     }
 }
