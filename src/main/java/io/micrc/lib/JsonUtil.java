@@ -130,6 +130,9 @@ public class JsonUtil {
     }
 
     public static String transAndCheck(String jslt, String string, String openApi) {
+        if (jslt.startsWith("null") || jslt.startsWith("{}")) {
+            return jslt;
+        }
         try {
             Expression expression = Parser.compileString(jslt);
             JsonNode resultNode = expression.apply(JsonUtil.readTree(string));
