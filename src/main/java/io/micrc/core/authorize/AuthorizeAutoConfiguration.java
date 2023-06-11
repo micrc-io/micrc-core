@@ -71,7 +71,7 @@ public class AuthorizeAutoConfiguration {
         filter.setSecurityManager(securityManager);
         //设置自定义过滤器
         Map<String, Filter> filterMap = new LinkedHashMap<>();
-        filterMap.put("jwt",new JwtFilter());
+        filterMap.put("jwt", new JwtFilter());
         filter.setFilters(filterMap);
         //设置匹配路径
         LinkedHashMap<String, String> filterChainDefinitionMap = new LinkedHashMap<>();
@@ -81,16 +81,14 @@ public class AuthorizeAutoConfiguration {
         filterChainDefinitionMap.put("/swagger-ui/**", "anon");
         filterChainDefinitionMap.put("/v3/api-docs/swagger-config", "anon");
         filterChainDefinitionMap.put("/api/apidoc/**", "anon");
+        // springboot fall-back error
+        filterChainDefinitionMap.put("/error", "anon");
         // public uri
         Arrays.stream(publicUri.orElse("").split(","))
             .filter(StringUtils::hasText)
             .forEach(it -> filterChainDefinitionMap.put(it, "anon"));
 
         filterChainDefinitionMap.put("/**", "jwt");
-        // is it necessary??
-        // filter.setLoginUrl(loginUrl); // 未认证跳转
-        // filter.setSuccessUrl("/auth/getInfo"); // 成功跳转
-        // filter.setUnauthorizedUrl("/auth/error"); // 未授权跳转
         filter.setFilterChainDefinitionMap(filterChainDefinitionMap);
         //返回
         return filter;

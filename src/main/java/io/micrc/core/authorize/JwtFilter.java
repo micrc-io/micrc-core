@@ -54,7 +54,7 @@ public class JwtFilter extends AccessControlFilter {
                 subject.login(jwtToken);
                 return true;
             } catch (Exception e) {
-                if (e.getCause() != null && e.getCause() instanceof TokenExpiredException) {
+                if (e.getCause() instanceof TokenExpiredException) {
                     httpStatus = HttpStatus.FORBIDDEN;
                 } else {
                     log.error("subject login error: {}", e.getLocalizedMessage());
