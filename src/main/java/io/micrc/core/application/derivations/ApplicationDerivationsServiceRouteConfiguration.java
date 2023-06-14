@@ -111,12 +111,14 @@ public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteB
                     .setHeader("executeType", constant("ROUTE"))
                     .setBody(simple("${exchange.properties.get(current).get(params)}"))
                     .to("dynamic-executor://execute")
+                .endChoice()
                 .when(constant("SPECIAL_TECHNOLOGY").isEqualTo(simple("${exchange.properties.get(current).get(type)}")))
                     .setHeader("from", simple("${exchange.properties.get(current).get(routeName)}"))
                     .setHeader("script", simple("${exchange.properties.get(current).get(logic)}"))
                     .setHeader("executeType", simple("${exchange.properties.get(current).get(technologyType)}"))
                     .setBody(simple("${exchange.properties.get(current).get(params)}"))
                     .to("dynamic-executor://execute")
+                .endChoice()
                 .end()
                   // 处理返回
                 .bean(IntegrationParams.class, "processResult");

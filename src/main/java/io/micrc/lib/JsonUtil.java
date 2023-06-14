@@ -1,6 +1,7 @@
 package io.micrc.lib;
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -119,6 +120,17 @@ public class JsonUtil {
             return OBJECT_NULL_MAPPER.readTree(JsonUtil.writeValueAsString(obj));
         } catch (Exception e) {
             e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static boolean validate(String string) {
+        try {
+            OBJECT_NULL_MAPPER.readTree(string);
+            return true;
+        } catch (JsonParseException e) {
+            return false;
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }

@@ -47,6 +47,7 @@ import javax.xml.xpath.XPathFactory;
 import java.io.ByteArrayInputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -138,6 +139,18 @@ public class CamelComponentTempConfiguration {
                 from("dynamic-route://execute")
                         .routeId("dynamic-route-execute")
                         .process(exchange -> {
+                            String body = exchange.getIn().getBody(String.class);
+                            // 默认接收json参数，允许接收""包裹的json参数
+                            if (JsonUtil.validate(body)) {
+                                Object bodyObj = JsonUtil.readPath(body, "");
+                                // 处理""包裹的json参数
+                                if (bodyObj instanceof String && JsonUtil.validate((String) bodyObj)) {
+                                    bodyObj = JsonUtil.readPath((String) bodyObj, "");
+                                }
+                                if (bodyObj instanceof HashMap) {
+                                    exchange.setProperty("_param", bodyObj);
+                                }
+                            }
                             CamelContext context = exchange.getContext();
                             Route camelRoute = context.getRoute((String) exchange.getIn().getHeader("from"));
                             if (null == camelRoute) {
@@ -148,6 +161,7 @@ public class CamelComponentTempConfiguration {
                         .toD("${header.from}")
                         .removeHeader("from")
                         .removeHeader("route")
+                        .removeProperty("_param")
                         .end();
             }
         };
