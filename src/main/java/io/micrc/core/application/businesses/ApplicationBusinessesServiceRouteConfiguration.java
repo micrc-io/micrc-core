@@ -187,6 +187,9 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                         for (Map.Entry<String, String> entry : fieldMap.entrySet()) {
                             String filedName = entry.getKey();
                             String node = JsonUtil.readTree(commandJson).at("/target/" + filedName).toString();
+                            if ("".equals(node)) {
+                                continue;
+                            }
                             if(JsonUtil.hasPath(node, "/identity/id")) {
                                 // 多对一
                                 Object identity = JsonUtil.readPath(node, "/identity/id");
@@ -245,9 +248,9 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                         Method method = Arrays.stream(methods)
                                 .filter(m -> m.getName().startsWith("set") && m.getName().contains(StringUtil.upperStringFirst(key)))
                                 .findFirst().orElseThrow();
-                        if(batchMap.containsKey(key)) {
+                        if (batchMap.containsKey(key) && batchMap.get(key) != null) {
                             method.invoke(entity, JsonUtil.writeValueAsList(batchMap.get(key).toString(), clazz));
-                        } else {
+                        } else if (oneMap.containsKey(key) && oneMap.get(key) != null) {
                             method.invoke(entity, JsonUtil.writeValueAsObject(oneMap.get(key).toString(), clazz));
                         }
                     }

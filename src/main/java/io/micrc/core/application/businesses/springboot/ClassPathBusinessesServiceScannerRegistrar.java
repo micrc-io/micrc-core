@@ -31,6 +31,7 @@ import org.springframework.core.type.filter.AnnotationTypeFilter;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 import java.lang.reflect.*;
 import java.util.*;
@@ -255,6 +256,9 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
             MicrcTime micrcTime = field.getAnnotation(MicrcTime.class);
             if (null != micrcTime) {
                 paths.add(path.append("/").append(field.getName()).toString());
+                continue;
+            }
+            if (null != field.getAnnotation(ManyToOne.class)) {
                 continue;
             }
             Class<?> type = field.getType();
