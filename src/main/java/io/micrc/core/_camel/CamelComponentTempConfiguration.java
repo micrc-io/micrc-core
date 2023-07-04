@@ -33,6 +33,9 @@ import org.springframework.core.env.Environment;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.expression.ExpressionParser;
+import org.springframework.expression.common.TemplateParserContext;
+import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.util.ResourceUtils;
 import org.springframework.util.StreamUtils;
 import org.springframework.util.StringUtils;
@@ -47,6 +50,7 @@ import javax.xml.xpath.XPathFactory;
 import java.io.ByteArrayInputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -139,6 +143,8 @@ public class CamelComponentTempConfiguration {
                 from("dynamic-route://execute")
                         .routeId("dynamic-route-execute")
                         .process(exchange -> {
+                            String route = (String) exchange.getIn().getHeader("route");
+                            Object from = exchange.getIn().getHeader("from");
                             String body = exchange.getIn().getBody(String.class);
                             // 默认接收json参数，允许接收""包裹的json参数
                             if (JsonUtil.validate(body)) {
@@ -148,20 +154,22 @@ public class CamelComponentTempConfiguration {
                                     bodyObj = JsonUtil.readPath((String) bodyObj, "");
                                 }
                                 if (bodyObj instanceof HashMap) {
-                                    exchange.setProperty("_param", bodyObj);
+                                    HashMap<String, Object> hashMap = (HashMap<String, Object>) bodyObj;
+                                    ExpressionParser parser = new SpelExpressionParser();
+                                    TemplateParserContext parserContext = new TemplateParserContext();
+                                    route = parser.parseExpression(route, parserContext).getValue(hashMap, String.class);
                                 }
                             }
                             CamelContext context = exchange.getContext();
-                            Route camelRoute = context.getRoute((String) exchange.getIn().getHeader("from"));
+                            Route camelRoute = context.getRoute((String) from);
                             if (null == camelRoute) {
                                 ExtendedCamelContext ec = context.adapt(ExtendedCamelContext.class);
-                                ec.getRoutesLoader().loadRoutes(ResourceHelper.fromString(exchange.getIn().getHeader("from") + ".xml", (String) exchange.getIn().getHeader("route")));
+                                ec.getRoutesLoader().loadRoutes(ResourceHelper.fromString(from + ".xml", route));
                             }
                         })
                         .toD("${header.from}")
                         .removeHeader("from")
                         .removeHeader("route")
-                        .removeProperty("_param")
                         .end();
             }
         };
@@ -362,6 +370,14 @@ public class CamelComponentTempConfiguration {
                             String truthValue = (String) redisTemplate.opsForValue().get(key);
                             exchange.getIn().setBody(JsonUtil.writeValueAsString(value.equals(truthValue)));
                             redisTemplate.delete(key);
+                        })
+                        .end();
+
+                from("direct://getActiveProfiles")
+                        .process(exchange -> {
+                            Optional<String> profileStr = Optional.ofNullable(environment.getProperty("application.profiles"));
+                            List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
+                            exchange.getIn().setBody(JsonUtil.writeValueAsString(profiles));
                         })
                         .end();
             }

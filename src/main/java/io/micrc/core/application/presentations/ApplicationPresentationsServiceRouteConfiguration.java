@@ -248,7 +248,7 @@ class IntegrationParams {
             throw new RuntimeException(
                     "the integration file have error, command need integrate, but the param can not use... ");
         }
-        log.info("展示可集成：{}，参数：{}", executableIntegrationInfo.get("name"), executableIntegrationInfo.get("params"));
+        log.info("展示可集成：{}，参数：{}", executableIntegrationInfo.get("name"), JsonUtil.writeValueAsString(executableIntegrationInfo.get("params")));
         return executableIntegrationInfo;
     }
 

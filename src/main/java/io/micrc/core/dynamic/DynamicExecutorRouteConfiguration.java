@@ -49,6 +49,8 @@ public class DynamicExecutorRouteConfiguration extends MicrcRouteBuilder {
                         .to("authorize://generateVerifyCode")
                     .when(header("executeType").isEqualTo("COMPARE_VERIFY_CODE"))
                         .to("authorize://compareVerifyCode")
+                    .when(header("executeType").isEqualTo("GET_ACTIVE_PROFILES"))
+                        .to("direct://getActiveProfiles")
                     .endChoice()
                 .end()
                 .removeHeader("executeType")
