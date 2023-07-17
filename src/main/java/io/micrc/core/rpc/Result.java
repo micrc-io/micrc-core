@@ -19,7 +19,7 @@ public class Result<T> {
     /**
      * 返回消息
      */
-    protected String message;
+    protected String message = "";
 
     /**
      * 数据列表
@@ -53,7 +53,6 @@ public class Result<T> {
 
     public Result<T> result(T data) {
         Result<T> result = new Result<>();
-        result.setCode("200");
         result.setData(data);
         return result;
     }
