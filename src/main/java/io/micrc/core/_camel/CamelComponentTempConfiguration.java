@@ -368,7 +368,7 @@ public class CamelComponentTempConfiguration {
                             }
                             key = USER_VERIFY_KEY_PREFIX + key;
                             String truthValue = (String) redisTemplate.opsForValue().get(key);
-                            exchange.getIn().setBody(JsonUtil.writeValueAsString(value.equals(truthValue)));
+                            exchange.getIn().setBody(JsonUtil.writeValueAsString(value.equalsIgnoreCase(truthValue)));
                             redisTemplate.delete(key);
                         })
                         .end();

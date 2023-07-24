@@ -18,6 +18,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletRequestWrapper;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Enumeration;
 
 @Slf4j
 public class JwtFilter extends AccessControlFilter {
@@ -46,10 +47,22 @@ public class JwtFilter extends AccessControlFilter {
     protected boolean onAccessDenied(ServletRequest servletRequest, ServletResponse servletResponse) throws Exception {
         Subject subject = SecurityUtils.getSubject();
         HttpServletRequestWrapper wrapper = (HttpServletRequestWrapper) servletRequest;
-        String token = wrapper.getHeader(HttpHeaders.AUTHORIZATION);
+        log.info("URI: " + wrapper.getRequestURI());
+        Enumeration<String> headerNames = wrapper.getHeaderNames();
+        String token = null;
+        while (headerNames.hasMoreElements()) {
+            String key = headerNames.nextElement();
+            if (HttpHeaders.AUTHORIZATION.equalsIgnoreCase(key)) {
+                token = wrapper.getHeader(key);
+                break;
+            }
+        }
         HttpStatus httpStatus = HttpStatus.UNAUTHORIZED;
         if (StringUtils.isNotBlank(token)) {
             try {
+                if (token.startsWith("Bearer")) {
+                    token = token.split(" ")[1];
+                }
                 JwtToken jwtToken = new JwtToken(token);
                 subject.login(jwtToken);
                 return true;
