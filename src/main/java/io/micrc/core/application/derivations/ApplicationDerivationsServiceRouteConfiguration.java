@@ -109,6 +109,7 @@ public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteB
                     .setHeader("from", simple("${exchange.properties.get(current).get(routeName)}"))
                     .setHeader("script", simple("${exchange.properties.get(current).get(logic)}"))
                     .setHeader("executeType", constant("ROUTE"))
+                    .setHeader("variable", simple("${exchange.properties.get(current).get(variable)}"))
                     .setBody(simple("${exchange.properties.get(current).get(params)}"))
                     .to("dynamic-executor://execute")
                 .endChoice()
@@ -116,6 +117,7 @@ public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteB
                     .setHeader("from", simple("${exchange.properties.get(current).get(routeName)}"))
                     .setHeader("script", simple("${exchange.properties.get(current).get(logic)}"))
                     .setHeader("executeType", simple("${exchange.properties.get(current).get(technologyType)}"))
+                    .setHeader("variable", simple("${exchange.properties.get(current).get(variable)}"))
                     .setBody(simple("${exchange.properties.get(current).get(params)}"))
                     .to("dynamic-executor://execute")
                 .endChoice()
@@ -305,6 +307,7 @@ class IntegrationParams {
                 }
                 executableIntegrationInfo.put("logic", routeContent); // 路由内容为null时，会根据technologyType执行内置路由
                 executableIntegrationInfo.put("params", value.get());
+                executableIntegrationInfo.put("variable", JsonUtil.transform(paramIntegration.getVariableMapping(), param));
                 executableIntegrationInfo.put("technologyType", paramIntegration.getTechnologyType());
                 if (TechnologyType.ROUTE.equals(paramIntegration.getTechnologyType())) {
                     String routeName = findRouteName(routeContent);
@@ -322,6 +325,7 @@ class IntegrationParams {
                 }
                 executableIntegrationInfo.put("logic", routeContent);
                 executableIntegrationInfo.put("params", value.get());
+                executableIntegrationInfo.put("variable", JsonUtil.transform(paramIntegration.getVariableMapping(), param));
                 String routeName = findRouteName(routeContent);
                 executableIntegrationInfo.put("routeName", routeName);
             }

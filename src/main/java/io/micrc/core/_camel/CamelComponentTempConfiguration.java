@@ -145,10 +145,10 @@ public class CamelComponentTempConfiguration {
                         .process(exchange -> {
                             String route = (String) exchange.getIn().getHeader("route");
                             Object from = exchange.getIn().getHeader("from");
-                            String body = exchange.getIn().getBody(String.class);
+                            String variable = exchange.getIn().getHeader("variable", String.class);
                             // 默认接收json参数，允许接收""包裹的json参数
-                            if (JsonUtil.validate(body)) {
-                                Object bodyObj = JsonUtil.readPath(body, "");
+                            if (JsonUtil.validate(variable)) {
+                                Object bodyObj = JsonUtil.readPath(variable, "");
                                 // 处理""包裹的json参数
                                 if (bodyObj instanceof String && JsonUtil.validate((String) bodyObj)) {
                                     bodyObj = JsonUtil.readPath((String) bodyObj, "");

@@ -187,18 +187,20 @@ class ApplicationDerivationsServiceScanner extends ClassPathBeanDefinitionScanne
             paramIntegrations.add(new ParamIntegration(logic.name(), logic.repositoryFullClassName(), logic.methodName(), paramMappings, logic.order()));
         });
         // 专用技术解析
-        Arrays.stream(specialTechnologies).forEach(specialTechnology -> {
-            String mapping = FileUtils.fileReaderSingleLine(specialTechnology.paramMappingFile(), List.of("jslt"));
-            paramIntegrations.add(new ParamIntegration(specialTechnology.name(),
-                    specialTechnology.scriptContentPath(), specialTechnology.scriptFilePath(), List.of(mapping),
-                    specialTechnology.order(), ParamIntegration.Type.SPECIAL_TECHNOLOGY, specialTechnology.technologyType()));
+        Arrays.stream(specialTechnologies).forEach(t -> {
+            String mapping = FileUtils.fileReaderSingleLine(t.paramMappingFile(), List.of("jslt"));
+            String varMapping = StringUtils.hasText(t.variableMappingFile()) ? FileUtils.fileReaderSingleLine(t.variableMappingFile(), List.of("jslt")) : "{}";
+            paramIntegrations.add(new ParamIntegration(t.name(),
+                    t.scriptContentPath(), t.scriptFilePath(), varMapping, List.of(mapping),
+                    t.order(), ParamIntegration.Type.SPECIAL_TECHNOLOGY, t.technologyType()));
         });
         // 通用技术解析
-        Arrays.stream(generalTechnologies).forEach(generalTechnology -> {
-            String mapping = FileUtils.fileReaderSingleLine(generalTechnology.paramMappingFile(), List.of("jslt"));
-            paramIntegrations.add(new ParamIntegration(generalTechnology.name(),
-                    generalTechnology.routeContentPath(), generalTechnology.routeXmlFilePath(), List.of(mapping),
-                    generalTechnology.order(), ParamIntegration.Type.GENERAL_TECHNOLOGY, null));
+        Arrays.stream(generalTechnologies).forEach(t -> {
+            String mapping = FileUtils.fileReaderSingleLine(t.paramMappingFile(), List.of("jslt"));
+            String varMapping = StringUtils.hasText(t.variableMappingFile()) ? FileUtils.fileReaderSingleLine(t.variableMappingFile(), List.of("jslt")) : "{}";
+            paramIntegrations.add(new ParamIntegration(t.name(),
+                    t.routeContentPath(), t.routeXmlFilePath(), varMapping, List.of(mapping),
+                    t.order(), ParamIntegration.Type.GENERAL_TECHNOLOGY, null));
         });
         // 按照优先级排序
         paramIntegrations.sort(Comparator.comparing(ParamIntegration::getOrder));

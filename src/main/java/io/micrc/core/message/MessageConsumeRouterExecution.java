@@ -3,7 +3,6 @@ package io.micrc.core.message;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.schibsted.spt.data.jslt.Expression;
 import com.schibsted.spt.data.jslt.Parser;
-import com.sun.nio.sctp.IllegalReceiveException;
 import io.micrc.core.annotations.message.MessageAdapter;
 import io.micrc.core.rpc.Result;
 import io.micrc.lib.JsonUtil;
@@ -109,7 +108,7 @@ public class MessageConsumeRouterExecution implements Ordered {
         HashMap mappingMap = JsonUtil.writeValueAsObject(mappingMapString, HashMap.class);
         Object mappingObj = mappingMap.get(serviceName);
         HashMap mapping = JsonUtil.writeObjectAsObject(mappingObj, HashMap.class);
-        String mappingString = (String) mapping.get("mappingPath");
+        String mappingString = mapping == null ? null : (String) mapping.get("mappingPath");
 
         if (null == mappingString || null == eventName || !eventName.equals(messageDetail.get("event"))) {
             // 不需要消费

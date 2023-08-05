@@ -60,7 +60,7 @@ public class JwtFilter extends AccessControlFilter {
         HttpStatus httpStatus = HttpStatus.UNAUTHORIZED;
         if (StringUtils.isNotBlank(token)) {
             try {
-                if (token.startsWith("Bearer")) {
+                if (token.contains(" ")) {
                     token = token.split(" ")[1];
                 }
                 JwtToken jwtToken = new JwtToken(token);

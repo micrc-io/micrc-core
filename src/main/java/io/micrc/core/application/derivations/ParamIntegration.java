@@ -42,6 +42,7 @@ public class ParamIntegration {
      * 参数映射
      */
     private List<String> paramMappings;
+    private String variableMapping;
 
     /**
      * 内容位置
@@ -70,7 +71,7 @@ public class ParamIntegration {
 
     private TechnologyType technologyType;
 
-    public ParamIntegration(String concept, String contentPath, String filePath, List<String> paramMappings, int order, Type type, TechnologyType technologyType) {
+    public ParamIntegration(String concept, String contentPath, String filePath, String variableMapping, List<String> paramMappings, int order, Type type, TechnologyType technologyType) {
         this.concept = concept;
         this.paramMappings = paramMappings;
         this.order = order;
@@ -78,6 +79,7 @@ public class ParamIntegration {
         this.filePath = filePath;
         this.type = type;
         this.technologyType = technologyType;
+        this.variableMapping = variableMapping;
     }
 
     public ParamIntegration(String concept, String repositoryPath, String queryMethod, List<String> paramMappings, int order) {
