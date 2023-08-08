@@ -39,9 +39,9 @@ public class RunnerAdapterRouteConfiguration extends MicrcRouteBuilder {
                 .templateParameter("serviceName", null, "the business service name")
                 .templateParameter("executeContent", null, "the command full path")
                 .from("runner:{{name}}?exchangePattern=InOut")
-                .setProperty("serviceName", simple("{{serviceName}}"))
-                .setProperty("executeContent", simple("{{executeContent}}"))
-                .setProperty("commandPath", simple("{{commandPath}}"))
+                .setProperty("serviceName", constant("{{serviceName}}"))
+                .setProperty("executeContent", constant("{{executeContent}}"))
+                .setProperty("commandPath", constant("{{commandPath}}"))
                 // 1.执行文件转换
                 .to("direct://executor-content-mapping")
                 // 2.转换命令

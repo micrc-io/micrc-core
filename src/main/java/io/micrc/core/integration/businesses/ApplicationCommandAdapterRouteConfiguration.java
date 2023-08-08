@@ -39,10 +39,10 @@ public class ApplicationCommandAdapterRouteConfiguration extends MicrcRouteBuild
                 .templateParameter("requestMapping", null, "the request mapping context")
                 .templateParameter("responseMapping", null, "the response mapping context")
                 .from("command:{{name}}?exchangePattern=InOut")
-                .setProperty("serviceName", simple("{{serviceName}}"))
+                .setProperty("serviceName", constant("{{serviceName}}"))
                 .setProperty("commandPath", constant("{{commandPath}}"))
-                .setProperty("requestMapping", simple("{{requestMapping}}"))
-                .setProperty("responseMapping", simple("{{responseMapping}}"))
+                .setProperty("requestMapping", constant("{{requestMapping}}"))
+                .setProperty("responseMapping", constant("{{responseMapping}}"))
                 // 1.请求映射
                 .to("direct://request-mapping-businesses")
                 // 2.转换命令

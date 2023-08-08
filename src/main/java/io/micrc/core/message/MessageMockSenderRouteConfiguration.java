@@ -44,9 +44,9 @@ public class MessageMockSenderRouteConfiguration extends MicrcRouteBuilder {
                 .templateParameter("serviceName", null, "the service name")
                 // 指定service名称为入口端点
                 .from("rest:post:{{listenerName}}")
-                .setProperty("eventName", simple("{{eventName}}"))
-                .setProperty("topicName", simple("{{topicName}}"))
-                .setProperty("serviceName", simple("{{serviceName}}"))
+                .setProperty("eventName", constant("{{eventName}}"))
+                .setProperty("topicName", constant("{{topicName}}"))
+                .setProperty("serviceName", constant("{{serviceName}}"))
                 .convertBodyTo(String.class)
                 .process(exchange -> {
                     // 设置消息体

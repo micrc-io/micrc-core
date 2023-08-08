@@ -8,7 +8,7 @@ plugins {
 }
 
 group = 'io.micrc.core'
-version = 'v0.0.13'
+version = 'v0.0.14'
 sourceCompatibility = '11'
 targetCompatibility = '11'
 
@@ -51,8 +51,7 @@ dependencyManagement {
 }
 
 dependencies {
-    implementation "io.micrc.core:micrc-annotations:v0.0.1"
-    // implementation "com.github.micrc-io:micrc-annotations:v0.0.3"
+    implementation "io.micrc.core:micrc-annotations:v0.0.4"
 
     // springboot basic
     implementation "org.springframework.boot:spring-boot-starter"
@@ -106,6 +105,8 @@ dependencies {
     implementation "org.apache.camel.springboot:camel-rest-openapi-starter:${property('camel.version')}"
     // rest consumer - presentations and derivatives consumer adapter
     implementation "org.apache.camel.springboot:camel-rest-starter:${property('camel.version')}"
+    // http product
+    implementation "org.apache.camel.springboot:camel-http-starter:${property('camel.version')}"
     // rest api doc
     implementation "org.springdoc:springdoc-openapi-ui:${property('springdoc.version')}"
     // mock server for rpc producer

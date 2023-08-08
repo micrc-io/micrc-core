@@ -74,9 +74,9 @@ public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteB
                 .templateParameter("assembler", null, "assembler")
                 .templateParameter("timePathsJson", null, "time path list json")
                 .from("derivations:{{serviceName}}")
-                .setProperty("paramIntegrationsJson", simple("{{paramIntegrationsJson}}"))
-                .setProperty("assembler", simple("{{assembler}}"))
-                .setProperty("timePathsJson", simple("{{timePathsJson}}"))
+                .setProperty("paramIntegrationsJson", constant("{{paramIntegrationsJson}}"))
+                .setProperty("assembler", constant("{{assembler}}"))
+                .setProperty("timePathsJson", constant("{{timePathsJson}}"))
                 // 1.处理请求
                 .to("direct://handle-request-derivation")
                 // 2.解析时间

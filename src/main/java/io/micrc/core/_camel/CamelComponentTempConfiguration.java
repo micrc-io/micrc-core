@@ -372,12 +372,46 @@ public class CamelComponentTempConfiguration {
                             redisTemplate.delete(key);
                         })
                         .end();
+            }
+        };
+    }
+
+    @Bean("encryptUtils")
+    public EncryptUtils encryptUtils() {
+        return new EncryptUtils();
+    }
+
+    @Bean("echoProcessor")
+    public EchoProcessor echoProcessor() {
+        return new EchoProcessor();
+    }
+
+    @Bean
+    public RoutesBuilder executeBuilders() {
+        return new RouteBuilder() {
+            @Override
+            public void configure() throws Exception {
 
                 from("direct://getActiveProfiles")
                         .process(exchange -> {
                             Optional<String> profileStr = Optional.ofNullable(environment.getProperty("application.profiles"));
                             List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
                             exchange.getIn().setBody(JsonUtil.writeValueAsString(profiles));
+                        })
+                        .end();
+
+                from("direct://hmacsha256Encrypt")
+                        .process(exchange -> {
+                            String body = exchange.getIn().getBody(String.class);
+                            String data = (String) JsonUtil.readPath(body, "/data");
+                            if (data == null) {
+                                throw new RuntimeException("[data] must not be null");
+                            }
+                            String key = (String) JsonUtil.readPath(body, "/key");
+                            if (key == null) {
+                                throw new RuntimeException("[key] must not be null");
+                            }
+                            exchange.getIn().setBody(JsonUtil.writeValueAsString(EncryptUtils.HMACSHA256(data, key)));
                         })
                         .end();
             }

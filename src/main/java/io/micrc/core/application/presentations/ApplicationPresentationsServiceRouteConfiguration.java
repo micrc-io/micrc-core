@@ -59,8 +59,8 @@ public class ApplicationPresentationsServiceRouteConfiguration extends MicrcRout
                 .templateParameter("paramIntegrationsJson", null, "the command integration params")
                 .templateParameter("assembler", null, "assembler")
                 .from("presentations:{{serviceName}}")
-                .setProperty("paramIntegrationsJson", simple("{{paramIntegrationsJson}}"))
-                .setProperty("assembler", simple("{{assembler}}"))
+                .setProperty("paramIntegrationsJson", constant("{{paramIntegrationsJson}}"))
+                .setProperty("assembler", constant("{{assembler}}"))
                 // 1.处理请求
                 .to("direct://handle-request-presentation")
                 // 2.动态集成
