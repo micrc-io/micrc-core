@@ -224,7 +224,7 @@ public class MessageRouteConfiguration extends RouteBuilder {
         List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
         String[] split = xHost.split("\\.");
         if (split.length != 3) {
-            throw new RuntimeException("x-host invalid");
+            throw new RuntimeException("micrc.x-host invalid");
         }
         String product = split[0];
         String domain = split[1];
