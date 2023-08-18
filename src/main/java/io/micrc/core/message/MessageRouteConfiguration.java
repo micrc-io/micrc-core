@@ -23,9 +23,11 @@ import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.concurrent.ListenableFuture;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -84,7 +86,7 @@ public class MessageRouteConfiguration extends RouteBuilder {
                 .withPayload(content)
                 .setHeader(KafkaHeaders.TOPIC, eventInfo.getTopicName())
                 .setHeader("groupId", "".equals(groupId) ? null : groupId) // 发送错误消息全发，死信重发时指定GROUP
-                .setHeader("context", environment.getProperty("spring.application.name"))
+                .setHeader("senderHost", environment.getProperty("micrc.x-host"))
                 .setHeader("messageId", messageId)
                 .setHeader("sender", eventInfo.getSenderAddress())
                 .setHeader("event", eventInfo.getEventName())
@@ -182,7 +184,7 @@ public class MessageRouteConfiguration extends RouteBuilder {
     @Consume("subscribe://idempotent-message")
     public IdempotentMessage idempotent(Map<String, Object> messageDetail) {
         IdempotentMessage idempotent = new IdempotentMessage();
-        idempotent.setSender((String) messageDetail.get("context")); // 发送方上下文名称
+        idempotent.setSender((String) messageDetail.get("senderHost"));
         idempotent.setSequence(Long.valueOf(messageDetail.get("messageId").toString()));
         idempotent.setReceiver((String) messageDetail.get("serviceName"));
         return idempotent;
@@ -207,7 +209,7 @@ public class MessageRouteConfiguration extends RouteBuilder {
             HashMap<String, Object> body = new HashMap<>();
             body.put("messageIds", result);
             body.put("receiver", eventMapping.getMappingKey());
-            String endpoint = "rest://post:/api/check-idempotent-consumed?host=" + eventMapping.receiverAddress;
+            String endpoint = "rest://post:/api/check-idempotent-consumed?host=" + spliceHost(eventMapping.receiverAddress);
             String response = producerTemplate.requestBody(endpoint, JsonUtil.writeValueAsString(body), String.class);
             result = JsonUtil.writeValueAsList(response, Long.class);
         }
@@ -215,6 +217,19 @@ public class MessageRouteConfiguration extends RouteBuilder {
             log.info("消息表清理：" + JsonUtil.writeValueAsString(result));
         }
         return result;
+    }
+
+    private String spliceHost(String xHost) {
+        Optional<String> profileStr = Optional.ofNullable(environment.getProperty("application.profiles"));
+        List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
+        String[] split = xHost.split("\\.");
+        if (split.length != 3) {
+            throw new RuntimeException("x-host invalid");
+        }
+        String product = split[0];
+        String domain = split[1];
+        String context = split[2];
+        return "http://" + context + "-service." + product + "-" + domain + "-" + profiles.get(0) + ".svc.cluster.local";
     }
 
     /**
@@ -230,7 +245,7 @@ public class MessageRouteConfiguration extends RouteBuilder {
         }
         HashMap<String, Object> body = new HashMap<>();
         body.put("messageIds", messageIds);
-        String endpoint = "rest://post:/api/check-store-removed?host=" + senderAddress;
+        String endpoint = "rest://post:/api/check-store-removed?host=" + spliceHost(senderAddress);
         String response = producerTemplate.requestBody(endpoint, JsonUtil.writeValueAsString(body), String.class);
         List<Long> unRemoveIds = JsonUtil.writeValueAsList(response, Long.class);
         messageIds.removeAll(unRemoveIds);

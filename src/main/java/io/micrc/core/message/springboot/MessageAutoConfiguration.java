@@ -101,7 +101,7 @@ public class MessageAutoConfiguration {
                 Header header = headerIterator.next();
                 deadLetterDetail.put(header.key(), new String(header.value()));
             }
-            if (deadLetterDetail.get("context").equals(environment.getProperty("spring.application.name"))) {
+            if (deadLetterDetail.get("senderHost").equals(environment.getProperty("micrc.x-host"))) {
                 ErrorMessage errorMessage = new ErrorMessage();
                 errorMessage.setMessageId(Long.valueOf(deadLetterDetail.get("messageId")));
                 errorMessage.setSender(deadLetterDetail.get("sender"));
