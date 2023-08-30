@@ -133,6 +133,7 @@ class MessageMockSenderApiScanner extends ClassPathBeanDefinitionScanner {
             MessageAdapter messageAdapter = listenerClass.getAnnotation(MessageAdapter.class);
             listenerClass.getDeclaringClass();
             String[] servicePathArray = messageAdapter.commandServicePath().split("\\.");
+            String serviceName = servicePathArray[servicePathArray.length - 1];
             // 获取实现方法中的topic
             Class<?>[] innerClasses = listenerClass.getDeclaredClasses();
             Class<?> implClass = Arrays.stream(innerClasses)
@@ -146,14 +147,14 @@ class MessageMockSenderApiScanner extends ClassPathBeanDefinitionScanner {
                     .templateId(MessageMockSenderRouteConfiguration.ROUTE_TMPL_MESSAGE_SENDER)
                     .listenerName(listenerName)
                     .eventName(messageAdapter.eventName())
-                    .serviceName(servicePathArray[servicePathArray.length - 1])
+                    .serviceName(serviceName)
                     .topicName(topicName)
                     .build();
             sourceDefinition.addParameter(routeId(listenerName),build);
             path.append("," +
-                    "\"/" + listenerName + "\": {\n" +
+                    "\"/" + listenerName + "-" + serviceName + "\": {\n" +
                             "      \"post\": {\n" +
-                            "        \"operationId\": \"" + listenerName + "\",\n" +
+                            "        \"operationId\": \"" + listenerName + "-" + serviceName + "\",\n" +
                             "        \"requestBody\": {\n" +
                             "          \"content\": {\n" +
                             "            \"application/json\": {\n" +
@@ -181,7 +182,20 @@ class MessageMockSenderApiScanner extends ClassPathBeanDefinitionScanner {
                 "  \"servers\" : [ {\n" +
                 "    \"url\" : \"http://localhost:8080/api\"\n" +
                 "  } ],\n" +
-                "  \"components\" : { },\n" +
+                "  \"components\" : {" +
+                "    \"securitySchemes\" : {\n" +
+                "      \"apiKeyAuth\" : {\n" +
+                "        \"type\" : \"apiKey\",\n" +
+                "        \"name\" : \"Authorization\",\n" +
+                "        \"in\" : \"header\"\n" +
+                "      }\n" +
+                "    }," +
+                "  },\n" +
+                "\"security\": [\n" +
+                "    {\n" +
+                "      \"apiKeyAuth\": []\n" +
+                "    }\n" +
+                "  ]," +
                 "  \"paths\" : {\n" +
                 (path.length() == 0 ? path.toString() : path.substring(1)) +
                 "  }\n" +

@@ -83,6 +83,9 @@ public class AuthorizeAutoConfiguration {
         filterChainDefinitionMap.put("/api/apidoc/**", "anon");
         // springboot fall-back error
         filterChainDefinitionMap.put("/error", "anon");
+        // message clear
+        filterChainDefinitionMap.put("/api/check-idempotent-consumed", "anon");
+        filterChainDefinitionMap.put("/api/check-store-removed", "anon");
         // public uri
         Arrays.stream(publicUri.orElse("").split(","))
             .filter(StringUtils::hasText)
