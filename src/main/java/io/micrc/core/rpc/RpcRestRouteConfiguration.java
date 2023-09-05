@@ -66,8 +66,7 @@ public class RpcRestRouteConfiguration extends MicrcRouteBuilder {
                 .setProperty("requestBody", body())
                 .bean(IntegrationsInfo.class, "get(${exchange.properties.get(protocolFilePath)})")
                 .setProperty("integrationInfo", body())
-                // todo,衍生集成专用TOKEN
-                .setHeader(HttpHeaders.AUTHORIZATION, constant("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9ucyI6WyIqIl0sImV4cCI6MzM2MzQ1NjExNSwidXNlcm5hbWUiOiJ0ZXN0In0.omwX_yOvVkwu9VLFZOQwnZbtyncqnLR331M9DzgRPjM"))
+                .setHeader(HttpHeaders.AUTHORIZATION, constant("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9ucyI6WyIqOioiXSwidXNlcm5hbWUiOiItMSJ9.N97J1cv1Io02TLwAekzOoDHRFrnGOYeXCUiDhbAYBYY"))
                 .setBody(exchangeProperty("requestBody"))
                 .removeProperty("requestBody")
                 .process(exchange -> {

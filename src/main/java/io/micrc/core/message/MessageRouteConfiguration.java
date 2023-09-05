@@ -13,6 +13,7 @@ import lombok.experimental.SuperBuilder;
 import org.apache.camel.*;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.support.ExpressionAdapter;
+import org.apache.http.HttpHeaders;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -210,13 +211,19 @@ public class MessageRouteConfiguration extends RouteBuilder {
             body.put("messageIds", result);
             body.put("receiver", eventMapping.getMappingKey());
             String endpoint = "rest://post:/api/check-idempotent-consumed?host=" + spliceHost(eventMapping.receiverAddress);
-            String response = producerTemplate.requestBody(endpoint, JsonUtil.writeValueAsString(body), String.class);
+            String response = producerTemplate.requestBodyAndHeaders(endpoint, JsonUtil.writeValueAsString(body), constructHeaders(), String.class);
             result = JsonUtil.writeValueAsList(response, Long.class);
         }
         if (!result.isEmpty()) {
             log.info("消息表清理：" + JsonUtil.writeValueAsString(result));
         }
         return result;
+    }
+
+    private HashMap<String, Object> constructHeaders() {
+        HashMap<String, Object> headers = new HashMap<>();
+        headers.put(HttpHeaders.AUTHORIZATION, "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9ucyI6WyIqOioiXSwidXNlcm5hbWUiOiItMSJ9.N97J1cv1Io02TLwAekzOoDHRFrnGOYeXCUiDhbAYBYY");
+        return headers;
     }
 
     private String spliceHost(String xHost) {
@@ -246,7 +253,7 @@ public class MessageRouteConfiguration extends RouteBuilder {
         HashMap<String, Object> body = new HashMap<>();
         body.put("messageIds", messageIds);
         String endpoint = "rest://post:/api/check-store-removed?host=" + spliceHost(senderAddress);
-        String response = producerTemplate.requestBody(endpoint, JsonUtil.writeValueAsString(body), String.class);
+        String response = producerTemplate.requestBodyAndHeaders(endpoint, JsonUtil.writeValueAsString(body), constructHeaders(), String.class);
         List<Long> unRemoveIds = JsonUtil.writeValueAsList(response, Long.class);
         messageIds.removeAll(unRemoveIds);
         if (!messageIds.isEmpty()) {
