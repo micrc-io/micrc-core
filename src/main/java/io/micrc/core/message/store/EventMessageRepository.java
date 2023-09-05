@@ -21,6 +21,7 @@ public interface EventMessageRepository extends JpaRepository<EventMessage, Long
                     "where " +
                     "ms.region = :region " +
                     "and ms.status ='WAITING' " +
+                    "and (json_extract(content,'$.event.appointmentTime') is null or json_extract(content,'$.event.appointmentTime') < UNIX_TIMESTAMP() * 1000)" +
                     "order by ms.message_id asc " +
                     "limit :count ")
     List<EventMessage> findEventMessageByRegionLimitByCount(
