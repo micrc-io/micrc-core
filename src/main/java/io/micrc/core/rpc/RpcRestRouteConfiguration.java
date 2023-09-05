@@ -9,6 +9,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import org.apache.shiro.web.servlet.ShiroHttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpHeaders;
@@ -89,8 +90,28 @@ public class RpcRestRouteConfiguration extends MicrcRouteBuilder {
                 .templateParameter("method", null, "the method name")
                 .templateParameter("address", null, "the address")
                 .templateParameter("routeProtocol", null, "the route protocol")
+                .templateParameter("subjectPath", null, "the subject path in body")
                 .from("rest:{{method}}:{{address}}")
                 .convertBodyTo(String.class)
+                .setHeader("subjectPath", constant("{{subjectPath}}"))
+                .process(exchange -> {
+                    String xSubjectPath = (String) exchange.getIn().getHeader("subjectPath");
+                    if (xSubjectPath.isEmpty()) {
+                        return;
+                    }
+                    String body = (String) exchange.getIn().getBody();
+                    Object camelHttpServletRequest = exchange.getIn().getHeader("CamelHttpServletRequest");
+                    if (camelHttpServletRequest instanceof ShiroHttpServletRequest) {
+                        ShiroHttpServletRequest shiroHttpServletRequest = (ShiroHttpServletRequest) camelHttpServletRequest;
+                        String remoteUser = shiroHttpServletRequest.getRemoteUser();
+                        try {
+                            body = JsonUtil.add(body, xSubjectPath, remoteUser);
+                        } catch (Exception e) {
+                            body = JsonUtil.patch(body, xSubjectPath, remoteUser);
+                        }
+                    }
+                    exchange.getIn().setBody(body);
+                })
                 .to("{{routeProtocol}}://{{adapterName}}")
                 .marshal().json().convertBodyTo(String.class)
                 .end();
@@ -149,6 +170,11 @@ public class RpcRestRouteConfiguration extends MicrcRouteBuilder {
          * 路由协议
          */
         private String routeProtocol;
+
+        /**
+         * 当前登陆用户的位置
+         */
+        private String subjectPath;
     }
 
     @NoArgsConstructor

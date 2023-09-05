@@ -13,6 +13,7 @@ import io.micrc.lib.ClassCastUtils;
 import io.micrc.lib.FileUtils;
 import io.micrc.lib.JsonUtil;
 import lombok.SneakyThrows;
+import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinitionHolder;
@@ -99,6 +100,18 @@ public class ClassPathRestEndpointScannerRegistrar implements ImportBeanDefiniti
 
     }
 
+    @Nullable
+    protected static Object getSubjectPath(Map<String, Object> pathsMap, String path, String methodName) {
+        Object pathContent = pathsMap.get(path);
+        Object content = JsonUtil.readPath(JsonUtil.writeValueAsString(pathContent), "/" + methodName + "/requestBody/content");
+        Map<String, Object> stringObjectMap = ClassCastUtils.castHashMap(content, String.class, Object.class);
+        if (stringObjectMap == null) {
+            return null;
+        }
+        Object o = stringObjectMap.get("application/json");
+        return JsonUtil.readPath(JsonUtil.writeValueAsString(o), "/x-subject-path");
+    }
+
     @Override
     public void setResourceLoader(ResourceLoader resourceLoader) {
         this.resourceLoader = resourceLoader;
@@ -155,12 +168,14 @@ class RpcCommandScanner extends ClassPathBeanDefinitionScanner {
                     String.class, Object.class);
             String path = (String) pathsMap.keySet().toArray()[0];
             String methodName = (String) methodMap.keySet().toArray()[0];
+            String xSubjectPath = (String) ClassPathRestEndpointScannerRegistrar.getSubjectPath(pathsMap, path, methodName);
             RpcDefinition rpcDefinition = RpcDefinition.builder()
                     .adapterName(adapterName)
                     .protocolPath(protocolPath)
                     .method(methodName)
                     .address(url + path)
                     .routeProtocol(routeProtocol)
+                    .subjectPath(xSubjectPath == null ? "" : xSubjectPath)
                     .templateId(RpcRestRouteConfiguration.ROUTE_TMPL_REST)
                     .build();
             adaptersInfo.add(rpcDefinition);
@@ -242,6 +257,7 @@ class RpcDerivationScanner extends ClassPathBeanDefinitionScanner {
                     .method(methodName)
                     .address(url + path)
                     .routeProtocol(routeProtocol)
+                    .subjectPath("")
                     .templateId(RpcRestRouteConfiguration.ROUTE_TMPL_REST)
                     .build();
             adaptersInfo.add(rpcDefinition);
@@ -317,12 +333,14 @@ class RpcPresentationScanner extends ClassPathBeanDefinitionScanner {
                     String.class, Object.class);
             String path = (String) pathsMap.keySet().toArray()[0];
             String methodName = (String) methodMap.keySet().toArray()[0];
+            String xSubjectPath = (String) ClassPathRestEndpointScannerRegistrar.getSubjectPath(pathsMap, path, methodName);
             RpcDefinition rpcDefinition = RpcDefinition.builder()
                     .adapterName(adapterName)
                     .protocolPath(protocolPath)
                     .method(methodName)
                     .address(url + path)
                     .routeProtocol(routeProtocol)
+                    .subjectPath(xSubjectPath == null ? "" : xSubjectPath)
                     .templateId(RpcRestRouteConfiguration.ROUTE_TMPL_REST)
                     .build();
             adaptersInfo.add(rpcDefinition);

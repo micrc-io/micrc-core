@@ -11,7 +11,6 @@ import io.micrc.core._camel.jit.JITDMNService;
 import io.micrc.core.authorize.MyRealm;
 import io.micrc.core.rpc.ErrorInfo;
 import io.micrc.core.rpc.Result;
-import io.micrc.core.authorize.JwtToken;
 import io.micrc.lib.ClassCastUtils;
 import io.micrc.lib.EncryptUtils;
 import io.micrc.lib.JsonUtil;
@@ -22,8 +21,6 @@ import org.apache.camel.*;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.direct.DirectComponent;
 import org.apache.camel.support.ResourceHelper;
-import org.apache.shiro.SecurityUtils;
-import org.apache.shiro.subject.Subject;
 import org.kie.dmn.api.core.DMNDecisionResult;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -293,32 +290,29 @@ public class CamelComponentTempConfiguration {
                 from("authorize://authentication")
                         .process(exchange -> {
                             String body = exchange.getIn().getBody(String.class);
-                            String username = (String) JsonUtil.readPath(body, "/username");
-                            if (username == null) {
-                                throw new RuntimeException("[username] must not be null");
+                            Object identity = JsonUtil.readPath(body, "/identity");
+                            if (identity == null) {
+                                throw new RuntimeException("[identity] must not be null");
                             }
                             List<String> permissions = ClassCastUtils.castArrayList(JsonUtil.readPath(body, "/permissions"), String.class);// 概念名
                             if (permissions == null) {
                                 throw new RuntimeException("[permissions] must not be null");
                             }
-                            String token = JwtUtil.createToken(username, permissions.toArray(new String[0]), MyRealm.TOKEN_EXPIRE_TIME);
-                            Subject subject = SecurityUtils.getSubject();
-                            JwtToken jwtToken = new JwtToken(token);
-                            subject.login(jwtToken);
-                            exchange.getIn().setBody(JsonUtil.writeValueAsString(token));
-                            String key = MyRealm.USER_PERMISSIONS_KEY_PREFIX + username;
+                            String token = JwtUtil.createToken(identity.toString(), permissions.toArray(new String[0]), MyRealm.TOKEN_EXPIRE_TIME);
+                            String key = MyRealm.USER_PERMISSIONS_KEY_PREFIX + identity;
                             redisTemplate.opsForValue().set(key, permissions, MyRealm.TOKEN_EXPIRE_TIME, TimeUnit.MILLISECONDS);
+                            exchange.getIn().setBody(JsonUtil.writeValueAsString(token));
                         })
                         .end();
 
                 from("authorize://decertification")
                         .process(exchange -> {
                             String body = exchange.getIn().getBody(String.class);
-                            String username = (String) JsonUtil.readPath(body, "/username");
-                            if (username == null) {
-                                throw new RuntimeException("[username] must not be null");
+                            Object identity = JsonUtil.readPath(body, "/identity");
+                            if (identity == null) {
+                                throw new RuntimeException("[identity] must not be null");
                             }
-                            String key = MyRealm.USER_PERMISSIONS_KEY_PREFIX + username;
+                            String key = MyRealm.USER_PERMISSIONS_KEY_PREFIX + identity;
                             redisTemplate.delete(key);
                             Boolean has = redisTemplate.hasKey(key);
                             boolean success = has == null || !has;
