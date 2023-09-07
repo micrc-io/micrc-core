@@ -1,9 +1,7 @@
 package io.micrc.core.rpc;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
-import io.micrc.lib.FileUtils;
 import io.micrc.lib.JsonUtil;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -70,14 +68,9 @@ public class RpcRestRouteConfiguration extends MicrcRouteBuilder {
                 .setBody(exchangeProperty("requestBody"))
                 .removeProperty("requestBody")
                 .process(exchange -> {
-                    String protocolFilePath = exchange.getProperty("integrationInfo", IntegrationsInfo.Integration.class).getProtocolFilePath();
-                    String protocolContent = FileUtils.fileReader(protocolFilePath, List.of("json"));
-                    JsonNode protocolNode = JsonUtil.readTree(protocolContent);
-                    JsonNode serversNode = protocolNode.at("/servers").get(0);
-                    String url = serversNode.at("/url").textValue();
-                    exchange.setProperty("_url", "/api" + url);
-                    String xHost = serversNode.at("/x-host").textValue();
-                    exchange.setProperty("_host", spliceHost(xHost));
+                    IntegrationsInfo.Integration integrationInfo = exchange.getProperty("integrationInfo", IntegrationsInfo.Integration.class);
+                    exchange.setProperty("_url", "/api" + integrationInfo.getUrl());
+                    exchange.setProperty("_host", spliceHost(integrationInfo.getXHost()));
                 })
                 .toD("rest-openapi-ssl://${exchange.properties.get(integrationInfo).getProtocolFilePath()}#${exchange.properties.get(integrationInfo).getOperationId()}?host=${exchange.properties.get(_host)}&basePath=${exchange.properties.get(_url)}")
                 .convertBodyTo(String.class)

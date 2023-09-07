@@ -16,15 +16,15 @@ import java.util.*;
 @NoArgsConstructor
 public class IntegrationsInfo {
 
-    private final Map<String, Integration> caches = new HashMap<>();
+    private static final Map<String, Integration> caches = new HashMap<>();
 
-    private List<Integration> integrationsInfo = new ArrayList<>();
+    private static List<Integration> integrationsInfo = new ArrayList<>();
 
     public void add(Integration integration) {
-        this.integrationsInfo.add(integration);
+        integrationsInfo.add(integration);
     }
 
-    public Integration get(String protocolFilePath) {
+    public static Integration get(String protocolFilePath) {
         Integration integration = caches.get(protocolFilePath);
         if (null == integration) {
             Optional<Integration> integrate = integrationsInfo.stream().filter(integrateInfo -> protocolFilePath.equals(integrateInfo.protocolFilePath)).findFirst();
@@ -33,8 +33,8 @@ public class IntegrationsInfo {
         return caches.get(protocolFilePath);
     }
 
-    public List<Integration> getAll() {
-        return this.integrationsInfo;
+    public static List<Integration> getAll() {
+        return integrationsInfo;
     }
 
     @Data
@@ -52,8 +52,18 @@ public class IntegrationsInfo {
         private String operationId;
 
         /**
-         * 主机地址
+         * URL
          */
-        private String host;
+        private String url;
+
+        /**
+         * 自定义主机
+         */
+        private String xHost;
+
+        /**
+         * 协议内容
+         */
+        private String protocolContent;
     }
 }

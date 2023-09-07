@@ -138,9 +138,9 @@ public class IntegrationInfoScannerRegistrar implements ImportBeanDefinitionRegi
             String protocolContent = FileUtils.fileReader(protocolFilePath, List.of("json"));
             JsonNode protocolNode = JsonUtil.readTree(protocolContent);
             // 收集host
-            JsonNode hostNode = protocolNode
-                    .at("/servers").get(0)
-                    .at("/url");
+            JsonNode serverNode = protocolNode.at("/servers").get(0);
+            JsonNode urlNode = serverNode.at("/url");
+            JsonNode xHostNode = serverNode.at("/x-host");
             // 收集operationId
             JsonNode operationNode = protocolNode
                     .at("/paths").elements().next().elements().next()
@@ -148,7 +148,9 @@ public class IntegrationInfoScannerRegistrar implements ImportBeanDefinitionRegi
             return Integration.builder()
                     .protocolFilePath(protocolFilePath)
                     .operationId(operationNode.textValue())
-                    .host(hostNode.textValue())
+                    .url(urlNode.textValue())
+                    .xHost(xHostNode.textValue())
+                    .protocolContent(protocolContent)
                     .build();
         }
     }

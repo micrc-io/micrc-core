@@ -2,8 +2,8 @@ package io.micrc.core.application.presentations;
 
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
+import io.micrc.core.rpc.IntegrationsInfo;
 import io.micrc.lib.ClassCastUtils;
-import io.micrc.lib.FileUtils;
 import io.micrc.lib.JsonUtil;
 import io.micrc.lib.StringUtil;
 import lombok.Data;
@@ -230,7 +230,7 @@ class IntegrationParams {
                 executableIntegrationInfo.put("repositoryPath", paramIntegration.getRepositoryPath());
                 executableIntegrationInfo.put("method", paramIntegration.getQueryMethod());
             } else if (ParamIntegration.Type.INTEGRATE.equals(paramIntegration.getType())) {
-                String protocolContent = FileUtils.fileReader(paramIntegration.getProtocol(), List.of("json"));
+                String protocolContent = IntegrationsInfo.get(paramIntegration.getProtocol()).getProtocolContent();
                 body = JsonUtil.transAndCheck(paramIntegration.getRequestMapping(), param, protocolContent);
                 if (null == body) {
                     continue;

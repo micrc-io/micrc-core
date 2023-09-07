@@ -6,6 +6,7 @@ import io.micrc.core.annotations.application.businesses.LogicType;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.CommandParamIntegration;
 import io.micrc.core.application.businesses.ApplicationBusinessesServiceRouteConfiguration.LogicIntegration;
 import io.micrc.core.persistence.snowflake.SnowFlakeIdentity;
+import io.micrc.core.rpc.IntegrationsInfo;
 import io.micrc.core.rpc.LogicRequest;
 import io.micrc.lib.*;
 import lombok.Builder;
@@ -684,7 +685,7 @@ class IntegrationCommandParams {
     private static String transformBody(String commandJson, CommandParamIntegration commandParamIntegration, Map<String, Object> map) {
         String protocolContent = null;
         if (StringUtils.hasText(commandParamIntegration.getProtocol())) {
-            protocolContent = FileUtils.fileReader(commandParamIntegration.getProtocol(), List.of("json"));
+            protocolContent = IntegrationsInfo.get(commandParamIntegration.getProtocol()).getProtocolContent();
         }
         // 获取当前查询的每个参数
         String body = JsonUtil.transAndCheck(commandParamIntegration.getRequestMapping(), commandJson, protocolContent);
