@@ -47,7 +47,6 @@ public class JwtFilter extends AccessControlFilter {
     protected boolean onAccessDenied(ServletRequest servletRequest, ServletResponse servletResponse) throws Exception {
         Subject subject = SecurityUtils.getSubject();
         HttpServletRequestWrapper wrapper = (HttpServletRequestWrapper) servletRequest;
-        log.info("URI: " + wrapper.getRequestURI());
         Enumeration<String> headerNames = wrapper.getHeaderNames();
         String token = null;
         while (headerNames.hasMoreElements()) {
