@@ -12,19 +12,22 @@ import org.apache.camel.ProducerTemplate;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
 import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.Signature;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
+import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
-import org.springframework.core.env.Environment;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.util.StringUtils;
 
+import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -40,9 +43,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 @Configuration
 public class MessageConsumeRouterExecution implements Ordered {
-
-    @Autowired
-    private Environment environment;
 
     private final ConcurrentHashMap<Long, Integer> map = new ConcurrentHashMap<>();
 
@@ -88,7 +88,6 @@ public class MessageConsumeRouterExecution implements Ordered {
         String servicePath = annotation.commandServicePath();
         String[] servicePathSplit = servicePath.split("\\.");
         String serviceName = servicePathSplit[servicePathSplit.length - 1];
-        String eventName = annotation.eventName();
         boolean custom = annotation.custom();
 
         // 解析消息详情
@@ -97,10 +96,11 @@ public class MessageConsumeRouterExecution implements Ordered {
         transMessageHeaders(consumerRecord, messageDetail);
 
         // 死信用groupID过滤
-        String groupId = messageDetail.get("groupId");
-        if (null != groupId && !"".equals(groupId) && !groupId.equals(environment.getProperty("spring.application.name"))) {
+        String messageGroupId = messageDetail.get("groupId");
+        String listenerGroupId = getListenerGroupId(proceedingJoinPoint);
+        if (null != messageGroupId && !messageGroupId.isEmpty() && !messageGroupId.equals(listenerGroupId)) {
             acknowledgment.acknowledge();
-            log.info("接收成功（无关死信）: " + messageDetail.get("messageId"));
+            log.info("接收成功（无关死信）: " + messageDetail.get("messageId") + "，期望组" + listenerGroupId + "，实际组" + messageGroupId);
             return null;
         }
 
@@ -110,10 +110,12 @@ public class MessageConsumeRouterExecution implements Ordered {
         HashMap mapping = JsonUtil.writeObjectAsObject(mappingObj, HashMap.class);
         String mappingString = mapping == null ? null : (String) mapping.get("mappingPath");
 
-        if (null == mappingString || null == eventName || !eventName.equals(messageDetail.get("event"))) {
+        String listenerEvent = annotation.eventName();
+        String messageEvent = messageDetail.get("event");
+        if (null == mappingString || !listenerEvent.equals(messageEvent)) {
             // 不需要消费
             acknowledgment.acknowledge();
-            log.info("接收成功（无需消费）: " + messageDetail.get("messageId"));
+            log.info("接收成功（无关消息）: " + messageDetail.get("messageId") + "，期望事件" + listenerEvent + "，实际事件" + messageEvent + "，映射方式" + mappingString);
             return null;
         }
         Object content = consumerRecord.value();
@@ -171,6 +173,15 @@ public class MessageConsumeRouterExecution implements Ordered {
             log.info("接收成功: " + messageDetail.get("messageId"));
             return null;
         }
+    }
+
+    private static String getListenerGroupId(ProceedingJoinPoint proceedingJoinPoint) throws NoSuchMethodException {
+        Class<?> targetClass = proceedingJoinPoint.getTarget().getClass();
+        Signature signature = proceedingJoinPoint.getSignature();
+        MethodSignature ms = (MethodSignature) signature;
+        Method method = targetClass.getDeclaredMethod(ms.getName(), ms.getParameterTypes());
+        KafkaListener kafkaListener = method.getAnnotation(KafkaListener.class);
+        return kafkaListener.groupId();
     }
 
     private void transMessageHeaders(ConsumerRecord<?, ?> consumerRecord, HashMap<String, String> messageDetail) {
