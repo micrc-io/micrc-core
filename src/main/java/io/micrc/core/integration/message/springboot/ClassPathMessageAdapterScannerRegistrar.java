@@ -120,7 +120,7 @@ class ApplicationMessageAdapterScanner extends ClassPathBeanDefinitionScanner {
             if (beanDefinition.getBeanClass().getAnnotation(MessageAdapter.class).custom()) {
                 continue;
             }
-            String name = beanDefinition.getBeanClass().getSimpleName();
+            String adapterName = beanDefinition.getBeanClass().getSimpleName();
             Method[] adapterMethods = beanDefinition.getBeanClass().getDeclaredMethods();
             Boolean haveAdaptMethod = Arrays.stream(adapterMethods).anyMatch(method -> {
                 if ("adapt".equals(method.getName())) {
@@ -129,7 +129,7 @@ class ApplicationMessageAdapterScanner extends ClassPathBeanDefinitionScanner {
                 return false;
             });
             if (!haveAdaptMethod || adapterMethods.length != 1) {
-                throw new MethodAdapterDesignException(" the message adapter interface " + name
+                throw new MethodAdapterDesignException(" the message adapter interface " + adapterName
                         + " need extends MessageIntegrationAdapter. please check");
             }
             MessageAdapter messageAdapter = beanDefinition.getBeanClass().getAnnotation(MessageAdapter.class);
@@ -157,10 +157,10 @@ class ApplicationMessageAdapterScanner extends ClassPathBeanDefinitionScanner {
             String commandPath = serviceMethodParameterTypes[0].getName();
 
             sourceDefinition.addParameter(
-                    routeId(servicePath),
+                    routeId(adapterName),
                     ApplicationMessageRouteTemplateParamDefinition.builder()
                             .templateId(MessageAdapterRouteConfiguration.ROUTE_TMPL_MESSAGE)
-                            .name(name)
+                            .name(adapterName)
                             .commandPath(commandPath)
                             .serviceName(servicePathSplit[servicePathSplit.length - 1])
                             .event(messageAdapter.eventName())
