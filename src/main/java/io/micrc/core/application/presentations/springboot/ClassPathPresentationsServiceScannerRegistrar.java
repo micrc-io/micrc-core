@@ -171,7 +171,7 @@ class ApplicationPresentationsServiceScanner extends ClassPathBeanDefinitionScan
         // 查询逻辑解析
         Arrays.stream(queryLogics).forEach(logic -> {
             List<String> paramMappings = Arrays.stream(logic.paramMappingFile()).map(file -> FileUtils.fileReaderSingleLine(file, List.of("jslt"))).collect(Collectors.toList());
-            paramIntegrations.add(new ParamIntegration(logic.name(), logic.repositoryFullClassName(), logic.methodName(), paramMappings, logic.order()));
+            paramIntegrations.add(new ParamIntegration(logic.name(), logic.repositoryFullClassName(), logic.methodName(), paramMappings, logic.order(), false));
         });
         // 集成解析
         Arrays.stream(integrations).forEach(integration -> {
@@ -181,7 +181,7 @@ class ApplicationPresentationsServiceScanner extends ClassPathBeanDefinitionScan
             paramIntegrations.add(new ParamIntegration(integration.name(), integration.protocol(),
                     StringUtils.hasText(reqFile) ? FileUtils.fileReaderSingleLine(reqFile, List.of("jslt")) : ".",
                     StringUtils.hasText(resFile) ? FileUtils.fileReaderSingleLine(resFile, List.of("jslt")) : ".",
-                    integration.order()));
+                    integration.order(), integration.ignoreIfParamAbsent()));
         });
         // 按照优先级排序
         paramIntegrations.sort(Comparator.comparing(ParamIntegration::getOrder));

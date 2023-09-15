@@ -211,6 +211,7 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
                             .requestMapping(StringUtils.hasText(reqFile) ? FileUtils.fileReaderSingleLine(reqFile, List.of("jslt")) : ".")
                             .responseMapping(StringUtils.hasText(resFile) ? FileUtils.fileReaderSingleLine(resFile, List.of("jslt")) : ".")
                             .protocol(deriveIntegration.protocolPath())
+                            .ignoreIfParamAbsent(deriveIntegration.ignoreIfParamAbsent())
                             .build();
                     commandParamIntegrations.add(commandParamIntegration);
                 }

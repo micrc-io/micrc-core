@@ -200,10 +200,10 @@ class IntegrationParams {
         List<ParamIntegration> unIntegrateParams = paramIntegrations.stream()
                 .filter(i -> !i.getIntegrationComplete()).collect(Collectors.toList());
         properties.put("unIntegrateParams", unIntegrateParams);
-        log.info("衍生未集成：{}", unIntegrateParams.stream().map(ParamIntegration::getConcept).collect(Collectors.joining(",")));
-        if (unIntegrateParams.size() == 0) {
+        if (unIntegrateParams.isEmpty()) {
             return null;
         }
+        log.info("衍生未集成：{}", unIntegrateParams.stream().map(ParamIntegration::getConcept).collect(Collectors.joining(",")));
         return "direct://derivations-integration";
     }
 

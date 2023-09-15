@@ -79,9 +79,7 @@ public class ApplicationPresentationsServiceRouteConfiguration extends MicrcRout
                 .end();
 
         from("direct://presentations-integration")
-                // 得到需要集成的集成参数，todo,封装进动态路由
-                .bean(IntegrationParams.class, "findExecutable")
-                .setProperty("current", body())
+                .setBody(exchangeProperty("current"))
                 // 构造发送
                 .choice()
                 .when(constant("QUERY").isEqualTo(simple("${exchange.properties.get(current).get(type)}")))
@@ -158,11 +156,33 @@ class IntegrationParams {
         List<ParamIntegration> unIntegrateParams = paramIntegrations.stream()
                 .filter(i -> !i.getIntegrationComplete()).collect(Collectors.toList());
         properties.put("unIntegrateParams", unIntegrateParams);
-        log.info("展示未集成：{}", unIntegrateParams.stream().map(ParamIntegration::getConcept).collect(Collectors.joining(",")));
-        if (unIntegrateParams.size() == 0) {
+        if (unIntegrateParams.isEmpty()) {
             return null;
         }
+        log.info("展示未集成：{}", unIntegrateParams.stream().map(ParamIntegration::getConcept).collect(Collectors.joining(",")));
+        Map<String, Object> currentIntegration = findExecutable(unIntegrateParams, getJson(properties));
+        if (null == currentIntegration) {
+            properties.remove("current");
+            properties.remove("unIntegrateParams");
+            properties.remove("paramIntegrationsJson");
+            properties.remove("paramIntegrations");
+            return null;
+        }
+        properties.put("current", currentIntegration);
         return "direct://presentations-integration";
+    }
+
+    private static String getJson(Map<String, Object> properties) {
+        Object current = properties.get("current");
+        String json;
+        if (null == current) {
+            // 首次集成可直接取入参
+            json = (String) properties.get("param");
+        } else {
+            // 后续集成需从缓冲区取
+            json = (String) properties.get("buffer");
+        }
+        return json;
     }
 
     /**
@@ -203,25 +223,18 @@ class IntegrationParams {
     /**
      * 得到一个可执行的集成的集成信息
      *
-     * @param exchange
+     * @param unIntegrateParams
+     * @param json
      * @return
      */
-    public static Map<String, Object> findExecutable(Exchange exchange) {
-        List<ParamIntegration> unIntegrateParams = ClassCastUtils.castArrayList(exchange.getProperty("unIntegrateParams"), ParamIntegration.class);
-        Object current = exchange.getProperty("current");
-        String param;
-        if (null == current) {
-            param = exchange.getProperty("param", String.class);
-        } else {
-            param = exchange.getProperty("buffer", String.class);
-        }
+    public static Map<String, Object> findExecutable(List<ParamIntegration> unIntegrateParams, String json) {
         Map<String, Object> executableIntegrationInfo = new HashMap<>();
         for (ParamIntegration paramIntegration : unIntegrateParams) {
             // 获取当前查询的每个参数
             String body;
             if (ParamIntegration.Type.QUERY.equals(paramIntegration.getType())) {
                 List<String> params = paramIntegration.getParamMappings().stream()
-                        .map(mapping -> JsonUtil.transAndCheck(mapping, param, null)).collect(Collectors.toList());
+                        .map(mapping -> JsonUtil.transAndCheck(mapping, json, null)).collect(Collectors.toList());
                 if (params.stream().anyMatch(Objects::isNull)) {
                     continue;
                 }
@@ -231,7 +244,7 @@ class IntegrationParams {
                 executableIntegrationInfo.put("method", paramIntegration.getQueryMethod());
             } else if (ParamIntegration.Type.INTEGRATE.equals(paramIntegration.getType())) {
                 String protocolContent = IntegrationsInfo.get(paramIntegration.getProtocol()).getProtocolContent();
-                body = JsonUtil.transAndCheck(paramIntegration.getRequestMapping(), param, protocolContent);
+                body = JsonUtil.transAndCheck(paramIntegration.getRequestMapping(), json, protocolContent);
                 if (null == body) {
                     continue;
                 }
@@ -244,12 +257,16 @@ class IntegrationParams {
             executableIntegrationInfo.put("type", paramIntegration.getType());
             break;
         }
-        if (null == executableIntegrationInfo.get("name")) {
-            throw new RuntimeException(
-                    "the integration file have error, command need integrate, but the param can not use... ");
+        if (null != executableIntegrationInfo.get("name")) {
+            log.info("展示可集成：{}，参数：{}", executableIntegrationInfo.get("name"), JsonUtil.writeValueAsString(executableIntegrationInfo.get("params")));
+            return executableIntegrationInfo;
         }
-        log.info("展示可集成：{}，参数：{}", executableIntegrationInfo.get("name"), JsonUtil.writeValueAsString(executableIntegrationInfo.get("params")));
-        return executableIntegrationInfo;
+        // 是否只剩下了可选集成
+        if (unIntegrateParams.stream().allMatch(ParamIntegration::isIgnoreIfParamAbsent)) {
+            log.info("展示不集成：{}", unIntegrateParams.stream().map(ParamIntegration::getConcept).collect(Collectors.joining(",")));
+            return null;
+        }
+        throw new RuntimeException("the integration file have error, command need integrate, but the param can not use... ");
     }
 
     /**
