@@ -2,34 +2,28 @@ package io.micrc.core.rpc.springboot;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import io.micrc.core.rpc.IntegrationsInfo;
+import io.micrc.core.rpc.RpcRestRouteConfiguration;
 import io.micrc.lib.JsonUtil;
 import org.apache.camel.component.direct.DirectComponent;
 import org.mockserver.integration.ClientAndServer;
 import org.mockserver.mock.OpenAPIExpectation;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.mockserver.model.Header;
+import org.mockserver.model.HttpRequest;
+import org.mockserver.model.HttpResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
-import org.springframework.util.ResourceUtils;
-import org.springframework.util.StreamUtils;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Mock Server
  */
 @Configuration
 public class RpcMockServerAutoConfiguration {
-
-    @Autowired
-    private IntegrationsInfo integrationsInfo;
 
     @Bean("rest-openapi-executor")
     public DirectComponent restOpenapiExecutor() {
@@ -40,29 +34,66 @@ public class RpcMockServerAutoConfiguration {
     @Bean
     public ClientAndServer clientAndServer() {
         ClientAndServer server = ClientAndServer.startClientAndServer(1080);
-        integrationsInfo.getAll().forEach(integration -> {
-            try {
-                Resource resource = new PathMatchingResourcePatternResolver()
-                        .getResource(ResourceUtils.CLASSPATH_URL_PREFIX + integration.getProtocolFilePath());
-                String openApiBodyContent = StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8);
-                JsonNode protocolNode = JsonUtil.readTree(openApiBodyContent);
-                JsonNode serverNode = protocolNode.at("/servers").get(0);
-                String serverJson = JsonUtil.writeValueAsString(serverNode);
-                String url = serverNode.at("/url").textValue();
-                if (!url.startsWith("/api/")) {
-                    url = "/api" + url;
-                }
-                serverJson = JsonUtil.patch(serverJson, "/url", JsonUtil.writeValueAsString(url));
-                List<HashMap> servers = List.of(JsonUtil.writeValueAsObject(serverJson, HashMap.class));
-                openApiBodyContent = JsonUtil.patch(openApiBodyContent, "/servers", JsonUtil.writeValueAsString(servers));
-                String filePath = Thread.currentThread().getContextClassLoader().getResource("").getPath() + "mockserver/" + integration.getProtocolFilePath();
-                saveStringToFile(filePath , openApiBodyContent);
-                OpenAPIExpectation openAPIExpectation = OpenAPIExpectation.openAPIExpectation(filePath);
-                server.upsert(openAPIExpectation);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+        IntegrationsInfo.getAll().stream().map(integration -> {
+            String openApiBodyContent = integration.getProtocolContent();
+            JsonNode protocolNode = JsonUtil.readTree(openApiBodyContent);
+            JsonNode serverNode = protocolNode.at("/servers").get(0);
+            String serverJson = JsonUtil.writeValueAsString(serverNode);
+            String url = serverNode.at("/url").textValue();
+            if (!url.startsWith("/api/")) {
+                url = "/api" + url;
             }
-        });
+            serverJson = JsonUtil.patch(serverJson, "/url", JsonUtil.writeValueAsString(url));
+            List<HashMap> servers = List.of(JsonUtil.writeValueAsObject(serverJson, HashMap.class));
+            openApiBodyContent = JsonUtil.patch(openApiBodyContent, "/servers", JsonUtil.writeValueAsString(servers));
+            String filePath = Thread.currentThread().getContextClassLoader().getResource("").getPath() + "mockserver/" + integration.getProtocolFilePath();
+            saveStringToFile(filePath , openApiBodyContent);
+            // 临时文件的集成信息
+            return IntegrationsInfo.Integration.builder()
+                    .operationId(integration.getOperationId())
+                    .xHost(integration.getXHost())
+                    .protocolFilePath(filePath)
+                    .url(url)
+                    .protocolContent(openApiBodyContent)
+                    .build();
+        }).collect(Collectors.groupingBy(i -> i.getUrl() + "/" + i.getOperationId()))
+                .forEach((urlPath, apiContents) -> {
+                    if (apiContents.size() == 1) {
+                        // 直接MOCK
+                        IntegrationsInfo.Integration integration = apiContents.get(0);
+                        OpenAPIExpectation openAPIExpectation = OpenAPIExpectation.openAPIExpectation(integration.getProtocolFilePath());
+                        server.upsert(openAPIExpectation);
+                    } else {
+                        // 需合并后MOCK
+                        apiContents.stream()
+                                .collect(Collectors.toMap(
+                                        p -> p.getProtocolFilePath().split("mockserver/")[1],
+                                        p -> {
+                                            try {
+                                                JsonNode valueNode = JsonUtil.readTree(p.getProtocolContent())
+                                                        .at("/paths")
+                                                        .iterator().next()
+                                                        .at("/post")
+                                                        .at("/responses")
+                                                        .iterator().next()
+                                                        .at("/content")
+                                                        .iterator().next()
+                                                        .at("/examples")
+                                                        .iterator().next()
+                                                        .at("/value");
+                                                return JsonUtil.writeValueAsString(valueNode);
+                                            } catch (Exception e) {
+                                                return "";
+                                            }
+                                        },
+                                        (p1, p2) -> p2)
+                                ).forEach((filePath, response) -> {
+                                    Header filePathHeader = Header.header(RpcRestRouteConfiguration._FILE_PATH, filePath);
+                                    HttpRequest httpRequest = HttpRequest.request().withPath(urlPath).withHeader(filePathHeader);
+                                    server.when(httpRequest).respond(HttpResponse.response(response));
+                                });
+                    }
+                });
         return server;
     }
 

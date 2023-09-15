@@ -2,6 +2,7 @@ package io.micrc.core.rpc;
 
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
+import io.micrc.core.rpc.springboot.RpcMockServerAutoConfiguration;
 import io.micrc.lib.JsonUtil;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -22,6 +23,8 @@ import java.util.*;
  * @since 0.0.1
  */
 public class RpcRestRouteConfiguration extends MicrcRouteBuilder {
+
+    public static final String _FILE_PATH = "_filePath";
 
     @Autowired
     private Environment env;
@@ -65,14 +68,15 @@ public class RpcRestRouteConfiguration extends MicrcRouteBuilder {
                 .bean(IntegrationsInfo.class, "get(${exchange.properties.get(protocolFilePath)})")
                 .setProperty("integrationInfo", body())
                 .setHeader(HttpHeaders.AUTHORIZATION, constant("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9ucyI6WyIqOioiXSwidXNlcm5hbWUiOiItMSJ9.N97J1cv1Io02TLwAekzOoDHRFrnGOYeXCUiDhbAYBYY"))
+                .setHeader(_FILE_PATH, exchangeProperty("protocolFilePath")) // 用于获取期望的MOCK值
                 .setBody(exchangeProperty("requestBody"))
                 .removeProperty("requestBody")
                 .process(exchange -> {
                     IntegrationsInfo.Integration integrationInfo = exchange.getProperty("integrationInfo", IntegrationsInfo.Integration.class);
-                    exchange.setProperty("_url", "/api" + integrationInfo.getUrl());
-                    exchange.setProperty("_host", spliceHost(integrationInfo.getXHost()));
+                    exchange.setProperty("url", "/api" + integrationInfo.getUrl());
+                    exchange.setProperty("host", spliceHost(integrationInfo.getXHost()));
                 })
-                .toD("rest-openapi-ssl://${exchange.properties.get(integrationInfo).getProtocolFilePath()}#${exchange.properties.get(integrationInfo).getOperationId()}?host=${exchange.properties.get(_host)}&basePath=${exchange.properties.get(_url)}")
+                .toD("rest-openapi-ssl://${exchange.properties.get(integrationInfo).getProtocolFilePath()}#${exchange.properties.get(integrationInfo).getOperationId()}?host=${exchange.properties.get(host)}&basePath=${exchange.properties.get(url)}")
                 .convertBodyTo(String.class)
                 .end();
 
