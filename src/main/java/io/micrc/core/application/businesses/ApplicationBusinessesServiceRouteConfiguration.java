@@ -179,6 +179,12 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                         commandJson = JsonUtil.add(commandJson, "/target/identity/id", String.valueOf(SnowFlakeIdentity.getInstance().nextId()));
                         properties.put("commandJson", commandJson);
                     }
+                    // 暂存target版本，使用source版本执行存储
+                    Object targetVersion = JsonUtil.readPath(commandJson, "/target/version");
+                    if (targetVersion != null) {
+                        properties.put("version", targetVersion);
+                        commandJson = JsonUtil.patch(commandJson, "/target/version", JsonUtil.writeValueAsString(JsonUtil.readPath(commandJson, "/source/version")));
+                    }
                     // 查看是否存在级联操作
                     String fieldStr = (String) properties.get("fieldMap");
                     Map<String, String> fieldMap = JsonUtil.writeValueAsObject(fieldStr, Map.class);
@@ -260,7 +266,12 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .endChoice()
                 .end()
                 .removeHeader("pointer")
-                .toD("bean://${exchange.properties.get(repositoryName)}?method=save");
+                .toD("bean://${exchange.properties.get(repositoryName)}?method=save")
+                .choice()
+                .when(constant(-1).isEqualTo(simple("${exchange.properties.get(version)}")))
+                    .toD("bean://${exchange.properties.get(repositoryName)}?method=delete")
+                .endChoice()
+                .end();
 
         from("direct://save-message")
                 .setBody(exchangeProperty("commandJson"))

@@ -211,4 +211,12 @@ public interface MicrcJpaRepository<T, I extends IdentityAware> extends Reposito
      */
     @Cacheable(sync = true)
     <S extends T> boolean exists(Example<S> example);
+
+    /**
+     * delete model
+     *
+     * @param entity entity
+     * @param <S> model type
+     */
+    <S extends T> void delete(S entity);
 }

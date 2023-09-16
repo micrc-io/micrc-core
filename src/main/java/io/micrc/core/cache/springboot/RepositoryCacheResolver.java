@@ -1,9 +1,7 @@
 package io.micrc.core.cache.springboot;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.lang.reflect.Method;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import org.springframework.cache.CacheManager;
@@ -25,8 +23,15 @@ import io.micrc.core.persistence.MicrcJpaRepository;
  * @date 2022-09-24 04:31
  */
 public class RepositoryCacheResolver extends SimpleCacheResolver {
-    private static final List<String> ENTITY_REPO_METHODS =
-        List.of("findById", "save", "count", "saveAndFlush");
+
+    private static final Map<String, Integer> ENTITY_REPO_METHOD_MAP = new HashMap<>();
+
+    static {
+        ENTITY_REPO_METHOD_MAP.put("findById", 1);
+        ENTITY_REPO_METHOD_MAP.put("save", 1);
+        ENTITY_REPO_METHOD_MAP.put("count", 0);
+        ENTITY_REPO_METHOD_MAP.put("saveAndFlush", 1);
+    }
 
     public RepositoryCacheResolver(CacheManager cacheManager) {
         super(cacheManager);
@@ -54,7 +59,9 @@ public class RepositoryCacheResolver extends SimpleCacheResolver {
             return Collections.emptyList();
         }
         cacheNames = Arrays.asList(cacheConfig.cacheNames());
-        if (ENTITY_REPO_METHODS.contains(context.getMethod().getName())) {
+        Method method = context.getMethod();
+        if (ENTITY_REPO_METHOD_MAP.containsKey(method.getName())
+                && ENTITY_REPO_METHOD_MAP.get(method.getName()).equals(method.getParameterCount())) {
             if (context.getOperation() instanceof CacheEvictOperation
                 && ((CacheEvictOperation) context.getOperation()).isCacheWide()) {
                 return cacheNames;
