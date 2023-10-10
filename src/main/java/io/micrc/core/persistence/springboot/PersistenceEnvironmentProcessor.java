@@ -66,8 +66,8 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
         } else {
             // k8s集群中按约定名称读取的secret中的host, port, user, pass属性
             properties.setProperty("spring.datasource.url",
-                "jdbc:mysql://${database.host}:${database.port}/${database.dbname}");
-            properties.setProperty("spring.datasource.username", "${database.username}");
+                "jdbc:mysql://${database.host}:${database.port}/${database.name}");
+            properties.setProperty("spring.datasource.username", "${database.user}");
             properties.setProperty("spring.datasource.password", "${database.password}");
         }
         properties.setProperty("spring.datasource.driver-class-name", "com.mysql.cj.jdbc.Driver");
@@ -124,9 +124,9 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
             properties.setProperty("micrc.spring.memory-db.password", "${embedded.redistack.password}");
         } else {
             // k8s集群中读取的configmap中的host，port和passwd
-            properties.setProperty("micrc.spring.memory-db.host", "${memory-db.host}");
-            properties.setProperty("micrc.spring.memory-db.port", "${memory-db.port}");
-            properties.setProperty("micrc.spring.memory-db.password", "${memory-db.password}");
+            properties.setProperty("micrc.spring.memory-db.host", "${memdb.host}");
+            properties.setProperty("micrc.spring.memory-db.port", "${memdb.port}");
+            properties.setProperty("micrc.spring.memory-db.password", "${memdb.password}");
         }
         // 任何环境使用统一的连接配置
         properties.setProperty("micrc.spring.memory-db.database", "15");
