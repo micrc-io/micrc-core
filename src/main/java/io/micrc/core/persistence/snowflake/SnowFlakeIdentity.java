@@ -1,5 +1,7 @@
 package io.micrc.core.persistence.snowflake;
 
+import java.time.Instant;
+
 /**
  * 雪花算法ID生成器
  *
@@ -10,9 +12,9 @@ package io.micrc.core.persistence.snowflake;
 public class SnowFlakeIdentity {
 
     /**
-     * 时间戳基准值2022-01-01 00:00:00（时间戳截止值2039-01-01 00:00:00）
+     * 时间戳基准值2022-01-01T00:00:00.000Z，时间戳截止值2039-06-03T21:56:53.887Z
      */
-    private static final long TIMESTAMP_DATUM = 1640995200000L;
+    private static final long TIMESTAMP_DATUM = Instant.parse("2022-01-01T00:00:00.000Z").toEpochMilli();
 
     /**
      * 序列号位数
