@@ -208,6 +208,7 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
                     CommandParamIntegration commandParamIntegration = CommandParamIntegration.builder()
                             .paramName(field.getName())
                             .batchFlag(deriveIntegration.batchFlag())
+                            .batchClassName(field.getType().getTypeName())
                             .requestMapping(StringUtils.hasText(reqFile) ? FileUtils.fileReaderSingleLine(reqFile, List.of("jslt")) : ".")
                             .responseMapping(StringUtils.hasText(resFile) ? FileUtils.fileReaderSingleLine(resFile, List.of("jslt")) : ".")
                             .protocol(deriveIntegration.protocolPath())

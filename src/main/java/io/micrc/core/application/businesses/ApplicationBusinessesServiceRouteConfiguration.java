@@ -477,6 +477,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
         private Boolean integrationComplete = false;
 
         private boolean batchFlag;
+        private String batchClassName;
 
         /**
          * 请求映射文件
@@ -591,7 +592,7 @@ class IntegrationCommandParams {
         List<CommandParamIntegration> unIntegrateParams = commandParamIntegrations.stream()
                 .filter(i -> !i.getIntegrationComplete()).collect(Collectors.toList());
         properties.put("unIntegrateParams", unIntegrateParams);
-        if (unIntegrateParams.size() == 0) {
+        if (unIntegrateParams.isEmpty()) {
             return null;
         }
         log.info("业务未集成：{}", unIntegrateParams.stream().map(CommandParamIntegration::getParamName).collect(Collectors.joining(",")));
@@ -642,7 +643,7 @@ class IntegrationCommandParams {
         find.setIntegrationComplete(true);
         if (find.isBatchFlag()) {
             exchange.setProperty("batchNamePath", "/" + name);
-            exchange.setProperty("batchIntegrateResult", JsonUtil.writeValueAsList(data, Class.forName((String) properties.get("aggregationPath"))));
+            exchange.setProperty("batchIntegrateResult", JsonUtil.writeValueAsList(data, Class.forName(find.getBatchClassName())));
             // 记录需要批量处理的集成
             exchange.getProperties().put("batchIntegrate", commandParamIntegrations.stream()
                     .filter(other -> !other.getIntegrationComplete()).collect(Collectors.toList()));
