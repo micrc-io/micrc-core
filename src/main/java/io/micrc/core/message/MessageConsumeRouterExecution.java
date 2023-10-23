@@ -99,8 +99,8 @@ public class MessageConsumeRouterExecution implements Ordered {
         String messageGroupId = messageDetail.get("groupId");
         String listenerGroupId = getListenerGroupId(proceedingJoinPoint);
         if (null != messageGroupId && !messageGroupId.isEmpty() && !messageGroupId.equals(listenerGroupId)) {
+            // 无关死信
             acknowledgment.acknowledge();
-            log.info("接收成功（无关死信）: " + messageDetail.get("messageId") + "，期望组" + listenerGroupId + "，实际组" + messageGroupId);
             return null;
         }
 
@@ -115,7 +115,6 @@ public class MessageConsumeRouterExecution implements Ordered {
         if (null == mappingString || !listenerEvent.equals(messageEvent)) {
             // 不需要消费
             acknowledgment.acknowledge();
-            log.info("接收成功（无关消息）: " + messageDetail.get("messageId") + "，期望事件" + listenerEvent + "，实际事件" + messageEvent + "，映射方式" + mappingString);
             return null;
         }
         Object content = consumerRecord.value();
@@ -133,15 +132,15 @@ public class MessageConsumeRouterExecution implements Ordered {
             platformTransactionManager.rollback(transactionStatus);
             // 稍后5秒消费
             acknowledgment.nack(Duration.ofMillis(5 * 1000));
-            log.warn("接收失败（等待启动）: " + messageDetail.get("messageId"));
             return null;
         }
+        log.info("接到消息：" + messageDetail.get("messageId") + "，当前组" + listenerGroupId + "，来自死信" + (null != messageGroupId));
         // 转发调度
         if(consumed){
             // 如果是已重复消息 则先进行事务提交,然后进行ack应答
             platformTransactionManager.commit(transactionStatus);
             acknowledgment.acknowledge();
-            log.warn("接收失败（重复消费）: " + messageDetail.get("messageId"));
+            log.warn("接收失败: 重复消费" + messageDetail.get("messageId"));
             return null;
         }
 

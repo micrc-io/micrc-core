@@ -100,13 +100,12 @@ public class MessageRouteConfiguration extends RouteBuilder {
                 errorMessage.setMessageId(messageId);
                 errorMessage.setGroupId((String) groupId);
                 producerTemplate.requestBody("publish://success-sending-resolve", errorMessage);
-                String scene = groupId == null || "".equals(groupId) ? "（正常）" : "（死信）";
-                log.info("发送成功" + scene + ": " + messageId);
+                log.info("发送成功: " + messageId + "，是否死信" + (groupId != null));
             } else {
                 // 发送失败 则 记录错误信息/累加错误次数
                 ErrorMessage errorMessage = constructErrorMessage(eventInfo, content, messageId, mappingMap, throwable.getLocalizedMessage());
                 producerTemplate.requestBody("publish://error-sending-resolve", errorMessage);
-                log.error("发送失败: " + messageId);
+                log.error("发送失败: " + messageId + "，是否死信" + (groupId != null));
             }
         });
     }

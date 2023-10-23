@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.micrc.core.rpc.IntegrationsInfo;
 import io.micrc.core.rpc.RpcRestRouteConfiguration;
 import io.micrc.lib.JsonUtil;
-import org.apache.camel.component.direct.DirectComponent;
 import org.mockserver.integration.ClientAndServer;
 import org.mockserver.mock.OpenAPIExpectation;
 import org.mockserver.model.Header;
@@ -24,11 +23,6 @@ import java.util.stream.Collectors;
  */
 @Configuration
 public class RpcMockServerAutoConfiguration {
-
-    @Bean("rest-openapi-executor")
-    public DirectComponent restOpenapiExecutor() {
-        return new DirectComponent();
-    }
 
     @Profile({"default", "local"})
     @Bean

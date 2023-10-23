@@ -79,7 +79,7 @@ public class JwtFilter extends AccessControlFilter {
 
     private static void writeResponse(HttpServletResponse httpServletResponse, HttpStatus httpStatus) throws IOException {
         httpServletResponse.setStatus(HttpStatus.OK.value());
-        httpServletResponse.setHeader("Content-Type", "application/json");
+        httpServletResponse.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
         Result<?> result = new Result<>();
         result.setCode(String.valueOf(httpStatus.value()));
         result.setMessage(httpStatus.getReasonPhrase());

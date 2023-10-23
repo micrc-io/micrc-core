@@ -2,7 +2,6 @@ package io.micrc.core.rpc;
 
 import io.micrc.core.AbstractRouteTemplateParamDefinition;
 import io.micrc.core.MicrcRouteBuilder;
-import io.micrc.core.rpc.springboot.RpcMockServerAutoConfiguration;
 import io.micrc.lib.JsonUtil;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -34,29 +33,10 @@ public class RpcRestRouteConfiguration extends MicrcRouteBuilder {
 
     @Override
     public void configureRoute() throws Exception {
-        /**
-         header:    openApiPath openapi文件路径
-                    operatorId 操作ID
-                    host 主机地址
-         */
-        from("rest-openapi-executor://https")
-                .routeId("rest-openapi-executor-https")
-                .toD("rest-openapi-ssl://${exchange.properties.get(openapiInfo).get(openApiPath)}#${exchange.properties.get(openapiInfo).get(operatorId)}?host=${exchange.properties.get(openapiInfo).get(host)}")
-                .convertBodyTo(String.class)
-                .end();
-        /**
-         header:    openApiPath openapi文件路径
-                    operatorId 操作ID
-                    host 主机地址
-         */
-        from("rest-openapi-executor://http")
-                .routeId("rest-openapi-executor-http")
-                .toD("rest-openapi://${exchange.properties.get(openapiInfo).get(openApiPath)}#${exchange.properties.get(openapiInfo).get(operatorId)}?host=${exchange.properties.get(openapiInfo).get(host)}")
-                .convertBodyTo(String.class)
-                .end();
 
         // 逻辑请求路由，定义req协议
         from("req://logic")
+                .setHeader(HttpHeaders.CONTENT_TYPE, constant("application/json"))
                 .toD("rest://post:/${header.logic}?host=localhost:8888")
                 .convertBodyTo(String.class)
                 .end();
