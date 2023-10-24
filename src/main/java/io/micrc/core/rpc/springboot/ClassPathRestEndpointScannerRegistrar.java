@@ -108,8 +108,7 @@ public class ClassPathRestEndpointScannerRegistrar implements ImportBeanDefiniti
         if (stringObjectMap == null) {
             return null;
         }
-        Object o = stringObjectMap.get("application/json");
-        return JsonUtil.readPath(JsonUtil.writeValueAsString(o), "/x-subject-path");
+        return JsonUtil.readPath(JsonUtil.writeValueAsString(stringObjectMap.values().toArray()[0]), "/x-subject-path");
     }
 
     @Override

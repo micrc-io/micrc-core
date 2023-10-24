@@ -12,6 +12,7 @@ import org.mockserver.model.HttpResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.HttpHeaders;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -62,29 +63,17 @@ public class RpcMockServerAutoConfiguration {
                         apiContents.stream()
                                 .collect(Collectors.toMap(
                                         p -> p.getProtocolFilePath().split("mockserver/")[1],
-                                        p -> {
-                                            try {
-                                                JsonNode valueNode = JsonUtil.readTree(p.getProtocolContent())
-                                                        .at("/paths")
-                                                        .iterator().next()
-                                                        .at("/post")
-                                                        .at("/responses")
-                                                        .iterator().next()
-                                                        .at("/content")
-                                                        .iterator().next()
-                                                        .at("/examples")
-                                                        .iterator().next()
-                                                        .at("/value");
-                                                return JsonUtil.writeValueAsString(valueNode);
-                                            } catch (Exception e) {
-                                                return "";
-                                            }
-                                        },
+                                        p -> JsonUtil.readTree(p.getProtocolContent()).at("/paths")
+                                                .iterator().next().at("/post").at("/responses")
+                                                .iterator().next().at("/content"),
                                         (p1, p2) -> p2)
-                                ).forEach((filePath, response) -> {
+                                ).forEach((filePath, responseContent) -> {
                                     Header filePathHeader = Header.header(RpcRestRouteConfiguration._FILE_PATH, filePath);
                                     HttpRequest httpRequest = HttpRequest.request().withPath(urlPath).withHeader(filePathHeader);
-                                    server.when(httpRequest).respond(HttpResponse.response(response));
+                                    String response = JsonUtil.writeValueAsString(responseContent.iterator().next()
+                                            .at("/examples").iterator().next().at("/value"));
+                                    Header contentTypeHeader = Header.header(HttpHeaders.CONTENT_TYPE, responseContent.fields().next().getKey());
+                                    server.when(httpRequest).respond(HttpResponse.response(response).withHeader(contentTypeHeader));
                                 });
                     }
                 });
