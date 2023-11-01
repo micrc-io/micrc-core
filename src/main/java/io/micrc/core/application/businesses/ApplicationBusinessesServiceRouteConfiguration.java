@@ -266,10 +266,12 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .endChoice()
                 .end()
                 .removeHeader("pointer")
-                .toD("bean://${exchange.properties.get(repositoryName)}?method=save")
                 .choice()
                 .when(constant(-1).isEqualTo(simple("${exchange.properties.get(version)}")))
                     .toD("bean://${exchange.properties.get(repositoryName)}?method=delete")
+                .endChoice()
+                .otherwise()
+                    .toD("bean://${exchange.properties.get(repositoryName)}?method=save")
                 .endChoice()
                 .end();
 
