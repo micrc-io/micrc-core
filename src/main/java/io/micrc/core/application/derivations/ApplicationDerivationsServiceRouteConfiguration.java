@@ -257,13 +257,7 @@ class IntegrationParams {
             throws XPathExpressionException, IOException, SAXException, ParserConfigurationException {
         List<ParamIntegration> unIntegrateParams = ClassCastUtils.castArrayList(exchange.getProperty("unIntegrateParams"), ParamIntegration.class);
         List<String[]> timePathList = ClassCastUtils.castArrayList(exchange.getProperty("timePaths"), String[].class);
-        Object current = exchange.getProperty("current");
-        String param;
-        if (null == current) {
-            param = exchange.getProperty("param", String.class);
-        } else {
-            param = exchange.getProperty("buffer", String.class);
-        }
+        String param = exchange.getProperty("buffer", String.class);
         Map<String, Object> executableIntegrationInfo = new HashMap<>();
         int checkNumber = -1;
         do {

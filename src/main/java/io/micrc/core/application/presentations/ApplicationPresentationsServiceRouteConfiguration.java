@@ -160,7 +160,7 @@ class IntegrationParams {
             return null;
         }
         log.info("展示未集成：{}", unIntegrateParams.stream().map(ParamIntegration::getConcept).collect(Collectors.joining(",")));
-        Map<String, Object> currentIntegration = findExecutable(unIntegrateParams, getJson(properties));
+        Map<String, Object> currentIntegration = findExecutable(unIntegrateParams, (String) properties.get("buffer"));
         if (null == currentIntegration) {
             properties.remove("current");
             properties.remove("unIntegrateParams");
@@ -170,19 +170,6 @@ class IntegrationParams {
         }
         properties.put("current", currentIntegration);
         return "direct://presentations-integration";
-    }
-
-    private static String getJson(Map<String, Object> properties) {
-        Object current = properties.get("current");
-        String json;
-        if (null == current) {
-            // 首次集成可直接取入参
-            json = (String) properties.get("param");
-        } else {
-            // 后续集成需从缓冲区取
-            json = (String) properties.get("buffer");
-        }
-        return json;
     }
 
     /**
