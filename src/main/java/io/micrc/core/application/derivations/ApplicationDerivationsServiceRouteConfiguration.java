@@ -58,7 +58,7 @@ public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteB
      * 4，汇编处理结果
      * 5，标识路由结束
      *
-     * @throws Exception
+     * @throws Exception    Exception
      */
     @Override
     public void configureRoute() throws Exception {

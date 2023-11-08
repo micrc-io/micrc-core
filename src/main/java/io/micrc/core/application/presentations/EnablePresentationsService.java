@@ -30,7 +30,7 @@ public @interface EnablePresentationsService {
     /**
      * 扫描包
      *
-     * @return
+     * @return  servicePackages
      */
     String[] servicePackages() default {};
 }

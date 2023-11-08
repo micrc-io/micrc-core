@@ -22,7 +22,7 @@ public interface IdempotentMessageRepository extends JpaRepository<IdempotentMes
     /**
      * 查找所有发送方
      *
-     * @return
+     * @return  sender
      */
     @Query(nativeQuery = true, value = "select distinct sender from message_idempotent_message")
     List<String> findSender();
@@ -30,7 +30,9 @@ public interface IdempotentMessageRepository extends JpaRepository<IdempotentMes
     /**
      * 清理入口
      *
-     * @return
+     * @param sender    sender
+     * @param count     count
+     * @return          messageIds
      */
     @Query(nativeQuery = true,
             value = "select sequence from message_idempotent_message " +
@@ -42,9 +44,9 @@ public interface IdempotentMessageRepository extends JpaRepository<IdempotentMes
     /**
      * 清理检查
      *
-     * @param messageIds
-     * @param receiver
-     * @return
+     * @param messageIds    messageIds
+     * @param receiver      receiver
+     * @return              messageIds
      */
     @Query(nativeQuery = true,
             value = "select sequence from message_idempotent_message " +
@@ -55,8 +57,8 @@ public interface IdempotentMessageRepository extends JpaRepository<IdempotentMes
     /**
      * 删除
      *
-     * @param messageIds
-     * @return
+     * @param messageIds    messageIds
+     * @return              count
      */
     Integer deleteAllBySequenceIn(@Param("messageIds") List<Long> messageIds);
 }

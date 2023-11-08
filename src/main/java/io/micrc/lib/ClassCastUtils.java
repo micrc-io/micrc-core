@@ -41,7 +41,7 @@ public final class ClassCastUtils {
      * @param obj        params
      * @param valueClass the value class
      * @param <T>        the value class
-     * @return
+     * @return           value list
      */
     public static <T> List<T> castArrayList(Object obj, Class<T> valueClass) {
         List<T> retVal = new ArrayList<>();

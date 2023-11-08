@@ -25,9 +25,9 @@ public class EncryptUtils {
     /**
      * 获取HMACSHA256加密结果串
      *
-     * @param data
-     * @param key
-     * @return
+     * @param data  data
+     * @param key   key
+     * @return      result
      */
     public static String HMACSHA256(String data, String key) {
         String rtn = "";
@@ -51,11 +51,11 @@ public class EncryptUtils {
     /**
      * 通过pbkdf2加密数据
      *
-     * @param data
-     * @param salt
-     * @return
-     * @throws NoSuchAlgorithmException
-     * @throws InvalidKeySpecException
+     * @param data  data
+     * @param salt  salt
+     * @return      result
+     * @throws NoSuchAlgorithmException NoSuchAlgorithmException
+     * @throws InvalidKeySpecException  InvalidKeySpecException
      */
     public static String pbkdf2(String data, String salt) throws NoSuchAlgorithmException,
             InvalidKeySpecException {
@@ -67,8 +67,8 @@ public class EncryptUtils {
     /**
      * 通过加密的强随机数生成盐(最后转换为16进制)
      *
-     * @return
-     * @throws NoSuchAlgorithmException
+     * @return  salt
+     * @throws NoSuchAlgorithmException NoSuchAlgorithmException
      */
     public static String generateSalt() throws NoSuchAlgorithmException {
         SecureRandom random = SecureRandom.getInstance("SHA1PRNG");

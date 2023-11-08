@@ -15,6 +15,11 @@ public class JwtUtil {
 
     /**
      * 创建token
+     *
+     * @param username      username
+     * @param permissions   permissions
+     * @param time          time
+     * @return              token
      */
     public static String createToken(String username, String[] permissions, Long time) {
         //设置token头部
@@ -37,6 +42,10 @@ public class JwtUtil {
 
     /**
      * 校验token是否正确
+     *
+     * @param token     token
+     * @param username  username
+     * @return          verify result
      */
     public static boolean verify(String token, String username) {
         //通过KEY利用HMAC256解码
@@ -55,8 +64,12 @@ public class JwtUtil {
         DecodedJWT verify = verifier.verify(token);
         return true;
     }
+
     /**
      * 解析token，获取用户名
+     *
+     * @param token token
+     * @return      username
      */
     public static String getUsername(String token) {
         DecodedJWT decode = JWT.decode(token);

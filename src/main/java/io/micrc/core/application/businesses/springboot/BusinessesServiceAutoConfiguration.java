@@ -29,7 +29,7 @@ public class BusinessesServiceAutoConfiguration {
      * NOTE: CamelContextConfiguration可以存在多个，每个都会执行。也就是说，其他路由模版参数源也可以重新定义和注入
      *
      * @param source 业务服务路由模版参数源
-     * @return
+     * @return  CamelContextConfiguration
      */
     @Bean
     public CamelContextConfiguration applicationBusinessesServiceContextConfiguration(

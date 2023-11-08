@@ -6,7 +6,7 @@ import org.springframework.util.StringUtils;
 /**
  * 通用返回结果
  *
- * @param <T>
+ * @param <T> data
  */
 @Data
 public class Result<T> {

@@ -30,8 +30,9 @@ public interface EventMessageRepository extends JpaRepository<EventMessage, Long
     /**
      * 清理入口，已发送的事件1000条
      *
-     * @param region
-     * @return
+     * @param region    region
+     * @param count     count
+     * @return          message ids
      */
     @Query(nativeQuery = true,
             value = "select ms.message_id from message_message_store ms " +
@@ -45,8 +46,8 @@ public interface EventMessageRepository extends JpaRepository<EventMessage, Long
     /**
      * 清理检查
      *
-     * @param messageIds
-     * @return
+     * @param messageIds    messageIds
+     * @return              messageIds
      */
     @Query(nativeQuery = true,
             value = "select ms.message_id from message_message_store ms " +

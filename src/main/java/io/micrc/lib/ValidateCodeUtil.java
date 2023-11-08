@@ -121,7 +121,7 @@ public class ValidateCodeUtil {
     /**
      * 生成验证码
      *
-     * @return
+     * @return  Validate
      */
     public static Validate getRandomCode() {
         Validate validate = new Validate();

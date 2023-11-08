@@ -76,7 +76,7 @@ public class SnowFlakeIdentity {
     /**
      * 下一个ID
      *
-     * @return
+     * @return  nextId
      */
     public synchronized long nextId() {
         if (currentSequence > MAX_SEQUENCE) {

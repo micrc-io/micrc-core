@@ -5,8 +5,8 @@ public class StringUtil {
     /**
      * 首字母小写
      *
-     * @param str
-     * @return
+     * @param str   str
+     * @return result
      */
     public static String lowerStringFirst(String str) {
         if (str == null || str.length() == 0) {

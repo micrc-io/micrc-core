@@ -31,7 +31,7 @@ public @interface EnableDerivationsService {
     /**
      * 扫描包
      *
-     * @return
+     * @return  servicePackages
      */
     String[] servicePackages() default {};
 }

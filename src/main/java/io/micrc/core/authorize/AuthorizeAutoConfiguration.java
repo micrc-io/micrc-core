@@ -42,6 +42,9 @@ public class AuthorizeAutoConfiguration {
 
     /**
      * 自定义realm
+     *
+     * @param credentialMatcher credentialMatcher
+     * @return                  myRealm
      */
     @Bean("myRealm")
     public MyRealm myRealm(@Qualifier("jwtCredentialsMatcher") HashedCredentialsMatcher credentialMatcher) {
@@ -118,7 +121,7 @@ public class AuthorizeAutoConfiguration {
     }
     /**
      * shiro声明周期
-     * @return
+     * @return LifecycleBeanPostProcessor
      */
     @Bean
     public LifecycleBeanPostProcessor lifecycleBeanPostProcessor() {
@@ -137,6 +140,9 @@ public class AuthorizeAutoConfiguration {
 
     /**
      * 启用shiro注解
+     *
+     * @param securityManager   securityManager
+     * @return                  AuthorizationAttributeSourceAdvisor
      */
     @Bean
     public AuthorizationAttributeSourceAdvisor authorizationAttributeSourceAdvisor(@Qualifier("securityManager") DefaultWebSecurityManager securityManager) {

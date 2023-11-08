@@ -27,11 +27,11 @@ public class TimeReplaceUtil {
     /**
      * 匹配时间路径并替换时间
      *
-     * @param timePathList
-     * @param path
-     * @param json
-     * @param timeClass
-     * @return
+     * @param timePathList  timePathList
+     * @param path          path
+     * @param json          json
+     * @param timeClass     timeClass
+     * @return              result
      */
     public static String matchTimePathAndReplaceTime(List<String[]> timePathList, String path, String json, Class<?> timeClass) {
         String[] split = path.split("/");
@@ -45,10 +45,10 @@ public class TimeReplaceUtil {
     /**
      * 替换所有符合时间路径的节点
      *
-     * @param outMapping
-     * @param other
-     * @param timeClass
-     * @return
+     * @param outMapping    outMapping
+     * @param other         other
+     * @param timeClass     timeClass
+     * @return              result
      */
     private static String replaceTime(String outMapping, List<String> other, Class<?> timeClass) {
         if (null == other) {

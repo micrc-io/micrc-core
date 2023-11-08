@@ -52,9 +52,9 @@ public class MessageRouteConfiguration extends RouteBuilder {
     /**
      * 组装事件消息
      *
-     * @param body
-     * @param currentCommandJson
-     * @return
+     * @param body                  body
+     * @param currentCommandJson    currentCommandJson
+     * @return                      EventMessage
      */
     @Consume("eventstore://get-event-message")
     public EventMessage getEventMessage(@Body String body, @Header("currentCommandJson") String currentCommandJson) {
@@ -68,8 +68,9 @@ public class MessageRouteConfiguration extends RouteBuilder {
     /**
      * 发送消息
      *
-     * @param object
-     * @param mappings
+     * @param object    object
+     * @param mappings  mappings
+     * @param eventInfo eventInfo
      */
     @Consume("publish://sending-message")
     public void send(
@@ -129,8 +130,8 @@ public class MessageRouteConfiguration extends RouteBuilder {
     /**
      * 修改跟踪器序号
      *
-     * @param errorMessage
-     * @return
+     * @param errorMessage  errorMessage
+     * @return              ErrorMessage
      */
     @Consume("publish://error-sending-resolve-create")
     public ErrorMessage createErrorMessage(@Header("current") ErrorMessage errorMessage) {
@@ -140,8 +141,8 @@ public class MessageRouteConfiguration extends RouteBuilder {
     /**
      * 标记发送中
      *
-     * @param errorMessage
-     * @return
+     * @param errorMessage  errorMessage
+     * @return              ErrorMessage
      */
     @Consume("publish://error-resolving")
     public ErrorMessage errorResolving(@Body ErrorMessage errorMessage) {
@@ -152,8 +153,8 @@ public class MessageRouteConfiguration extends RouteBuilder {
     /**
      * 标记已发送
      *
-     * @param eventMessage
-     * @return
+     * @param eventMessage  eventMessage
+     * @return              EventMessage
      */
     @Consume("publish://normal-resolving")
     public EventMessage normalResolving(@Body EventMessage eventMessage) {
@@ -164,8 +165,9 @@ public class MessageRouteConfiguration extends RouteBuilder {
     /**
      * 修改跟踪器序号
      *
-     * @param errorMessage
-     * @return
+     * @param errorMessage  errorMessage
+     * @param current       errorMessage
+     * @return              ErrorMessage
      */
     @Consume("publish://error-sending-resolve-update")
     public ErrorMessage updateErrorMessage(@Body ErrorMessage errorMessage, @Header("current") ErrorMessage current) {
@@ -178,8 +180,8 @@ public class MessageRouteConfiguration extends RouteBuilder {
     /**
      * 组装幂等消息
      *
-     * @param messageDetail
-     * @return
+     * @param messageDetail messageDetail
+     * @return              IdempotentMessage
      */
     @Consume("subscribe://idempotent-message")
     public IdempotentMessage idempotent(Map<String, Object> messageDetail) {
@@ -193,9 +195,9 @@ public class MessageRouteConfiguration extends RouteBuilder {
     /**
      * 用幂等仓过滤ID
      *
-     * @param messageIds
-     * @param eventInfo
-     * @return
+     * @param messageIds    messageIds
+     * @param eventInfo     eventInfo
+     * @return              messageIds
      */
     @Consume("clean://idempotent-consumed-filter")
     public List<Long> filter(@Body List<Long> messageIds, @Header("eventInfo") EventsInfo.Event eventInfo) {
@@ -241,8 +243,9 @@ public class MessageRouteConfiguration extends RouteBuilder {
     /**
      * 用消息表过滤ID
      *
-     * @param messageIds
-     * @return
+     * @param messageIds    messageIds
+     * @param senderAddress senderAddress
+     * @return              messageIds
      */
     @Consume("clean://store-removed-filter")
     public List<Long> filter(@Body List<Long> messageIds, @Header("senderAddress") String senderAddress) {

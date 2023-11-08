@@ -26,7 +26,7 @@ public class MessageMockSenderRouteConfiguration extends MicrcRouteBuilder {
     /**
      * 配置消息MOCK发送路由模板
      *
-     * @throws Exception
+     * @throws Exception    Exception
      */
     @Override
     public void configureRoute() throws Exception {
