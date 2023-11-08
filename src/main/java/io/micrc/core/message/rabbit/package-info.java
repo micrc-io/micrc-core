@@ -1,1 +1,1 @@
-//package io.micrc.core.message.rabbit;
+package io.micrc.core.message.rabbit;
