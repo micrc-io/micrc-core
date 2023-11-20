@@ -9,27 +9,37 @@ import org.apache.camel.EndpointInject;
 import org.apache.camel.ProducerTemplate;
 import org.apache.camel.component.direct.DirectComponent;
 import org.apache.camel.spring.boot.CamelAutoConfiguration;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.jetbrains.annotations.NotNull;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.Environment;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.core.*;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.util.backoff.FixedBackOff;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 
@@ -52,10 +62,41 @@ import java.util.Iterator;
 })
 @EntityScan(basePackages = {"io.micrc.core.message.store", "io.micrc.core.message.error"})
 @EnableJpaRepositories(basePackages = {"io.micrc.core.message.store", "io.micrc.core.message.error"})
-public class MessageAutoConfiguration {
+public class MessageAutoConfiguration implements BeanFactoryPostProcessor, EnvironmentAware {
 
-    @Autowired
     Environment environment;
+
+    @Override
+    public void setEnvironment(@NotNull Environment environment) {
+        this.environment = environment;
+    }
+
+    @Override
+    public void postProcessBeanFactory(@NotNull ConfigurableListableBeanFactory beanFactory) throws BeansException {
+        String[] providers = obtainProvider();
+        Arrays.stream(providers)
+                .filter(provider -> !provider.isEmpty())
+                .forEach(provider -> {
+                    // ConcurrentKafkaListenerContainerFactory
+                    HashMap<String, Object> consumerMap = new HashMap<>();
+                    consumerMap.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "${" + provider + "_broker_host}:${" + provider + "_broker_port}");
+                    ConsumerFactory<String, String> consumerFactory = new DefaultKafkaConsumerFactory<>(consumerMap);
+                    ConcurrentKafkaListenerContainerFactory<String, String> concurrentKafkaListenerContainerFactory = new ConcurrentKafkaListenerContainerFactory<>();
+                    concurrentKafkaListenerContainerFactory.setConsumerFactory(consumerFactory);
+                    beanFactory.registerSingleton("kafkaListenerContainerFactory-" + provider, concurrentKafkaListenerContainerFactory);
+                    // KafkaTemplate
+                    HashMap<String, Object> producerMap = new HashMap<>();
+                    producerMap.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "${" + provider + "_broker_host}:${" + provider + "_broker_port}");
+                    ProducerFactory<String, String> producerFactory = new DefaultKafkaProducerFactory<>(producerMap);
+                    KafkaTemplate<String, String> kafkaTemplate = new KafkaTemplate<>(producerFactory);
+                    beanFactory.registerSingleton("kafkaTemplate-" + provider, kafkaTemplate);
+                });
+    }
+
+    private String[] obtainProvider() {
+        String providersString = (String) ((ConfigurableEnvironment)environment).getSystemEnvironment().getOrDefault( "BROKER_PROVIDERS", "");
+        return providersString.split(",");
+    }
 
     @EndpointInject
     private ProducerTemplate producerTemplate;
@@ -86,7 +127,7 @@ public class MessageAutoConfiguration {
 
     @Bean
     @Primary
-    public DefaultErrorHandler deadLetterPublishingRecoverer(KafkaTemplate<?, ?> template) {
+    public DefaultErrorHandler deadLetterPublishingRecoverer(@Qualifier("kafkaTemplate-public") KafkaTemplate<String, String> template) {
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template,
                 (r, e) -> new TopicPartition("deadLetter", r.partition()));
         return new DefaultErrorHandler(recoverer, new FixedBackOff(0L, 1));

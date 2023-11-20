@@ -30,12 +30,12 @@ public class CacheEnvironmentProcessor implements EnvironmentPostProcessor {
         Optional<String> profileStr = Optional.ofNullable(environment.getProperty("application.profiles"));
         List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
         Properties properties = new Properties();
-        bootstrapEmbeddedCache(profiles, properties);
+        bootstrapEmbeddedCache(profiles, properties, obtainProvider("CACHE", environment));
         PropertiesPropertySource source = new PropertiesPropertySource("micrc-cache", properties);
         environment.getPropertySources().addLast(source);
     }
 
-    private void bootstrapEmbeddedCache(List<String> profiles, Properties properties) {
+    private void bootstrapEmbeddedCache(List<String> profiles, Properties properties, String provider) {
         if (!profiles.contains("default")) {
             properties.setProperty("embedded.redistack.enabled", "false");
         }
@@ -63,9 +63,9 @@ public class CacheEnvironmentProcessor implements EnvironmentPostProcessor {
 
         } else {
             // k8s集群中读取的configmap中的host，port和passwd
-            properties.setProperty("spring.redis.host", "${cache.host}");
-            properties.setProperty("spring.redis.port", "${cache.port}");
-            properties.setProperty("spring.redis.password", "${cache.password}");
+            properties.setProperty("spring.redis.host", "${" + provider + "_cache_host}");
+            properties.setProperty("spring.redis.port", "${" + provider + "_cache_port}");
+            properties.setProperty("spring.redis.password", "${" + provider + "_cache_password}");
         }
         // 任何环境使用统一的连接配置
         properties.setProperty("spring.redis.database", "0");
@@ -75,5 +75,14 @@ public class CacheEnvironmentProcessor implements EnvironmentPostProcessor {
         properties.setProperty("spring.redis.lettuce.pool.max-idle", "10");
         properties.setProperty("spring.redis.lettuce.pool.max-wait", "-1");
         properties.setProperty("spring.redis.pool.time-between-eviction-runs-millis", "2000");
+    }
+
+    private String obtainProvider(String middleware, ConfigurableEnvironment env) {
+        String providersString = (String) env.getSystemEnvironment().getOrDefault(middleware + "_PROVIDERS", "");
+        String[] providers = providersString.split(",");
+        if (providers.length != 1) { // 配置错误，直接报错停止启动
+            throw new RuntimeException();
+        }
+        return providers[0];
     }
 }

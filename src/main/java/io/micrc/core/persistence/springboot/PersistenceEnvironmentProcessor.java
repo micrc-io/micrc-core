@@ -3,9 +3,7 @@ package io.micrc.core.persistence.springboot;
 import org.apache.commons.logging.Log;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.env.EnvironmentPostProcessor;
-import org.springframework.core.env.ConfigurableEnvironment;
-import org.springframework.core.env.Environment;
-import org.springframework.core.env.PropertiesPropertySource;
+import org.springframework.core.env.*;
 
 import java.util.*;
 
@@ -29,16 +27,16 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
         Optional<String> profileStr = Optional.ofNullable(environment.getProperty("application.profiles"));
         List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
         Properties properties = new Properties();
-        envForEmbeddedMysql(profiles, properties);
+        envForEmbeddedMysql(profiles, properties, obtainProvider("DATABASE", environment));
         envForLiquibase(profiles, properties, environment);
         envForJPA(profiles, properties);
-        bootstrapEmbeddedMemoryDb(profiles, properties);
+        bootstrapEmbeddedMemoryDb(profiles, properties, obtainProvider("MEMDB", environment));
 
         PropertiesPropertySource source = new PropertiesPropertySource("micrc-persistence", properties);
         environment.getPropertySources().addLast(source);
     }
 
-    private void envForEmbeddedMysql(Collection<String> profiles, Properties properties) {
+    private void envForEmbeddedMysql(Collection<String> profiles, Properties properties, String provider) {
         if (!profiles.contains("default")) {
             properties.setProperty("embedded.mysql.enabled", "false");
         }
@@ -66,9 +64,9 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
         } else {
             // k8s集群中按约定名称读取的secret中的host, port, user, pass属性
             properties.setProperty("spring.datasource.url",
-                "jdbc:mysql://${database.host}:${database.port}/${database.name}");
-            properties.setProperty("spring.datasource.username", "${database.user}");
-            properties.setProperty("spring.datasource.password", "${database.password}");
+                "jdbc:mysql://${" + provider + "_database_host}:${" + provider + "_database_port}/${" + provider + "_database_name}");
+            properties.setProperty("spring.datasource.username", "${" + provider + "_database_user}");
+            properties.setProperty("spring.datasource.password", "${" + provider + "_database_password}");
         }
         properties.setProperty("spring.datasource.driver-class-name", "com.mysql.cj.jdbc.Driver");
         // 数据源和连接池通用配置 https://github.com/brettwooldridge/HikariCP
@@ -116,7 +114,7 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
         }
     }
 
-    private void bootstrapEmbeddedMemoryDb(List<String> profiles, Properties properties) {
+    private void bootstrapEmbeddedMemoryDb(List<String> profiles, Properties properties, String provider) {
         if (profiles.contains("default")) {
             // default redis connection
             properties.setProperty("micrc.spring.memory-db.host", "${embedded.redistack.host}");
@@ -124,9 +122,9 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
             properties.setProperty("micrc.spring.memory-db.password", "${embedded.redistack.password}");
         } else {
             // k8s集群中读取的configmap中的host，port和passwd
-            properties.setProperty("micrc.spring.memory-db.host", "${memdb.host}");
-            properties.setProperty("micrc.spring.memory-db.port", "${memdb.port}");
-            properties.setProperty("micrc.spring.memory-db.password", "${memdb.password}");
+            properties.setProperty("micrc.spring.memory-db.host", "${" + provider + "_memdb_host}");
+            properties.setProperty("micrc.spring.memory-db.port", "${" + provider + "_memdb_port}");
+            properties.setProperty("micrc.spring.memory-db.password", "${" + provider + "_memdb_password}");
         }
         // 任何环境使用统一的连接配置
         properties.setProperty("micrc.spring.memory-db.database", "15");
@@ -136,5 +134,15 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
         properties.setProperty("micrc.spring.memory-db.lettuce.pool.max-idle", "10");
         properties.setProperty("micrc.spring.memory-db.lettuce.pool.max-wait", "-1");
         properties.setProperty("micrc.spring.memory-db.pool.time-between-eviction-runs-millis", "2000");
+    }
+
+    // 仅允许连接一个数据库或内存库，取providers中第一个
+    private String obtainProvider(String middleware, ConfigurableEnvironment env) {
+        String providersString = (String) env.getSystemEnvironment().getOrDefault(middleware + "_PROVIDERS", "");
+        String[] providers = providersString.split(",");
+        if (providers.length != 1) { // 配置错误，直接报错停止启动
+            throw new RuntimeException();
+        }
+        return providers[0];
     }
 }

@@ -15,6 +15,7 @@ import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.support.ExpressionAdapter;
 import org.apache.http.HttpHeaders;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.env.Environment;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -41,6 +42,7 @@ import java.util.stream.Collectors;
 public class MessageRouteConfiguration extends RouteBuilder {
 
     @Autowired
+    @Qualifier("kafkaTemplate-public")// todo,动态指定
     private KafkaTemplate<String, String> kafkaTemplate;
 
     @EndpointInject

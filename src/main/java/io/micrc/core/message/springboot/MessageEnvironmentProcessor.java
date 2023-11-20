@@ -27,12 +27,12 @@ public class MessageEnvironmentProcessor implements EnvironmentPostProcessor {
         Optional<String> profileStr = Optional.ofNullable(environment.getProperty("application.profiles"));
         List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
         Properties properties = new Properties();
-        envForKafka(profiles, properties);
+        envForKafka(profiles, properties, obtainProvider("BROKER", environment));
         PropertiesPropertySource source = new PropertiesPropertySource("micrc-message", properties);
         environment.getPropertySources().addLast(source);
     }
 
-    private void envForKafka(List<String> profiles, Properties properties) {
+    private void envForKafka(List<String> profiles, Properties properties, String[] providers) {
         if (!profiles.contains("default")) {
             properties.setProperty("embedded.kafka.enabled", "false");
         }
@@ -57,9 +57,9 @@ public class MessageEnvironmentProcessor implements EnvironmentPostProcessor {
             // properties.setProperty("spring.kafka.sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"${embedded.kafka.saslPlaintext.user}\" password=\"${embedded.kafka.saslPlaintext.password}\"");
 
         } else {
-            // k8s集群中读取的secret中的host，port和passwd
-            properties.setProperty("spring.kafka.bootstrap-servers", "${broker.host}:${broker.port}");
-            //properties.setProperty("spring.kafka.sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"${kafka.user}\" password=\"${kafka.password}\"");
+//            // k8s集群中读取的secret中的host，port和passwd
+//            properties.setProperty("spring.kafka.bootstrap-servers", "${broker.host}:${broker.port}");
+//            //properties.setProperty("spring.kafka.sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"${kafka.user}\" password=\"${kafka.password}\"");
         }
         // use plaintext
         // properties.setProperty("spring.kafka.security.protocol", "SASL_PLAINTEXT");
@@ -88,6 +88,11 @@ public class MessageEnvironmentProcessor implements EnvironmentPostProcessor {
         properties.setProperty("spring.kafka.listener.ack-mode", "MANUAL_IMMEDIATE");
         // 日志级别
         properties.setProperty("logging.level.org.apache.kafka", "WARN");
+    }
+
+    private String[] obtainProvider(String middleware, ConfigurableEnvironment env) {
+        String providersString = (String) env.getSystemEnvironment().getOrDefault(middleware + "_PROVIDERS", "");
+        return providersString.split(",");
     }
 
     private Properties loadMicrcProperties() {
