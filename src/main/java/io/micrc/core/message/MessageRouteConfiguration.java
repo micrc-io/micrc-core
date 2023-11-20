@@ -41,7 +41,6 @@ import java.util.stream.Collectors;
  */
 public class MessageRouteConfiguration extends RouteBuilder {
 
-    @Autowired
     @Qualifier("kafkaTemplate-public")// todo,动态指定
     private KafkaTemplate<String, String> kafkaTemplate;
 

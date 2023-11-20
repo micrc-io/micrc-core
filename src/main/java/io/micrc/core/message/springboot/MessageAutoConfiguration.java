@@ -125,9 +125,10 @@ public class MessageAutoConfiguration implements BeanFactoryPostProcessor, Envir
         return subscribe;
     }
 
+    // todo,动态指定
     @Bean
     @Primary
-    public DefaultErrorHandler deadLetterPublishingRecoverer(@Qualifier("kafkaTemplate-public") KafkaTemplate<String, String> template) {
+    public DefaultErrorHandler deadLetterPublishingRecoverer(/*@Qualifier("kafkaTemplate-public") */KafkaTemplate<String, String> template) {
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template,
                 (r, e) -> new TopicPartition("deadLetter", r.partition()));
         return new DefaultErrorHandler(recoverer, new FixedBackOff(0L, 1));
