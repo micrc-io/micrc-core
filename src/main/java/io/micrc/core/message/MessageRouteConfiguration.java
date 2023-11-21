@@ -108,7 +108,9 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
         if (profiles.contains("default")) {
             kafkaTemplate = applicationContext.getBean("kafkaTemplate", KafkaTemplate.class);
         } else {
-            kafkaTemplate = applicationContext.getBean("kafkaTemplate-public", KafkaTemplate.class);// todo,动态指定
+            String topicName = eventInfo.getTopicName();
+            String provider = "public"; // todo,根据主题名称动态指定provider
+            kafkaTemplate = applicationContext.getBean("kafkaTemplate-" + provider, KafkaTemplate.class);
         }
 
         ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(objectMessage);
