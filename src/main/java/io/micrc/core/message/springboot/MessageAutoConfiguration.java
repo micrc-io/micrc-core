@@ -16,11 +16,12 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -39,9 +40,7 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.util.backoff.FixedBackOff;
 
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
+import java.util.*;
 
 
 /**
@@ -62,9 +61,16 @@ import java.util.Iterator;
 })
 @EntityScan(basePackages = {"io.micrc.core.message.store", "io.micrc.core.message.error"})
 @EnableJpaRepositories(basePackages = {"io.micrc.core.message.store", "io.micrc.core.message.error"})
-public class MessageAutoConfiguration implements BeanFactoryPostProcessor, EnvironmentAware {
+public class MessageAutoConfiguration implements BeanFactoryPostProcessor, EnvironmentAware, ApplicationContextAware {
 
-    Environment environment;
+    private ApplicationContext applicationContext;
+
+    private Environment environment;
+
+    @Override
+    public void setApplicationContext(@NotNull ApplicationContext applicationContext) throws BeansException {
+        this.applicationContext = applicationContext;
+    }
 
     @Override
     public void setEnvironment(@NotNull Environment environment) {
@@ -125,11 +131,19 @@ public class MessageAutoConfiguration implements BeanFactoryPostProcessor, Envir
         return subscribe;
     }
 
-    // todo,动态指定
     @Bean
     @Primary
-    public DefaultErrorHandler deadLetterPublishingRecoverer(/*@Qualifier("kafkaTemplate-public") */KafkaTemplate<String, String> template) {
-        DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template,
+    public DefaultErrorHandler deadLetterPublishingRecoverer() {
+        Optional<String> profileStr = Optional.ofNullable(environment.getProperty("application.profiles"));
+        List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
+        KafkaTemplate<String, String> kafkaTemplate;
+        if (profiles.contains("default")) {
+            kafkaTemplate = applicationContext.getBean("kafkaTemplate", KafkaTemplate.class);
+        } else {
+            kafkaTemplate = applicationContext.getBean("kafkaTemplate-public", KafkaTemplate.class);
+        }
+
+        DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(kafkaTemplate,
                 (r, e) -> new TopicPartition("deadLetter", r.partition()));
         return new DefaultErrorHandler(recoverer, new FixedBackOff(0L, 1));
     }

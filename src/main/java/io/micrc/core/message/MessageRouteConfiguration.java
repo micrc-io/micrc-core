@@ -14,8 +14,11 @@ import org.apache.camel.*;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.support.ExpressionAdapter;
 import org.apache.http.HttpHeaders;
+import org.jetbrains.annotations.NotNull;
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.core.env.Environment;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -39,16 +42,20 @@ import java.util.stream.Collectors;
  * @date 2022-09-13 05:35
  * @since 0.0.1
  */
-public class MessageRouteConfiguration extends RouteBuilder {
+public class MessageRouteConfiguration extends RouteBuilder implements ApplicationContextAware {
 
-    @Qualifier("kafkaTemplate-public")// todo,动态指定
-    private KafkaTemplate<String, String> kafkaTemplate;
+    private ApplicationContext applicationContext;
 
     @EndpointInject
     private ProducerTemplate producerTemplate;
 
     @Autowired
     Environment environment;
+
+    @Override
+    public void setApplicationContext(@NotNull ApplicationContext applicationContext) throws BeansException {
+        this.applicationContext = applicationContext;
+    }
 
     /**
      * 组装事件消息
@@ -94,6 +101,16 @@ public class MessageRouteConfiguration extends RouteBuilder {
                 .setHeader("sender", eventInfo.getSenderAddress())
                 .setHeader("event", eventInfo.getEventName())
                 .setHeader("mappingMap", mappingMap).build();
+
+        Optional<String> profileStr = Optional.ofNullable(environment.getProperty("application.profiles"));
+        List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
+        KafkaTemplate<String, String> kafkaTemplate;
+        if (profiles.contains("default")) {
+            kafkaTemplate = applicationContext.getBean("kafkaTemplate", KafkaTemplate.class);
+        } else {
+            kafkaTemplate = applicationContext.getBean("kafkaTemplate-public", KafkaTemplate.class);// todo,动态指定
+        }
+
         ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(objectMessage);
         future.completable().whenCompleteAsync((sendResult, throwable) -> {
             if (null == throwable) {
