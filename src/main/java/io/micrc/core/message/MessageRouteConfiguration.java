@@ -19,6 +19,7 @@ import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
+import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.Environment;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -27,12 +28,7 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.concurrent.ListenableFuture;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -109,7 +105,17 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
             kafkaTemplate = applicationContext.getBean("kafkaTemplate", KafkaTemplate.class);
         } else {
             String topicName = eventInfo.getTopicName();
-            String provider = "public"; // todo,根据主题名称动态指定provider
+            Properties properties = (Properties)((ConfigurableEnvironment)environment).getPropertySources().get("micrc").getSource();
+            String provider = properties.entrySet().stream().filter(entry -> {
+                if (entry.getKey().toString().startsWith("micrc.broker.topics.")) {
+                    String[] split = entry.getValue().toString().split(",");
+                    return Arrays.asList(split).contains(topicName);
+                }
+                return false;
+            }).map(entry -> {
+                String[] split = entry.getKey().toString().split("micrc\\.broker\\.topics\\.");
+                return split[split.length - 1];
+            }).findFirst().orElseThrow();
             kafkaTemplate = applicationContext.getBean("kafkaTemplate-" + provider, KafkaTemplate.class);
         }
 
