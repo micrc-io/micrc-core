@@ -103,6 +103,8 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
         KafkaTemplate<String, String> kafkaTemplate;
         if (profiles.contains("default")) {
             kafkaTemplate = applicationContext.getBean("kafkaTemplate", KafkaTemplate.class);
+        } else if (profiles.contains("local")) {
+            kafkaTemplate = applicationContext.getBean("kafkaTemplate-public", KafkaTemplate.class);
         } else {
             String topicName = eventInfo.getTopicName();
             Properties properties = (Properties)((ConfigurableEnvironment)environment).getPropertySources().get("micrc").getSource();
