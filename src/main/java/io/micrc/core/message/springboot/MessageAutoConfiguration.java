@@ -4,6 +4,7 @@ import io.micrc.core.message.MessageConsumeRouterExecution;
 import io.micrc.core.message.MessageRouteConfiguration;
 import io.micrc.core.message.store.MessagePublisherSchedule;
 import io.micrc.core.message.error.ErrorMessage;
+import io.micrc.lib.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.EndpointInject;
 import org.apache.camel.ProducerTemplate;
@@ -29,6 +30,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.Environment;
+import org.springframework.core.env.MutablePropertySources;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -83,20 +85,42 @@ public class MessageAutoConfiguration implements BeanFactoryPostProcessor, Envir
         Arrays.stream(providers)
                 .filter(provider -> !provider.isEmpty())
                 .forEach(provider -> {
+                    // find host and port
+                    String host = findBrokerDefine(provider, "host");
+                    String port = findBrokerDefine(provider, "port");
                     // ConcurrentKafkaListenerContainerFactory
                     HashMap<String, Object> consumerMap = new HashMap<>();
-                    consumerMap.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "${" + provider + "_broker_host}:${" + provider + "_broker_port}");
+                    consumerMap.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
+                    consumerMap.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
+                    consumerMap.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, host + ":" + port);
                     ConsumerFactory<String, String> consumerFactory = new DefaultKafkaConsumerFactory<>(consumerMap);
                     ConcurrentKafkaListenerContainerFactory<String, String> concurrentKafkaListenerContainerFactory = new ConcurrentKafkaListenerContainerFactory<>();
                     concurrentKafkaListenerContainerFactory.setConsumerFactory(consumerFactory);
                     beanFactory.registerSingleton("kafkaListenerContainerFactory-" + provider, concurrentKafkaListenerContainerFactory);
                     // KafkaTemplate
                     HashMap<String, Object> producerMap = new HashMap<>();
-                    producerMap.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "${" + provider + "_broker_host}:${" + provider + "_broker_port}");
+                    producerMap.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+                    producerMap.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+                    producerMap.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, host + ":" + port);
                     ProducerFactory<String, String> producerFactory = new DefaultKafkaProducerFactory<>(producerMap);
                     KafkaTemplate<String, String> kafkaTemplate = new KafkaTemplate<>(producerFactory);
                     beanFactory.registerSingleton("kafkaTemplate-" + provider, kafkaTemplate);
                 });
+    }
+
+    @NotNull
+    private String findBrokerDefine(String provider, String findBrokerDefine) {
+        ConfigurableEnvironment environment1 = (ConfigurableEnvironment) environment;
+        MutablePropertySources propertySources = environment1.getPropertySources();
+        return propertySources.stream().map(a -> {
+            String name = a.getName();
+            Object source = a.getSource();
+            String find = null;
+            if (name.contains(provider + "_broker_" + findBrokerDefine)) {
+                find = (String) JsonUtil.readPath(JsonUtil.writeValueAsString(source), "/" + provider + "_broker_" + findBrokerDefine);
+            }
+            return find;
+        }).filter(Objects::nonNull).findFirst().orElseThrow();
     }
 
     private String[] obtainProvider() {
