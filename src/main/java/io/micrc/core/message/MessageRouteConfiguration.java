@@ -102,7 +102,7 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
         List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
         KafkaTemplate<String, String> kafkaTemplate;
         if (profiles.contains("default")) {
-            kafkaTemplate = applicationContext.getBean("kafkaTemplate", KafkaTemplate.class);
+            kafkaTemplate = applicationContext.getBean("kafkaTemplate-embedded", KafkaTemplate.class);
         } else if (profiles.contains("local")) {
             kafkaTemplate = applicationContext.getBean("kafkaTemplate-public", KafkaTemplate.class);
         } else {

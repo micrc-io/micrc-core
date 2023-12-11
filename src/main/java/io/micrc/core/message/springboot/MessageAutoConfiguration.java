@@ -36,6 +36,7 @@ import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.*;
+import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.Acknowledgment;
@@ -81,6 +82,13 @@ public class MessageAutoConfiguration implements BeanFactoryPostProcessor, Envir
 
     @Override
     public void postProcessBeanFactory(@NotNull ConfigurableListableBeanFactory beanFactory) throws BeansException {
+        Properties properties = (Properties)((ConfigurableEnvironment)environment).getPropertySources().get("micrc-message").getSource();
+        // embedded kafka enable
+        if ("true".equalsIgnoreCase(properties.getProperty("embedded.kafka.enabled"))) {
+            String server = environment.getProperty("micrc.embedded.kafka.brokerList");
+            registerContainerFactoryAndTemplate(beanFactory, server, properties, "embedded");
+        }
+        // external kafka enable
         String[] providers = obtainProvider();
         Arrays.stream(providers)
                 .filter(provider -> !provider.isEmpty())
@@ -88,24 +96,39 @@ public class MessageAutoConfiguration implements BeanFactoryPostProcessor, Envir
                     // find host and port
                     String host = findBrokerDefine(provider, "host");
                     String port = findBrokerDefine(provider, "port");
-                    // ConcurrentKafkaListenerContainerFactory
-                    HashMap<String, Object> consumerMap = new HashMap<>();
-                    consumerMap.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
-                    consumerMap.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
-                    consumerMap.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, host + ":" + port);
-                    ConsumerFactory<String, String> consumerFactory = new DefaultKafkaConsumerFactory<>(consumerMap);
-                    ConcurrentKafkaListenerContainerFactory<String, String> concurrentKafkaListenerContainerFactory = new ConcurrentKafkaListenerContainerFactory<>();
-                    concurrentKafkaListenerContainerFactory.setConsumerFactory(consumerFactory);
-                    beanFactory.registerSingleton("kafkaListenerContainerFactory-" + provider, concurrentKafkaListenerContainerFactory);
-                    // KafkaTemplate
-                    HashMap<String, Object> producerMap = new HashMap<>();
-                    producerMap.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
-                    producerMap.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
-                    producerMap.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, host + ":" + port);
-                    ProducerFactory<String, String> producerFactory = new DefaultKafkaProducerFactory<>(producerMap);
-                    KafkaTemplate<String, String> kafkaTemplate = new KafkaTemplate<>(producerFactory);
-                    beanFactory.registerSingleton("kafkaTemplate-" + provider, kafkaTemplate);
+                    String server = host + ":" + port;
+                    registerContainerFactoryAndTemplate(beanFactory, server, properties, provider);
                 });
+    }
+
+    private static void registerContainerFactoryAndTemplate(@NotNull ConfigurableListableBeanFactory beanFactory, String server, Properties properties, String provider) {
+        // KafkaListenerContainerFactory
+        HashMap<String, Object> consumerMap = new HashMap<>();
+        consumerMap.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, server);
+        consumerMap.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
+        consumerMap.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
+        consumerMap.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, properties.getProperty("spring.kafka.consumer.enable-auto-commit"));
+        consumerMap.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, properties.getProperty("spring.kafka.consumer.max-poll-records"));
+        consumerMap.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, properties.getProperty("spring.kafka.consumer.auto-offset-reset"));
+        consumerMap.put(ConsumerConfig.GROUP_ID_CONFIG, properties.getProperty("spring.kafka.consumer.group-id"));
+        ConsumerFactory<String, String> consumerFactory1 = new DefaultKafkaConsumerFactory<>(consumerMap);
+        ConcurrentKafkaListenerContainerFactory<String, String> concurrentKafkaListenerContainerFactory = new ConcurrentKafkaListenerContainerFactory<>();
+        concurrentKafkaListenerContainerFactory.setConsumerFactory(consumerFactory1);
+        concurrentKafkaListenerContainerFactory.setConcurrency(Integer.valueOf(properties.getProperty("spring.kafka.consumer.batch.concurrency")));
+        concurrentKafkaListenerContainerFactory.getContainerProperties().setAckMode(ContainerProperties.AckMode.valueOf(properties.getProperty("spring.kafka.listener.ack-mode")));
+        beanFactory.registerSingleton("kafkaListenerContainerFactory-" + provider, concurrentKafkaListenerContainerFactory);
+        // KafkaTemplate
+        HashMap<String, Object> producerMap = new HashMap<>();
+        producerMap.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, server);
+        producerMap.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+        producerMap.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+        producerMap.put(ProducerConfig.RETRIES_CONFIG, properties.getProperty("spring.kafka.producer.retries"));
+        producerMap.put(ProducerConfig.ACKS_CONFIG, properties.getProperty("spring.kafka.producer.acks"));
+        producerMap.put(ProducerConfig.BATCH_SIZE_CONFIG, properties.getProperty("spring.kafka.producer.batch-size"));
+        producerMap.put(ProducerConfig.BUFFER_MEMORY_CONFIG, properties.getProperty("spring.kafka.producer.buffer-memory"));
+        ProducerFactory<String, String> producerFactory = new DefaultKafkaProducerFactory<>(producerMap);
+        KafkaTemplate<String, String> kafkaTemplate = new KafkaTemplate<>(producerFactory);
+        beanFactory.registerSingleton("kafkaTemplate-" + provider, kafkaTemplate);
     }
 
     @NotNull
@@ -162,7 +185,7 @@ public class MessageAutoConfiguration implements BeanFactoryPostProcessor, Envir
         List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
         KafkaTemplate<String, String> kafkaTemplate;
         if (profiles.contains("default")) {
-            kafkaTemplate = applicationContext.getBean("kafkaTemplate", KafkaTemplate.class);
+            kafkaTemplate = applicationContext.getBean("kafkaTemplate-embedded", KafkaTemplate.class);
         } else {
             kafkaTemplate = applicationContext.getBean("kafkaTemplate-public", KafkaTemplate.class);
         }
