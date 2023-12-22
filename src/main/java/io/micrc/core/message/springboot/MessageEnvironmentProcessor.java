@@ -48,14 +48,14 @@ public class MessageEnvironmentProcessor implements EnvironmentPostProcessor {
 
             properties.setProperty("micrc.embedded.kafka.brokerList", "${embedded.kafka.brokerList}");
         }
-//        if (profiles.contains("default")) {
-//            // default kafka config
-//            // use plaintext
-//            properties.setProperty("spring.kafka.bootstrap-servers", "${embedded.kafka.brokerList}");
-//            // use saslPlaintext
-//            // properties.setProperty("spring.kafka.bootstrap.servers", "${embedded.kafka.saslPlaintext.brokerList}");
-//            // properties.setProperty("spring.kafka.sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"${embedded.kafka.saslPlaintext.user}\" password=\"${embedded.kafka.saslPlaintext.password}\"");
-//
+        if (profiles.contains("default")) {
+            // default kafka config
+            // use plaintext
+            properties.setProperty("spring.kafka.bootstrap-servers", "${embedded.kafka.brokerList}");
+            // use saslPlaintext
+            // properties.setProperty("spring.kafka.bootstrap.servers", "${embedded.kafka.saslPlaintext.brokerList}");
+            // properties.setProperty("spring.kafka.sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"${embedded.kafka.saslPlaintext.user}\" password=\"${embedded.kafka.saslPlaintext.password}\"");
+        }
 //        } else {
 //            // k8s集群中读取的secret中的host，port和passwd
 //            properties.setProperty("spring.kafka.bootstrap-servers", "${broker.host}:${broker.port}");

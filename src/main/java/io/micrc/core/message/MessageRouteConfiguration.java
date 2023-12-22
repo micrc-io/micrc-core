@@ -14,6 +14,7 @@ import org.apache.camel.*;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.support.ExpressionAdapter;
 import org.apache.http.HttpHeaders;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,13 +22,16 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.Environment;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.concurrent.ListenableFuture;
 
+import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -51,6 +55,38 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
     @Override
     public void setApplicationContext(@NotNull ApplicationContext applicationContext) throws BeansException {
         this.applicationContext = applicationContext;
+    }
+
+    @KafkaListener(topics = "deadLetter", autoStartup = "true", concurrency = "3",
+            containerFactory = "kafkaListenerContainerFactory-public"
+    )
+    public void deadLetter(ConsumerRecord<?, ?> consumerRecord, Acknowledgment acknowledgment) {
+        try {
+            HashMap<String, String> deadLetterDetail = new HashMap<>();
+            Iterator<org.apache.kafka.common.header.Header> headerIterator = consumerRecord.headers().iterator();
+            while (headerIterator.hasNext()) {
+                org.apache.kafka.common.header.Header header = headerIterator.next();
+                deadLetterDetail.put(header.key(), new String(header.value()));
+            }
+            if (deadLetterDetail.get("senderHost").equals(environment.getProperty("micrc.x-host"))) {
+                ErrorMessage errorMessage = new ErrorMessage();
+                errorMessage.setMessageId(Long.valueOf(deadLetterDetail.get("messageId")));
+                errorMessage.setSender(deadLetterDetail.get("sender"));
+                errorMessage.setTopic(deadLetterDetail.get("kafka_dlt-original-topic")); // 原始TOPIC
+                errorMessage.setEvent(deadLetterDetail.get("event"));
+                errorMessage.setMappingMap(deadLetterDetail.get("mappingMap"));
+                errorMessage.setContent(consumerRecord.value().toString());
+                errorMessage.setGroupId(deadLetterDetail.get("kafka_dlt-original-consumer-group")); // 原始消费者组ID
+                errorMessage.setErrorCount(1);
+                errorMessage.setErrorStatus("STOP");
+                errorMessage.setErrorMessage(deadLetterDetail.get("kafka_dlt-exception-message")); // 异常信息
+                producerTemplate.requestBody("subscribe://dead-message", errorMessage);
+                log.info("死信保存: " + errorMessage.getMessageId());
+            }
+            acknowledgment.acknowledge();
+        } catch (Exception e) {
+            acknowledgment.nack(Duration.ofMillis(0L));
+        }
     }
 
     /**
@@ -101,9 +137,7 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
         Optional<String> profileStr = Optional.ofNullable(environment.getProperty("application.profiles"));
         List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
         KafkaTemplate<String, String> kafkaTemplate;
-        if (profiles.contains("default")) {
-            kafkaTemplate = applicationContext.getBean("kafkaTemplate-embedded", KafkaTemplate.class);
-        } else if (profiles.contains("local")) {
+        if (profiles.contains("default") || profiles.contains("local")) {
             kafkaTemplate = applicationContext.getBean("kafkaTemplate-public", KafkaTemplate.class);
         } else {
             String topicName = eventInfo.getTopicName();
