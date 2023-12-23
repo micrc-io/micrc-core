@@ -36,16 +36,6 @@ public class ErrorMessage {
     private Long messageId;
 
     /**
-     * 发送方
-     */
-    private String sender;
-
-    /**
-     * 主题
-     */
-    private String topic;
-
-    /**
      * 组ID
      */
     private String groupId;
@@ -54,12 +44,6 @@ public class ErrorMessage {
      * 事件
      */
     private String event;
-
-    /**
-     * 映射图
-     */
-    @Column(columnDefinition = "LONGTEXT")
-    private String mappingMap;
 
     /**
      * 发送内容

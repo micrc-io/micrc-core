@@ -71,16 +71,13 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
             if (deadLetterDetail.get("senderHost").equals(environment.getProperty("micrc.x-host"))) {
                 ErrorMessage errorMessage = new ErrorMessage();
                 errorMessage.setMessageId(Long.valueOf(deadLetterDetail.get("messageId")));
-                errorMessage.setSender(deadLetterDetail.get("sender"));
-                errorMessage.setTopic(deadLetterDetail.get("kafka_dlt-original-topic")); // 原始TOPIC
                 errorMessage.setEvent(deadLetterDetail.get("event"));
-                errorMessage.setMappingMap(deadLetterDetail.get("mappingMap"));
                 errorMessage.setContent(consumerRecord.value().toString());
                 errorMessage.setGroupId(deadLetterDetail.get("kafka_dlt-original-consumer-group")); // 原始消费者组ID
                 errorMessage.setErrorCount(1);
                 errorMessage.setErrorStatus("STOP");
                 errorMessage.setErrorMessage(deadLetterDetail.get("kafka_dlt-exception-message")); // 异常信息
-                producerTemplate.requestBody("subscribe://dead-message", errorMessage);
+                producerTemplate.requestBody("publish://error-sending-resolve", errorMessage);
                 log.info("死信保存: " + errorMessage.getMessageId());
             }
             acknowledgment.acknowledge();
@@ -127,7 +124,7 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
         Message<?> objectMessage = MessageBuilder
                 .withPayload(content)
                 .setHeader(KafkaHeaders.TOPIC, eventInfo.getTopicName())
-                .setHeader("groupId", "".equals(groupId) ? null : groupId) // 发送错误消息全发，死信重发时指定GROUP
+                .setHeader("groupId", "".equals(groupId) ? null : groupId) // 正常消息或发送错误的错误消息全发，死信重发时指定GROUP
                 .setHeader("senderHost", environment.getProperty("micrc.x-host"))
                 .setHeader("messageId", messageId)
                 .setHeader("sender", eventInfo.getSenderAddress())
@@ -177,10 +174,7 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
                                                Map<String, EventsInfo.EventMapping> mappingMap, String error) {
         ErrorMessage errorMessage = new ErrorMessage();
         errorMessage.setMessageId(messageId);
-        errorMessage.setSender(eventInfo.getSenderAddress());
-        errorMessage.setTopic(eventInfo.getTopicName());
         errorMessage.setEvent(eventInfo.getEventName());
-        errorMessage.setMappingMap(JsonUtil.writeValueAsString(mappingMap));
         errorMessage.setContent(content);
         errorMessage.setGroupId("");
         errorMessage.setErrorCount(1);
@@ -347,7 +341,7 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
                 .bean(EventsInfo.class, "getAllEvents")
                 .split(new SplitList()).parallelProcessing()
                     .setProperty("eventInfo", body())
-                    .bean(ErrorMessageRepository.class, "findErrorMessageByTopicAndSenderLimitByCount(${exchange.properties.get(eventInfo).getTopicName()},${exchange.properties.get(eventInfo).getSenderAddress()},100)")
+                    .bean(ErrorMessageRepository.class, "findErrorMessageByEventLimitByCount(${exchange.properties.get(eventInfo).getEventName()}, 100)")
                     .setHeader("errorMessageCount", simple("${body.size}"))
                     .setProperty("errorEvents", body())
                     .process(exchange -> {
@@ -431,12 +425,6 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
                     .otherwise()
                         .setBody(constant(true))
                     .endChoice()
-                .end();
-
-        // 死信监听路由
-        from("subscribe://dead-message")
-                .routeId("subscribe://dead-message")
-                .bean(ErrorMessageRepository.class, "save")
                 .end();
 
         // 发送失败监听路由
