@@ -91,6 +91,25 @@ public class MessageAutoConfiguration implements BeanFactoryPostProcessor, Envir
     }
 
     private static void registerContainerFactoryAndTemplate(@NotNull ConfigurableListableBeanFactory beanFactory, String server, Properties properties, String provider) {
+        if ("public".equalsIgnoreCase(provider)) {
+            provider = "";
+            beanFactory.destroyBean("kafkaListenerContainerFactory", ConcurrentKafkaListenerContainerFactory.class);
+            beanFactory.destroyBean("kafkaTemplate", KafkaTemplate.class);
+        } else {
+            provider = "-" + provider;
+        }
+        // KafkaTemplate
+        HashMap<String, Object> producerMap = new HashMap<>();
+        producerMap.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, server);
+        producerMap.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+        producerMap.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+        producerMap.put(ProducerConfig.RETRIES_CONFIG, properties.getProperty("spring.kafka.producer.retries"));
+        producerMap.put(ProducerConfig.ACKS_CONFIG, properties.getProperty("spring.kafka.producer.acks"));
+        producerMap.put(ProducerConfig.BATCH_SIZE_CONFIG, properties.getProperty("spring.kafka.producer.batch-size"));
+        producerMap.put(ProducerConfig.BUFFER_MEMORY_CONFIG, properties.getProperty("spring.kafka.producer.buffer-memory"));
+        ProducerFactory<String, String> producerFactory = new DefaultKafkaProducerFactory<>(producerMap);
+        KafkaTemplate<String, String> kafkaTemplate = new KafkaTemplate<>(producerFactory);
+        beanFactory.registerSingleton("kafkaTemplate" + provider, kafkaTemplate);
         // KafkaListenerContainerFactory
         HashMap<String, Object> consumerMap = new HashMap<>();
         consumerMap.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, server);
@@ -105,19 +124,8 @@ public class MessageAutoConfiguration implements BeanFactoryPostProcessor, Envir
         concurrentKafkaListenerContainerFactory.setConsumerFactory(consumerFactory1);
         concurrentKafkaListenerContainerFactory.setConcurrency(Integer.valueOf(properties.getProperty("spring.kafka.consumer.batch.concurrency")));
         concurrentKafkaListenerContainerFactory.getContainerProperties().setAckMode(ContainerProperties.AckMode.valueOf(properties.getProperty("spring.kafka.listener.ack-mode")));
-        beanFactory.registerSingleton("kafkaListenerContainerFactory-" + provider, concurrentKafkaListenerContainerFactory);
-        // KafkaTemplate
-        HashMap<String, Object> producerMap = new HashMap<>();
-        producerMap.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, server);
-        producerMap.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
-        producerMap.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
-        producerMap.put(ProducerConfig.RETRIES_CONFIG, properties.getProperty("spring.kafka.producer.retries"));
-        producerMap.put(ProducerConfig.ACKS_CONFIG, properties.getProperty("spring.kafka.producer.acks"));
-        producerMap.put(ProducerConfig.BATCH_SIZE_CONFIG, properties.getProperty("spring.kafka.producer.batch-size"));
-        producerMap.put(ProducerConfig.BUFFER_MEMORY_CONFIG, properties.getProperty("spring.kafka.producer.buffer-memory"));
-        ProducerFactory<String, String> producerFactory = new DefaultKafkaProducerFactory<>(producerMap);
-        KafkaTemplate<String, String> kafkaTemplate = new KafkaTemplate<>(producerFactory);
-        beanFactory.registerSingleton("kafkaTemplate-" + provider, kafkaTemplate);
+        concurrentKafkaListenerContainerFactory.setCommonErrorHandler(beanFactory.getBean(DefaultErrorHandler.class));
+        beanFactory.registerSingleton("kafkaListenerContainerFactory" + provider, concurrentKafkaListenerContainerFactory);
     }
 
     @NotNull
@@ -166,7 +174,7 @@ public class MessageAutoConfiguration implements BeanFactoryPostProcessor, Envir
 
     @Bean
     @Primary
-    public DefaultErrorHandler deadLetterPublishingRecoverer(@Qualifier(value = "kafkaTemplate-public") KafkaTemplate<?, ?> kafkaTemplate) {
+    public DefaultErrorHandler deadLetterPublishingRecoverer(@Qualifier(value = "kafkaTemplate") KafkaTemplate<?, ?> kafkaTemplate) {
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(kafkaTemplate,
                 (r, e) -> new TopicPartition("deadLetter", r.partition()));
         return new DefaultErrorHandler(recoverer, new FixedBackOff(0L, 1));

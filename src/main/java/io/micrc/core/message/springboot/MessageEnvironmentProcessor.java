@@ -44,7 +44,6 @@ public class MessageEnvironmentProcessor implements EnvironmentPostProcessor {
             // properties.setProperty("embedded.kafka.dockerImage", "bitnami/kafka");
             // properties.setProperty("embedded.kafka.dockerImageVersion", "3.3.1-debian-11-r22");
             properties.setProperty("embedded.kafka.waitTimeoutInSeconds", "60");
-            properties.setProperty("embedded.kafka.topicsToCreate", "deadLetter");
 
             properties.setProperty("micrc.embedded.kafka.brokerList", "${embedded.kafka.brokerList}");
         }

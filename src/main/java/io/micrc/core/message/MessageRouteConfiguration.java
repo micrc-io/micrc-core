@@ -57,9 +57,7 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
         this.applicationContext = applicationContext;
     }
 
-    @KafkaListener(topics = "deadLetter", autoStartup = "true", concurrency = "3",
-            containerFactory = "kafkaListenerContainerFactory-public"
-    )
+    @KafkaListener(topics = "deadLetter", autoStartup = "true", concurrency = "3", containerFactory = "kafkaListenerContainerFactory")
     public void deadLetter(ConsumerRecord<?, ?> consumerRecord, Acknowledgment acknowledgment) {
         try {
             HashMap<String, String> deadLetterDetail = new HashMap<>();
@@ -135,7 +133,7 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
         List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
         KafkaTemplate<String, String> kafkaTemplate;
         if (profiles.contains("default") || profiles.contains("local")) {
-            kafkaTemplate = applicationContext.getBean("kafkaTemplate-public", KafkaTemplate.class);
+            kafkaTemplate = applicationContext.getBean("kafkaTemplate", KafkaTemplate.class);
         } else {
             String topicName = eventInfo.getTopicName();
             Properties properties = (Properties)((ConfigurableEnvironment)environment).getPropertySources().get("micrc").getSource();
@@ -149,7 +147,12 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
                 String[] split = entry.getKey().toString().split("micrc\\.broker\\.topics\\.");
                 return split[split.length - 1];
             }).findFirst().orElseThrow();
-            kafkaTemplate = applicationContext.getBean("kafkaTemplate-" + provider, KafkaTemplate.class);
+            if ("public".equalsIgnoreCase(provider)) {
+                provider = "";
+            } else {
+                provider = "-" + provider;
+            }
+            kafkaTemplate = applicationContext.getBean("kafkaTemplate" + provider, KafkaTemplate.class);
         }
 
         ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(objectMessage);
