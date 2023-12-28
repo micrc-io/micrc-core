@@ -19,6 +19,7 @@ import com.schibsted.spt.data.jslt.Parser;
 import org.springframework.util.StringUtils;
 
 import java.io.IOException;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -135,10 +136,12 @@ public class JsonUtil {
         }
     }
 
-    public static String transform(String jslt, String string) {
-        Expression expression = Parser.compileString(jslt);
-        JsonNode resultNode = expression.apply(JsonUtil.readTree(string));
-        return resultNode.toString();
+    public static String transform(String jslt, Object object) {
+//                Expression expression = Parser.compileString(jslt);
+        Parser parser = new Parser(new StringReader(jslt)).withObjectFilter("true"); // 保留值为[],{},null的键
+        Expression expression = parser.compile();
+        JsonNode resultNode = expression.apply(JsonUtil.readTree(object));
+        return JsonUtil.writeValueAsStringRetainNull(resultNode);
     }
 
     public static String transAndCheck(String jslt, String string, String openApi) {

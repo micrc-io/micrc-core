@@ -44,7 +44,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
-import java.io.ByteArrayInputStream;
+import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -88,9 +88,8 @@ public class CamelComponentTempConfiguration {
                                     .getResources(ResourceUtils.CLASSPATH_URL_PREFIX + exchange.getIn().getHeader("mappingFilePath"));
                             for (int i = 0; i < resources.length; i++) {
                                 Resource resource = resources[i];
-                                Expression expression = Parser.compileString(StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8));
-                                JsonNode resultNode = expression.apply(JsonUtil.readTree(exchange.getIn().getBody()));
-                                exchange.getIn().setBody(JsonUtil.writeValueAsStringRetainNull(resultNode));
+                                String jslt = StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8);
+                                exchange.getIn().setBody(JsonUtil.transform(jslt, exchange.getIn().getBody()));
                                 exchange.getIn().removeHeader("mappingFilePath");
                             }
                             exchange.getIn().removeHeader("mappingFilePath");
@@ -99,9 +98,8 @@ public class CamelComponentTempConfiguration {
                 from("json-mapping://content")
                         .routeId("json-mapping-content")
                         .process(exchange -> {
-                            Expression expression = Parser.compileString((String) exchange.getIn().getHeader("mappingContent"));
-                            JsonNode resultNode = expression.apply(JsonUtil.readTree(exchange.getIn().getBody()));
-                            exchange.getIn().setBody(JsonUtil.writeValueAsStringRetainNull(resultNode));
+                            String jslt = (String) exchange.getIn().getHeader("mappingContent");
+                            exchange.getIn().setBody(JsonUtil.transform(jslt, exchange.getIn().getBody()));
                             exchange.getIn().removeHeader("mappingContent");
                         })
                         .end();

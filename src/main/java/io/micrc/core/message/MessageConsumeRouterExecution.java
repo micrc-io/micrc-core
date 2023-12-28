@@ -1,8 +1,5 @@
 package io.micrc.core.message;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.schibsted.spt.data.jslt.Expression;
-import com.schibsted.spt.data.jslt.Parser;
 import io.micrc.core.annotations.message.MessageAdapter;
 import io.micrc.core.rpc.Result;
 import io.micrc.lib.JsonUtil;
@@ -118,9 +115,7 @@ public class MessageConsumeRouterExecution implements Ordered {
             return null;
         }
         Object content = consumerRecord.value();
-        Expression expression = Parser.compileString(mappingString);
-        JsonNode resultNode = expression.apply(JsonUtil.readTree(content));
-        messageDetail.put("content", JsonUtil.writeValueAsStringRetainNull(resultNode));
+        messageDetail.put("content", JsonUtil.transform(mappingString, content));
 
         // 事务处理器,手动开启事务
         TransactionStatus transactionStatus = platformTransactionManager.getTransaction(transactionDefinition);
