@@ -1,8 +1,11 @@
 package io.micrc.core.message.store;
 
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.apache.camel.CamelContext;
 import org.apache.camel.EndpointInject;
 import org.apache.camel.ProducerTemplate;
+import org.apache.camel.ServiceStatus;
+import org.apache.camel.impl.DefaultCamelContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -23,27 +26,42 @@ public class MessagePublisherSchedule {
     @Autowired
     private Environment environment;
 
-    @EndpointInject("eventstore://sender")
-    private ProducerTemplate sender;
+    @Autowired
+    private CamelContext camelContext;
 
-    @EndpointInject("eventstore://clear")
-    private ProducerTemplate clear;
+    @EndpointInject
+    private ProducerTemplate producerTemplate;
 
-    @Scheduled(initialDelay = 10 * 1000, fixedDelay = 1)
+    @Scheduled(initialDelay = 1, fixedDelay = 1)
     @SchedulerLock(name = "MessagePublisherSchedule")
     public void adapt() {
-        sender.sendBody(System.currentTimeMillis());
+        if (!isStarted("eventstore://sender")) {
+            return;
+        }
+        producerTemplate.sendBody("eventstore://sender", System.currentTimeMillis());
     }
 
-    @Scheduled(initialDelay = 10 * 1000, fixedDelay = 1)
+    @Scheduled(initialDelay = 1, fixedDelay = 1)
     @SchedulerLock(name = "MessageCleanSchedule")
     public void clean() {
+        if (!isStarted("eventstore://clear")) {
+            return;
+        }
         Optional<String> profileStr = Optional.ofNullable(environment.getProperty("application.profiles"));
         List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
         if (profiles.contains("default") || profiles.contains("local")) {
             return;
         }
-        clear.sendBody(System.currentTimeMillis());
+        producerTemplate.sendBody("eventstore://clear", System.currentTimeMillis());
+    }
+
+    private boolean isStarted(String routeId) {
+        DefaultCamelContext defaultCamelContext = (DefaultCamelContext) camelContext;
+        if (defaultCamelContext == null) {
+            return false;
+        }
+        ServiceStatus routeStatus = defaultCamelContext.getRouteStatus(routeId);
+        return routeStatus != null && routeStatus.isStarted();
     }
 
 }

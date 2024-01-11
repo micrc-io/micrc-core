@@ -338,59 +338,9 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
                 .endChoice()
                 .end()
                 .end();
-        // 调度发送主路由
-        from("eventstore://sender")
-                .routeId("eventstore://sender")
-                .bean(EventsInfo.class, "getAllEvents")
-                .split(new SplitList()).parallelProcessing()
-                    .setProperty("eventInfo", body())
-                    .bean(ErrorMessageRepository.class, "findErrorMessageByEventLimitByCount(${exchange.properties.get(eventInfo).getEventName()}, 100)")
-                    .setHeader("errorMessageCount", simple("${body.size}"))
-                    .setProperty("errorEvents", body())
-                    .process(exchange -> {
-                        Integer errorMessageCount = (Integer) exchange.getIn().getHeader("errorMessageCount");
-                        exchange.getIn().setHeader("normalMessageCount", 1000 - errorMessageCount);
-                    })
-                    .bean(EventMessageRepository.class, "findEventMessageByRegionLimitByCount(${exchange.properties.get(eventInfo).getEventName()}, ${header.normalMessageCount})")
-                    .setProperty("normalEvents", body())
-                    .setBody(exchangeProperty("errorEvents"))
-                    .split(new SplitList()).parallelProcessing()
-                        .to("publish://send-error")
-                        .end()
-                    .setBody(exchangeProperty("normalEvents"))
-                    .split(new SplitList()).parallelProcessing()
-                        .to("publish://send-normal")
-                        .end()
-                    .end()
-                .end();
-
-        from("eventstore://clear")
-                .routeId("eventstore://clear")
-                .transacted()
-                .bean(EventsInfo.class, "getAllEvents")
-                .split(new SplitList()).parallelProcessing()
-                    .setHeader("eventInfo", body())
-                    .bean(EventMessageRepository.class, "findSentIdByRegionLimitCount(${body.getEventName()},1000)")
-                    .to("clean://idempotent-consumed-filter")
-                    .choice()
-                        .when(simple("${body.size} > 0"))
-                            .bean(EventMessageRepository.class, "deleteAllByIdInBatch")
-                        .endChoice()
-                    .end()
-                .end()
-                .bean(IdempotentMessageRepository.class, "findSender")
-                .split(new SplitList()).parallelProcessing()
-                    .setHeader("senderAddress", body())
-                    .bean(IdempotentMessageRepository.class, "findMessageIdsBySenderLimitCount(${body},1000)")
-                    .to("clean://store-removed-filter")
-                    .choice()
-                        .when(simple("${body.size} > 0"))
-                            .bean(IdempotentMessageRepository.class, "deleteAllBySequenceIn")
-                        .endChoice()
-                    .end()
-                .end();
 
         from("publish://send-normal")
+                .routeId("publish://send-normal")
                 .transacted()
                 .to("publish://normal-resolving")
                 .bean(EventMessageRepository.class, "save")
@@ -398,6 +348,7 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
                 .end();
 
         from("publish://send-error")
+                .routeId("publish://send-error")
                 .transacted()
                 .to("publish://error-resolving")
                 .bean(ErrorMessageRepository.class, "save")
@@ -406,7 +357,7 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
 
         // 通用正常消息发送路由
         from("publish://execute-send")
-                .routeId("direct://send-normal")
+                .routeId("publish://execute-send")
                 .setHeader("normalMessage", body())
                 .setHeader("mappings", simple("${exchange.properties.get(eventInfo).getEventMappings()}"))
                 .setHeader("eventInfo", exchangeProperty("eventInfo"))
@@ -471,6 +422,58 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
                 .convertBodyTo(String.class).unmarshal().json(HashMap.class)
                 .bean(EventMessageRepository.class, "findUnRemoveIdsByMessageIds(${body.get(messageIds)})")
                 .marshal().json().convertBodyTo(String.class)
+                .end();
+
+        // 调度发送主路由
+        from("eventstore://sender")
+                .routeId("eventstore://sender")
+                .bean(EventsInfo.class, "getAllEvents")
+                .split(new SplitList()).parallelProcessing()
+                    .setProperty("eventInfo", body())
+                    .bean(ErrorMessageRepository.class, "findErrorMessageByEventLimitByCount(${exchange.properties.get(eventInfo).getEventName()}, 100)")
+                    .setHeader("errorMessageCount", simple("${body.size}"))
+                    .setProperty("errorEvents", body())
+                    .process(exchange -> {
+                        Integer errorMessageCount = (Integer) exchange.getIn().getHeader("errorMessageCount");
+                        exchange.getIn().setHeader("normalMessageCount", 1000 - errorMessageCount);
+                    })
+                    .bean(EventMessageRepository.class, "findEventMessageByRegionLimitByCount(${exchange.properties.get(eventInfo).getEventName()}, ${header.normalMessageCount})")
+                    .setProperty("normalEvents", body())
+                    .setBody(exchangeProperty("errorEvents"))
+                    .split(new SplitList()).parallelProcessing()
+                        .to("publish://send-error")
+                        .end()
+                    .setBody(exchangeProperty("normalEvents"))
+                    .split(new SplitList()).parallelProcessing()
+                        .to("publish://send-normal")
+                        .end()
+                    .end()
+                .end();
+
+        from("eventstore://clear")
+                .routeId("eventstore://clear")
+                .transacted()
+                .bean(EventsInfo.class, "getAllEvents")
+                .split(new SplitList()).parallelProcessing()
+                    .setHeader("eventInfo", body())
+                    .bean(EventMessageRepository.class, "findSentIdByRegionLimitCount(${body.getEventName()},1000)")
+                    .to("clean://idempotent-consumed-filter")
+                    .choice()
+                        .when(simple("${body.size} > 0"))
+                        .bean(EventMessageRepository.class, "deleteAllByIdInBatch")
+                        .endChoice()
+                    .end()
+                .end()
+                .bean(IdempotentMessageRepository.class, "findSender")
+                .split(new SplitList()).parallelProcessing()
+                    .setHeader("senderAddress", body())
+                    .bean(IdempotentMessageRepository.class, "findMessageIdsBySenderLimitCount(${body},1000)")
+                    .to("clean://store-removed-filter")
+                    .choice()
+                        .when(simple("${body.size} > 0"))
+                        .bean(IdempotentMessageRepository.class, "deleteAllBySequenceIn")
+                        .endChoice()
+                    .end()
                 .end();
     }
 
