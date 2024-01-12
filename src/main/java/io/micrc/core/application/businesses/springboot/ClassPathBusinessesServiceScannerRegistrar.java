@@ -197,6 +197,7 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
                             .responseMapping(".")
                             .ignoreIfParamAbsent(repositoryIntegration.ignoreIfParamAbsent())
                             .protocol("")
+                            .order(repositoryIntegration.order())
                             .build();
                     commandParamIntegrations.add(commandParamIntegration);
                 }
@@ -213,10 +214,12 @@ class ApplicationBusinessesServiceScanner extends ClassPathBeanDefinitionScanner
                             .responseMapping(StringUtils.hasText(resFile) ? FileUtils.fileReaderSingleLine(resFile, List.of("jslt")) : ".")
                             .protocol(deriveIntegration.protocolPath())
                             .ignoreIfParamAbsent(deriveIntegration.ignoreIfParamAbsent())
+                            .order(deriveIntegration.order())
                             .build();
                     commandParamIntegrations.add(commandParamIntegration);
                 }
             });
+            commandParamIntegrations.sort(Comparator.comparing(CommandParamIntegration::getOrder));
             // 获取嵌套标识符全类名
             Class<?> repositoryClass = Class.forName(commandLogic.repositoryFullClassName());
             ParameterizedType genericInterface = (ParameterizedType) (repositoryClass.getGenericInterfaces()[0]);

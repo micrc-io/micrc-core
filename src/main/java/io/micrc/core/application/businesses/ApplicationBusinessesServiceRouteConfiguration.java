@@ -499,6 +499,11 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
          * openApi集成协议 - 注解输入
          */
         private String protocol;
+
+        /**
+         * 执行顺序
+         */
+        private int order;
     }
 
     @Data
