@@ -26,13 +26,16 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.expression.MapAccessor;
 import org.springframework.core.env.Environment;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.common.TemplateParserContext;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
+import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.util.ResourceUtils;
 import org.springframework.util.StreamUtils;
 import org.springframework.util.StringUtils;
@@ -65,6 +68,10 @@ import java.util.concurrent.TimeUnit;
 public class CamelComponentTempConfiguration {
 
     public static final String USER_VERIFY_KEY_PREFIX = "USER:VERIFY:";
+
+    static final ExpressionParser parser = new SpelExpressionParser();
+    static final TemplateParserContext parserContext = new TemplateParserContext();
+    static final MapAccessor mapAccessor = new MapAccessor();
 
     @Autowired
     private JITDMNService jitdmnService;
@@ -150,9 +157,10 @@ public class CamelComponentTempConfiguration {
                                 }
                                 if (bodyObj instanceof HashMap) {
                                     HashMap<String, Object> hashMap = (HashMap<String, Object>) bodyObj;
-                                    ExpressionParser parser = new SpelExpressionParser();
-                                    TemplateParserContext parserContext = new TemplateParserContext();
-                                    route = parser.parseExpression(route, parserContext).getValue(hashMap, String.class);
+                                    StandardEvaluationContext evaluationContext = new StandardEvaluationContext(hashMap);
+                                    evaluationContext.addPropertyAccessor(mapAccessor);
+                                    route = parser.parseExpression(route, parserContext).getValue(evaluationContext, String.class);
+//                                    route = parser.parseExpression(route, parserContext).getValue(hashMap, String.class);
                                 }
                             }
                             CamelContext context = exchange.getContext();
