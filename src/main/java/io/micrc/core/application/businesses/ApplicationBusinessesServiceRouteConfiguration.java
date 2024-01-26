@@ -184,6 +184,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                     if (targetVersion != null) {
                         properties.put("version", targetVersion);
                         commandJson = JsonUtil.patch(commandJson, "/target/version", JsonUtil.writeValueAsString(JsonUtil.readPath(commandJson, "/source/version")));
+                        properties.put("commandJson", commandJson);
                     }
                     // 查看是否存在级联操作
                     String fieldStr = (String) properties.get("fieldMap");
