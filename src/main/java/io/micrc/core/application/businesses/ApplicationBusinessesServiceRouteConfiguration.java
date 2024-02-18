@@ -172,9 +172,14 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
 
         from("direct://save-entity")
                 .process(exchange -> {
-                    String commandJson = (String) exchange.getProperties().get("commandJson");
-                    Object id = JsonUtil.readPath(commandJson, "/target/identity/id");
                     Map<String, Object> properties = exchange.getProperties();
+                    String commandJson = (String) exchange.getProperties().get("commandJson");
+                    Object target = JsonUtil.readPath(commandJson, "/target");
+                    properties.put("hasTarget", target != null);
+                    if (null == target) {
+                        return;
+                    }
+                    Object id = JsonUtil.readPath(commandJson, "/target/identity/id");
                     if (null == id) {
                         commandJson = JsonUtil.add(commandJson, "/target/identity/id", String.valueOf(SnowFlakeIdentity.getInstance().nextId()));
                         properties.put("commandJson", commandJson);
@@ -234,6 +239,9 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .marshal().json().convertBodyTo(String.class)
                 .setHeader("CamelJacksonUnmarshalType").exchangeProperty("aggregationPath")
                 .choice()
+                .when(constant("false").isEqualTo(simple("${exchange.properties.get(hasTarget)}")))
+                    // nothing to do
+                .endChoice()
                 // 不存在级联操作
                 .when(simple("${exchange.properties.get(fieldMap)}").isEqualTo("{}"))
                 .to("dataformat:jackson:unmarshal?allow-unmarshall-type=true")
@@ -268,6 +276,9 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .end()
                 .removeHeader("pointer")
                 .choice()
+                .when(constant("false").isEqualTo(simple("${exchange.properties.get(hasTarget)}")))
+                    // nothing to do
+                .endChoice()
                 .when(constant(-1).isEqualTo(simple("${exchange.properties.get(version)}")))
                     .toD("bean://${exchange.properties.get(repositoryName)}?method=delete")
                 .endChoice()
