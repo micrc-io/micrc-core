@@ -102,7 +102,9 @@ class MessagePublisherScanner extends ClassPathBeanDefinitionScanner {
                         .map(mapping -> EventsInfo.EventMapping.builder()
                                 .mappingKey(mapping.mappingKey())
                                 .mappingPath(FileUtils.fileReader(mapping.mappingPath(), List.of("jslt")))
-                                .receiverAddress(mapping.receiverAddress()).build())
+                                .receiverAddress(mapping.receiverAddress())
+                                .batchModel(mapping.batchModel())
+                                .build())
                         .collect(Collectors.toList());
                 // 没有接收方的事件不扫描
                 if (mappingList.isEmpty()) {
@@ -112,7 +114,6 @@ class MessagePublisherScanner extends ClassPathBeanDefinitionScanner {
                 Event event = Event.builder()
                         .topicName(eventInfo.topicName())
                         .eventName(eventInfo.eventName())
-                        .senderAddress(serviceName)
                         .eventMappings(mappingList)
                         .build();
                 // 注册事件信息

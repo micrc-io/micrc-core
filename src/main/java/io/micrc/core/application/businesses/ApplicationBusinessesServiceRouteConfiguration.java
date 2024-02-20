@@ -43,7 +43,6 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
     @Override
     public void configureRoute() throws Exception {
 
-        // todo,事务回滚测试
         // DMN检查错误
         onException(IllegalStateException.class)
                 .handled(true)

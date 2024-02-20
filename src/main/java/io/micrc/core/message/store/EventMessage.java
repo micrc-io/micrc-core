@@ -4,6 +4,7 @@ import io.micrc.core.persistence.snowflake.SnowFlakeIdentity;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Type;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -42,6 +43,18 @@ public class EventMessage implements Serializable {
     private String region;
 
     private String status;
+
+    /**
+     * 原始映射
+     */
+    @Column(columnDefinition = "json")
+    @Type(type = "json")
+    private String originalMapping;
+
+    /**
+     * 原始主题
+     */
+    private String originalTopic;
 
     public static EventMessage store(String command, String event) {
         EventMessage eventMessage = new EventMessage();

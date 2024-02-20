@@ -21,11 +21,20 @@ public interface EventMessageRepository extends JpaRepository<EventMessage, Long
                     "where " +
                     "ms.region = :region " +
                     "and ms.status ='WAITING' " +
-                    "and (json_extract(content,'$.event.appointmentTime') is null or json_extract(content,'$.event.appointmentTime') < UNIX_TIMESTAMP() * 1000)" +
+                    "and (json_extract(ms.content,'$.event.appointmentTime') is null or json_extract(ms.content,'$.event.appointmentTime') < UNIX_TIMESTAMP() * 1000)" +
                     "order by ms.message_id asc " +
                     "limit :count ")
     List<EventMessage> findEventMessageByRegionLimitByCount(
             @Param(value = "region") String region, @Param(value = "count") Integer count);
+
+    @Query(nativeQuery = true,
+            value = "select ms.* from message_message_store ms " +
+                    "where " +
+                    "ms.original_topic is not null " +
+                    "and ms.status ='WAITING' " +
+                    "order by ms.message_id asc " +
+                    "limit 1000 ")
+    List<EventMessage> findEventMessageByOriginalExists();
 
     /**
      * 清理入口，已发送的事件1000条
@@ -42,6 +51,15 @@ public interface EventMessageRepository extends JpaRepository<EventMessage, Long
                     "order by ms.message_id asc " +
                     "limit :count")
     List<Long> findSentIdByRegionLimitCount(@Param(value = "region") String region, @Param("count") Integer count);
+
+    @Query(nativeQuery = true,
+            value = "select ms.message_id from message_message_store ms " +
+                    "where " +
+                    "ms.original_topic is not null " +
+                    "and ms.status ='SENT' " +
+                    "order by ms.message_id asc " +
+                    "limit 1000 ")
+    List<Long> findSentIdByOriginalExists();
 
     /**
      * 清理检查

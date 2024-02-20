@@ -49,6 +49,8 @@ public class MessageMockSenderRouteConfiguration extends MicrcRouteBuilder {
                 .setProperty("serviceName", constant("{{serviceName}}"))
                 .convertBodyTo(String.class)
                 .process(exchange -> {
+                    String batchModel = exchange.getIn().getHeader("batchModel", String.class);
+                    String messageMappingContent = exchange.getIn().getHeader("messageMappingContent", String.class);
                     // 设置消息体
                     String command = exchange.getIn().getBody(String.class);
                     EventMessage eventMessage = new EventMessage();
@@ -58,15 +60,15 @@ public class MessageMockSenderRouteConfiguration extends MicrcRouteBuilder {
                     // 交换区模拟事件信息
                     MessageRouteConfiguration.EventsInfo.EventMapping eventMapping = MessageRouteConfiguration.EventsInfo.EventMapping
                             .builder()
-                            .mappingPath(".")
+                            .mappingPath(messageMappingContent == null ? "." : messageMappingContent)
                             .mappingKey(exchange.getProperty("serviceName", String.class))
-                            .receiverAddress("MOCK RECEIVER")
+                            .batchModel(batchModel)
+                            .receiverAddress("MOCK.MOCK.MOCK")
                             .build();
                     MessageRouteConfiguration.EventsInfo.Event event = MessageRouteConfiguration.EventsInfo.Event
                             .builder()
                             .topicName(exchange.getProperty("topicName", String.class))
                             .eventName(exchange.getProperty("eventName", String.class))
-                            .senderAddress("MOCK SENDER")
                             .eventMappings(Arrays.asList(eventMapping))
                             .build();
                     exchange.setProperty("eventInfo", event);

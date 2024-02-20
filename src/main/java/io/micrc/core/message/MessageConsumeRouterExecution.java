@@ -1,6 +1,8 @@
 package io.micrc.core.message;
 
 import io.micrc.core.annotations.message.MessageAdapter;
+import io.micrc.core.message.store.EventMessage;
+import io.micrc.core.message.store.EventMessageRepository;
 import io.micrc.core.rpc.Result;
 import io.micrc.lib.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +30,7 @@ import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 /**
  * 消息消费路由执行
@@ -51,6 +54,9 @@ public class MessageConsumeRouterExecution implements Ordered {
 
     @Autowired
     private TransactionDefinition transactionDefinition;
+
+    @Autowired
+    private EventMessageRepository eventMessageRepository;
 
     @Pointcut("@annotation(io.micrc.core.annotations.message.MessageExecution)")
     public void annotationPointCut() {/* leave it out */}
@@ -94,7 +100,8 @@ public class MessageConsumeRouterExecution implements Ordered {
 
         // 死信用groupID过滤
         String messageGroupId = messageDetail.get("groupId");
-        String listenerGroupId = getListenerGroupId(proceedingJoinPoint);
+        KafkaListener listenerAnnotation = getListenerAnnotation(proceedingJoinPoint);
+        String listenerGroupId = listenerAnnotation.groupId();
         if (null != messageGroupId && !messageGroupId.isEmpty() && !messageGroupId.equals(listenerGroupId)) {
             // 无关死信
             acknowledgment.acknowledge();
@@ -115,7 +122,8 @@ public class MessageConsumeRouterExecution implements Ordered {
             return null;
         }
         Object content = consumerRecord.value();
-        messageDetail.put("content", JsonUtil.transform(mappingString, content));
+        String contentString = JsonUtil.transform(mappingString, content);
+        messageDetail.put("content", contentString);
 
         // 事务处理器,手动开启事务
         TransactionStatus transactionStatus = platformTransactionManager.getTransaction(transactionDefinition);
@@ -137,6 +145,28 @@ public class MessageConsumeRouterExecution implements Ordered {
             acknowledgment.acknowledge();
             log.warn("接收失败: 重复消费" + messageDetail.get("messageId"));
             return null;
+        }
+
+        String batchModel = (String) mapping.get("batchModel");
+        if (batchModel != null && !batchModel.isEmpty()) {
+            // 批量事件需要拆分重发
+            String batchModelPath = "/" + batchModel;
+            Object eventDataList = JsonUtil.readPath(contentString, batchModelPath);
+            if (eventDataList instanceof List) {
+                ((List) eventDataList).forEach(eventData -> {
+                    EventMessage eventMessage = new EventMessage();
+                    String splitContentString = JsonUtil.patch(contentString, batchModelPath, JsonUtil.writeValueAsString(eventData));
+                    eventMessage.setContent(splitContentString);
+                    eventMessage.setOriginalTopic(listenerAnnotation.topics()[0]);
+                    eventMessage.setOriginalMapping(JsonUtil.writeValueAsString(mappingObj));
+                    eventMessage.setRegion(messageEvent);
+                    eventMessage.setStatus("WAITING");
+                    eventMessageRepository.save(eventMessage);
+                });
+                platformTransactionManager.commit(transactionStatus);
+                acknowledgment.acknowledge();
+                return null;
+            }
         }
 
         if (custom) {
@@ -169,13 +199,12 @@ public class MessageConsumeRouterExecution implements Ordered {
         }
     }
 
-    private static String getListenerGroupId(ProceedingJoinPoint proceedingJoinPoint) throws NoSuchMethodException {
+    private static KafkaListener getListenerAnnotation(ProceedingJoinPoint proceedingJoinPoint) throws NoSuchMethodException {
         Class<?> targetClass = proceedingJoinPoint.getTarget().getClass();
         Signature signature = proceedingJoinPoint.getSignature();
         MethodSignature ms = (MethodSignature) signature;
         Method method = targetClass.getDeclaredMethod(ms.getName(), ms.getParameterTypes());
-        KafkaListener kafkaListener = method.getAnnotation(KafkaListener.class);
-        return kafkaListener.groupId();
+        return method.getAnnotation(KafkaListener.class);
     }
 
     private void transMessageHeaders(ConsumerRecord<?, ?> consumerRecord, HashMap<String, String> messageDetail) {

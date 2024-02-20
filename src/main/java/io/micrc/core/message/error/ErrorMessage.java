@@ -4,6 +4,7 @@ import io.micrc.core.persistence.snowflake.SnowFlakeIdentity;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.annotations.Type;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -50,6 +51,18 @@ public class ErrorMessage {
      */
     @Column(columnDefinition = "LONGTEXT")
     private String content;
+
+    /**
+     * 原始映射
+     */
+    @Column(columnDefinition = "json")
+    @Type(type = "json")
+    private String originalMapping;
+
+    /**
+     * 原始主题
+     */
+    private String originalTopic;
 
     /**
      * 错误次数

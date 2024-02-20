@@ -7,6 +7,7 @@ import io.micrc.core.message.store.EventMessageRepository;
 import io.micrc.core.message.store.IdempotentMessage;
 import io.micrc.core.message.store.IdempotentMessageRepository;
 import io.micrc.lib.JsonUtil;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -72,6 +73,14 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
                 errorMessage.setEvent(deadLetterDetail.get("event"));
                 errorMessage.setContent(consumerRecord.value().toString());
                 errorMessage.setGroupId(deadLetterDetail.get("kafka_dlt-original-consumer-group")); // 原始消费者组ID
+                boolean isCopyEvent = Boolean.parseBoolean(deadLetterDetail.get("isCopyEvent"));
+                if (isCopyEvent) {
+                    errorMessage.setOriginalTopic(deadLetterDetail.get("kafka_dlt-original-topic"));
+                    String mappingMap = deadLetterDetail.get("mappingMap");
+                    HashMap hashMap = JsonUtil.writeValueAsObject(mappingMap, HashMap.class);
+                    Object next = hashMap.values().iterator().next();
+                    errorMessage.setOriginalMapping(JsonUtil.writeValueAsString(next));
+                }
                 errorMessage.setErrorCount(1);
                 errorMessage.setErrorStatus("STOP");
                 errorMessage.setErrorMessage(deadLetterDetail.get("kafka_dlt-exception-message")); // 异常信息
@@ -104,20 +113,20 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
      * 发送消息
      *
      * @param object    object
-     * @param mappings  mappings
      * @param eventInfo eventInfo
+     * @param isCopyEvent isCopyEvent
      */
     @Consume("publish://sending-message")
     public void send(
             @Body Object object,
-            @Header("mappings") List<EventsInfo.EventMapping> mappings,
-            @Header("eventInfo") EventsInfo.Event eventInfo
+            @Header("eventInfo") EventsInfo.Event eventInfo,
+            @Header("isCopyEvent") Boolean isCopyEvent
     ) {
         HashMap eventObject = JsonUtil.writeObjectAsObject(object, HashMap.class);
         String content = (String) eventObject.get("content");
         Long messageId = (Long) eventObject.get("messageId");
         Object groupId = eventObject.get("groupId");
-        Map<String, EventsInfo.EventMapping> mappingMap = mappings.stream().collect(Collectors.toMap(EventsInfo.EventMapping::getMappingKey, i -> i, (i1, i2) -> i1));
+        Map<String, EventsInfo.EventMapping> mappingMap = eventInfo.getEventMappings().stream().collect(Collectors.toMap(EventsInfo.EventMapping::getMappingKey, i -> i, (i1, i2) -> i1));
 
         Message<?> objectMessage = MessageBuilder
                 .withPayload(content)
@@ -125,7 +134,7 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
                 .setHeader("groupId", "".equals(groupId) ? null : groupId) // 正常消息或发送错误的错误消息全发，死信重发时指定GROUP
                 .setHeader("senderHost", environment.getProperty("micrc.x-host"))
                 .setHeader("messageId", messageId)
-                .setHeader("sender", eventInfo.getSenderAddress())
+                .setHeader("isCopyEvent", isCopyEvent)
                 .setHeader("event", eventInfo.getEventName())
                 .setHeader("mappingMap", mappingMap).build();
 
@@ -166,20 +175,23 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
                 log.info("发送成功: " + messageId + "，是否死信" + (groupId != null));
             } else {
                 // 发送失败 则 记录错误信息/累加错误次数
-                ErrorMessage errorMessage = constructErrorMessage(eventInfo, content, messageId, mappingMap, throwable.getLocalizedMessage());
+                ErrorMessage errorMessage = constructErrorMessage(eventInfo, content, messageId, isCopyEvent, throwable.getLocalizedMessage());
                 producerTemplate.requestBody("publish://error-sending-resolve", errorMessage);
                 log.error("发送失败: " + messageId + "，是否死信" + (groupId != null));
             }
         });
     }
 
-    private ErrorMessage constructErrorMessage(EventsInfo.Event eventInfo, String content, Long messageId,
-                                               Map<String, EventsInfo.EventMapping> mappingMap, String error) {
+    private ErrorMessage constructErrorMessage(EventsInfo.Event eventInfo, String content, Long messageId, Boolean isCopyEvent, String error) {
         ErrorMessage errorMessage = new ErrorMessage();
         errorMessage.setMessageId(messageId);
         errorMessage.setEvent(eventInfo.getEventName());
         errorMessage.setContent(content);
         errorMessage.setGroupId("");
+        if (isCopyEvent != null && isCopyEvent) {
+            errorMessage.setOriginalTopic(eventInfo.getTopicName());
+            errorMessage.setOriginalMapping(JsonUtil.writeValueAsString(eventInfo.getEventMappings().get(0)));
+        }
         errorMessage.setErrorCount(1);
         errorMessage.setErrorStatus("WAITING");
         errorMessage.setErrorMessage(error);
@@ -291,11 +303,15 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
         List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
         String[] split = xHost.split("\\.");
         if (split.length != 3) {
-            throw new RuntimeException("micrc.x-host invalid");
+            throw new RuntimeException("x-host invalid");
         }
         String product = split[0];
         String domain = split[1];
         String context = split[2];
+        if (domain.equals(environment.getProperty("micrc.domain"))
+                && context.equals(Objects.requireNonNull(environment.getProperty("spring.application.name")).replace("-service", ""))) {
+            return "http://localhost:" + environment.getProperty("local.server.port");
+        }
         return "http://" + context + "-service." + product + "-" + domain + "-" + profiles.get(0) + ".svc.cluster.local";
     }
 
@@ -339,27 +355,22 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
                 .end()
                 .end();
 
+        // 正常消息发送路由
         from("publish://send-normal")
                 .routeId("publish://send-normal")
                 .transacted()
                 .to("publish://normal-resolving")
                 .bean(EventMessageRepository.class, "save")
-                .to("publish://execute-send")
+                .setHeader("eventInfo", exchangeProperty("eventInfo"))
+                .to("publish://sending-message")
                 .end();
 
+        // 错误消息发送路由
         from("publish://send-error")
                 .routeId("publish://send-error")
                 .transacted()
                 .to("publish://error-resolving")
                 .bean(ErrorMessageRepository.class, "save")
-                .to("publish://execute-send")
-                .end();
-
-        // 通用正常消息发送路由
-        from("publish://execute-send")
-                .routeId("publish://execute-send")
-                .setHeader("normalMessage", body())
-                .setHeader("mappings", simple("${exchange.properties.get(eventInfo).getEventMappings()}"))
                 .setHeader("eventInfo", exchangeProperty("eventInfo"))
                 .to("publish://sending-message")
                 .end();
@@ -427,6 +438,7 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
         // 调度发送主路由
         from("eventstore://sender")
                 .routeId("eventstore://sender")
+                // 需要发送的事件
                 .bean(EventsInfo.class, "getAllEvents")
                 .split(new SplitList()).parallelProcessing()
                     .setProperty("eventInfo", body())
@@ -448,11 +460,40 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
                         .to("publish://send-normal")
                         .end()
                     .end()
+                // 接收的需要复制自重发的事件
+                .setHeader("isCopyEvent", constant(true))
+                .bean(EventMessageRepository.class, "findEventMessageByOriginalExists()")
+                .split(new SplitList()).parallelProcessing()
+                    .process(exchange -> {
+                        EventMessage eventMessage = exchange.getIn().getBody(EventMessage.class);
+                        EventsInfo.EventMapping eventMapping = JsonUtil.writeValueAsObject(eventMessage.getOriginalMapping(), EventsInfo.EventMapping.class);
+                        MessageRouteConfiguration.EventsInfo.Event event = MessageRouteConfiguration.EventsInfo.Event.builder()
+                                .topicName(eventMessage.getOriginalTopic())
+                                .eventName(eventMessage.getRegion())
+                                .eventMappings(Arrays.asList(eventMapping)).build();
+                        exchange.setProperty("eventInfo", event);
+                    })
+                    .to("publish://send-normal")
+                    .end()
+                .bean(ErrorMessageRepository.class, "findErrorMessageByOriginalExists()")
+                .split(new SplitList()).parallelProcessing()
+                    .process(exchange -> {
+                        ErrorMessage errorMessage = exchange.getIn().getBody(ErrorMessage.class);
+                        EventsInfo.EventMapping eventMapping = JsonUtil.writeValueAsObject(errorMessage.getOriginalMapping(), EventsInfo.EventMapping.class);
+                        MessageRouteConfiguration.EventsInfo.Event event = MessageRouteConfiguration.EventsInfo.Event.builder()
+                                .topicName(errorMessage.getOriginalTopic())
+                                .eventName(errorMessage.getEvent())
+                                .eventMappings(Arrays.asList(eventMapping)).build();
+                        exchange.setProperty("eventInfo", event);
+                    })
+                    .to("publish://send-error")
+                    .end()
                 .end();
 
         from("eventstore://clear")
                 .routeId("eventstore://clear")
                 .transacted()
+                // 发送出去的事件都被消费则清理
                 .bean(EventsInfo.class, "getAllEvents")
                 .split(new SplitList()).parallelProcessing()
                     .setHeader("eventInfo", body())
@@ -464,6 +505,26 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
                         .endChoice()
                     .end()
                 .end()
+                // 在接收方复制并发送的事件被消费则清理
+                .bean(EventMessageRepository.class, "findSentIdByOriginalExists()")
+                .split(new SplitList()).parallelProcessing()
+                    .process(exchange -> {
+                        EventMessage eventMessage = exchange.getIn().getBody(EventMessage.class);
+                        EventsInfo.EventMapping eventMapping = JsonUtil.writeValueAsObject(eventMessage.getOriginalMapping(), EventsInfo.EventMapping.class);
+                        MessageRouteConfiguration.EventsInfo.Event event = EventsInfo.Event.builder()
+                                .topicName(eventMessage.getOriginalTopic())
+                                .eventName(eventMessage.getRegion())
+                                .eventMappings(Arrays.asList(eventMapping)).build();
+                        exchange.getIn().setHeader("eventInfo", event);
+                    })
+                    .to("clean://idempotent-consumed-filter")
+                    .choice()
+                        .when(simple("${body.size} > 0"))
+                            .bean(EventMessageRepository.class, "deleteAllByIdInBatch")
+                        .endChoice()
+                    .end()
+                .end()
+                // 接收到的事件已被删除的则清理幂等仓
                 .bean(IdempotentMessageRepository.class, "findSender")
                 .split(new SplitList()).parallelProcessing()
                     .setHeader("senderAddress", body())
@@ -522,11 +583,6 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
             private String topicName;
 
             /**
-             * 发送地址名
-             */
-            private String senderAddress;
-
-            /**
              * 事件名称
              */
             private String eventName;
@@ -539,6 +595,8 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
         }
 
         @Data
+        @NoArgsConstructor
+        @AllArgsConstructor
         @SuperBuilder
         public static class EventMapping {
 
@@ -562,6 +620,11 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
              * @return
              */
             private String receiverAddress;
+
+            /**
+             * 批量概念
+             */
+            private String batchModel;
         }
     }
 

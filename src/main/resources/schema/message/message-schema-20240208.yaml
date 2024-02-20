@@ -1,0 +1,69 @@
+databaseChangeLog:
+  - changeSet:
+      id: message-message-store-add-original-topic-0.0.27
+      author: micrc
+      preConditions:
+        - onFail: MARK_RAN
+          not:
+            - columnExists:
+                tableName: message_message_store
+                columnName: original_topic
+      changes:
+        - addColumn:
+            tableName: message_message_store
+            columns:
+              - column:
+                  name: original_topic
+                  type: VARCHAR(255)
+                  remarks: original topic
+  - changeSet:
+      id: message-message-store-add-original-mapping-0.0.27
+      author: micrc
+      preConditions:
+        - onFail: MARK_RAN
+          not:
+            - columnExists:
+                tableName: message_message_store
+                columnName: original_mapping
+      changes:
+        - addColumn:
+            tableName: message_message_store
+            columns:
+              - column:
+                  name: original_mapping
+                  type: JSON
+                  remarks: original mapping
+  - changeSet:
+      id: message-error-message-add-original-topic-0.0.27
+      author: micrc
+      preConditions:
+        - onFail: MARK_RAN
+          not:
+            - columnExists:
+                tableName: message_error_message
+                columnName: original_topic
+      changes:
+        - addColumn:
+            tableName: message_error_message
+            columns:
+              - column:
+                  name: original_topic
+                  type: VARCHAR(255)
+                  remarks: original topic
+  - changeSet:
+      id: message-error-message-add-original-mapping-0.0.27
+      author: micrc
+      preConditions:
+        - onFail: MARK_RAN
+          not:
+            - columnExists:
+                tableName: message_error_message
+                columnName: original_mapping
+      changes:
+        - addColumn:
+            tableName: message_error_message
+            columns:
+              - column:
+                  name: original_mapping
+                  type: JSON
+                  remarks: original mapping

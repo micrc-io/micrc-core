@@ -155,6 +155,26 @@ class MessageMockSenderApiScanner extends ClassPathBeanDefinitionScanner {
                     "\"/" + listenerName + "-" + serviceName + "\": {\n" +
                             "      \"post\": {\n" +
                             "        \"operationId\": \"" + listenerName + "-" + serviceName + "\",\n" +
+                            "        \"parameters\": [\n" +
+                            "          {\n" +
+                            "            \"name\": \"batchModel\",\n" +
+                            "            \"in\": \"header\",\n" +
+                            "            \"required\": false,\n" +
+                            "            \"schema\": {\n" +
+                            "              \"type\": \"string\"\n" +
+                            "            },\n" +
+                            "            \"description\": \"batch model\"\n" +
+                            "          },\n" +
+                            "          {\n" +
+                            "            \"name\": \"messageMappingContent\",\n" +
+                            "            \"in\": \"header\",\n" +
+                            "            \"required\": false,\n" +
+                            "            \"schema\": {\n" +
+                            "              \"type\": \"string\"\n" +
+                            "            },\n" +
+                            "            \"description\": \"message mapping content\"\n" +
+                            "          }\n" +
+                            "        ],\n" +
                             "        \"requestBody\": {\n" +
                             "          \"content\": {\n" +
                             "            \"application/json\": {\n" +

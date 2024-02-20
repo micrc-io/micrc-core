@@ -26,6 +26,15 @@ public interface ErrorMessageRepository extends JpaRepository<ErrorMessage, Long
                    "limit :count ")
     List<ErrorMessage> findErrorMessageByEventLimitByCount(@Param("event")String event, @Param("count")Integer count);
 
+    @Query(nativeQuery = true,
+            value = "select * from message_error_message " +
+                    "where " +
+                    "original_topic is not null " +
+                    "and error_status='WAITING' " +
+                    "order by message_id ASC " +
+                    "limit 1000 ")
+    List<ErrorMessage> findErrorMessageByOriginalExists();
+
     ErrorMessage findFirstByMessageIdAndGroupId(@Param("messageId")Long messageId, @Param("groupId")String groupId);
 
     void deleteByMessageIdAndGroupId(@Param("messageId")Long messageId, @Param("groupId")String groupId);
