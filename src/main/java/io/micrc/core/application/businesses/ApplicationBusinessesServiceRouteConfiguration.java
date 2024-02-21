@@ -279,6 +279,8 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                     // nothing to do
                 .endChoice()
                 .when(constant(-1).isEqualTo(simple("${exchange.properties.get(version)}")))
+                    // 利用save方法驱逐缓存
+                    .toD("bean://${exchange.properties.get(repositoryName)}?method=save")
                     .toD("bean://${exchange.properties.get(repositoryName)}?method=delete")
                 .endChoice()
                 .otherwise()
