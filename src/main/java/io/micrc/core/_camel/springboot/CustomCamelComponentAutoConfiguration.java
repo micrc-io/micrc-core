@@ -1,7 +1,9 @@
 package io.micrc.core._camel.springboot;
 
 import io.micrc.core._camel.CamelComponentTempConfiguration;
+import io.micrc.core._camel.EchoProcessor;
 import io.micrc.core._camel.jit.JITDMNService;
+import io.micrc.lib.EncryptUtils;
 import org.apache.camel.component.direct.DirectComponent;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -49,5 +51,33 @@ public class CustomCamelComponentAutoConfiguration {
     @Bean("dynamic-groovy")
     public DirectComponent dynamicGroovy() {
         return new DirectComponent();
+    }
+
+    @Bean("authorize")
+    public DirectComponent authorize() {
+        return new DirectComponent();
+    }
+
+    @Bean("error-handle")
+    public DirectComponent errorHandle() {
+        return new DirectComponent();
+    }
+
+    /**
+     * 加密工具类
+     * @return
+     */
+    @Bean("encryptUtils")
+    public EncryptUtils encryptUtils() {
+        return new EncryptUtils();
+    }
+
+    /**
+     * 输出交换区
+     * @return
+     */
+    @Bean("echoProcessor")
+    public EchoProcessor echoProcessor() {
+        return new EchoProcessor();
     }
 }

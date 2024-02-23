@@ -1,9 +1,6 @@
 package io.micrc.core._camel;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.github.fge.jsonpatch.JsonPatch;
-import com.schibsted.spt.data.jslt.Expression;
-import com.schibsted.spt.data.jslt.Parser;
 import groovy.lang.Binding;
 import groovy.lang.GroovyShell;
 import io.micrc.core._camel.jit.JITDMNResult;
@@ -19,7 +16,6 @@ import io.micrc.lib.ValidateCodeUtil;
 import lombok.SneakyThrows;
 import org.apache.camel.*;
 import org.apache.camel.builder.RouteBuilder;
-import org.apache.camel.component.direct.DirectComponent;
 import org.apache.camel.support.ResourceHelper;
 import org.kie.dmn.api.core.DMNDecisionResult;
 import org.springframework.beans.BeanUtils;
@@ -31,7 +27,6 @@ import org.springframework.core.env.Environment;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.common.TemplateParserContext;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
@@ -283,11 +278,6 @@ public class CamelComponentTempConfiguration {
         };
     }
 
-    @Bean("authorize")
-    public DirectComponent authorize() {
-        return new DirectComponent();
-    }
-
     @Bean
     public RoutesBuilder authorizeBuilders() {
         return new RouteBuilder() {
@@ -376,16 +366,6 @@ public class CamelComponentTempConfiguration {
         };
     }
 
-    @Bean("encryptUtils")
-    public EncryptUtils encryptUtils() {
-        return new EncryptUtils();
-    }
-
-    @Bean("echoProcessor")
-    public EchoProcessor echoProcessor() {
-        return new EchoProcessor();
-    }
-
     @Bean
     public RoutesBuilder executeBuilders() {
         return new RouteBuilder() {
@@ -397,6 +377,24 @@ public class CamelComponentTempConfiguration {
                             Optional<String> profileStr = Optional.ofNullable(environment.getProperty("application.profiles"));
                             List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
                             exchange.getIn().setBody(JsonUtil.writeValueAsString(profiles));
+                        })
+                        .end();
+
+                from("direct://replaceTemplateKey")
+                        .process(exchange -> {
+                            String body = exchange.getIn().getBody(String.class);
+                            Object template = JsonUtil.readPath(body, "/template");
+                            if (template == null) {
+                                throw new RuntimeException("[template] must not be null");
+                            }
+                            Object value = JsonUtil.readPath(body, "/value");
+                            if (value == null) {
+                                throw new RuntimeException("[value] must not be null");
+                            }
+                            StandardEvaluationContext evaluationContext = new StandardEvaluationContext(value);
+                            evaluationContext.addPropertyAccessor(mapAccessor);
+                            String result = parser.parseExpression((String) template, parserContext).getValue(evaluationContext, String.class);
+                            exchange.getIn().setBody(result);
                         })
                         .end();
 
@@ -416,11 +414,6 @@ public class CamelComponentTempConfiguration {
                         .end();
             }
         };
-    }
-
-    @Bean("error-handle")
-    public DirectComponent errorHandle() {
-        return new DirectComponent();
     }
 
     @Bean
