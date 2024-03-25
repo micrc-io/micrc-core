@@ -45,11 +45,7 @@ import javax.xml.xpath.XPathFactory;
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -118,11 +114,11 @@ public class CamelComponentTempConfiguration {
                 from("xml-path://content")
                         .routeId("xml-path-content")
                         .process(exchange -> {
-                            String path = exchange.getIn().getHeader("path", String.class);
-                            String body = exchange.getIn().getBody(String.class);
+                            String xml = exchange.getIn().getHeader("xml", String.class);
+                            String path = exchange.getIn().getBody(String.class);
                             DocumentBuilder db = DocumentBuilderFactory.newInstance().newDocumentBuilder();
                             XPath xPath = XPathFactory.newInstance().newXPath();
-                            Document document = db.parse(new ByteArrayInputStream(body.getBytes()));
+                            Document document = db.parse(new ByteArrayInputStream(xml.getBytes()));
                             String result = ((Node) xPath.evaluate(path, document, XPathConstants.NODE)).getTextContent();
                             exchange.getIn().setBody(result);
                         })
@@ -395,6 +391,13 @@ public class CamelComponentTempConfiguration {
                             evaluationContext.addPropertyAccessor(mapAccessor);
                             String result = parser.parseExpression((String) template, parserContext).getValue(evaluationContext, String.class);
                             exchange.getIn().setBody(result);
+                        })
+                        .end();
+
+                from("direct://base64Encode")
+                        .process(exchange -> {
+                            String base64 = Base64.getEncoder().encodeToString(exchange.getIn().getBody(String.class).getBytes());
+                            exchange.getIn().setBody(base64);
                         })
                         .end();
 

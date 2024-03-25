@@ -200,7 +200,7 @@ class MessageMockSenderApiScanner extends ClassPathBeanDefinitionScanner {
                 "    \"version\" : \"1.0.0\"\n" +
                 "  },\n" +
                 "  \"servers\" : [ {\n" +
-                "    \"url\" : \"http://localhost:8080/api\"\n" +
+                "    \"url\" : \"http://localhost:" + getEnvironment().getProperty("local.server.port") + "/api\"\n" +
                 "  } ],\n" +
                 "  \"components\" : {" +
                 "    \"securitySchemes\" : {\n" +
