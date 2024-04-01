@@ -1,6 +1,7 @@
 package io.micrc.core._camel;
 
 import com.github.fge.jsonpatch.JsonPatch;
+import freemarker.template.Template;
 import groovy.lang.Binding;
 import groovy.lang.GroovyShell;
 import io.micrc.core._camel.jit.JITDMNResult;
@@ -8,11 +9,7 @@ import io.micrc.core._camel.jit.JITDMNService;
 import io.micrc.core.authorize.MyRealm;
 import io.micrc.core.rpc.ErrorInfo;
 import io.micrc.core.rpc.Result;
-import io.micrc.lib.ClassCastUtils;
-import io.micrc.lib.EncryptUtils;
-import io.micrc.lib.JsonUtil;
-import io.micrc.lib.JwtUtil;
-import io.micrc.lib.ValidateCodeUtil;
+import io.micrc.lib.*;
 import lombok.SneakyThrows;
 import org.apache.camel.*;
 import org.apache.camel.builder.RouteBuilder;
@@ -36,17 +33,20 @@ import org.springframework.util.StreamUtils;
 import org.springframework.util.StringUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
+import org.xml.sax.SAXException;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * 使用路由和direct组件，临时实现各种没有的camel组件
@@ -64,6 +64,12 @@ public class CamelComponentTempConfiguration {
     static final TemplateParserContext parserContext = new TemplateParserContext();
     static final MapAccessor mapAccessor = new MapAccessor();
 
+    static final DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
+    static final XPath xPath = XPathFactory.newInstance().newXPath();
+
+    static final freemarker.template.Configuration cfg = new freemarker.template.Configuration(freemarker.template.Configuration.VERSION_2_3_31);
+
+
     @Autowired
     private JITDMNService jitdmnService;
 
@@ -72,6 +78,10 @@ public class CamelComponentTempConfiguration {
 
     @javax.annotation.Resource(name = "memoryDbTemplate")
     RedisTemplate<Object, Object> redisTemplate;
+
+    static {
+        cfg.setDefaultEncoding("UTF-8");
+    }
 
     @Bean
     public RoutesBuilder jsonMappingComp() {
@@ -114,12 +124,30 @@ public class CamelComponentTempConfiguration {
                 from("xml-path://content")
                         .routeId("xml-path-content")
                         .process(exchange -> {
+                            DocumentBuilder documentBuilder = documentBuilderFactory.newDocumentBuilder();
                             String xml = exchange.getIn().getHeader("xml", String.class);
                             String path = exchange.getIn().getBody(String.class);
-                            DocumentBuilder db = DocumentBuilderFactory.newInstance().newDocumentBuilder();
-                            XPath xPath = XPathFactory.newInstance().newXPath();
-                            Document document = db.parse(new ByteArrayInputStream(xml.getBytes()));
-                            String result = ((Node) xPath.evaluate(path, document, XPathConstants.NODE)).getTextContent();
+                            if (xml == null || path == null) {
+                                exchange.getIn().setBody(null);
+                                return;
+                            }
+                            String result = null;
+                            if (path.startsWith("\"")) {
+                                path = (String) JsonUtil.readPath(path, "");
+                                Document document = documentBuilder.parse(new ByteArrayInputStream(xml.getBytes()));
+                                result = ((Node) xPath.evaluate(path, document, XPathConstants.NODE)).getTextContent();
+                            } else if (path.startsWith("[") && path.endsWith("]")) {
+                                List<String> paths = JsonUtil.writeValueAsList(path, String.class);
+                                List<String> collect = paths.stream().map(p -> {
+                                    try {
+                                        Document document = documentBuilder.parse(new ByteArrayInputStream(xml.getBytes()));
+                                        return ((Node) xPath.evaluate(p, document, XPathConstants.NODE)).getTextContent();
+                                    } catch (SAXException | IOException | XPathExpressionException e) {
+                                        return null;
+                                    }
+                                }).collect(Collectors.toList());
+                                result = JsonUtil.writeValueAsString(collect);
+                            }
                             exchange.getIn().setBody(result);
                         })
                         .end();
@@ -379,6 +407,7 @@ public class CamelComponentTempConfiguration {
                 from("direct://replaceTemplateKey")
                         .process(exchange -> {
                             String body = exchange.getIn().getBody(String.class);
+                            body = body.replaceAll("\n","");
                             Object template = JsonUtil.readPath(body, "/template");
                             if (template == null) {
                                 throw new RuntimeException("[template] must not be null");
@@ -387,9 +416,9 @@ public class CamelComponentTempConfiguration {
                             if (value == null) {
                                 throw new RuntimeException("[value] must not be null");
                             }
-                            StandardEvaluationContext evaluationContext = new StandardEvaluationContext(value);
-                            evaluationContext.addPropertyAccessor(mapAccessor);
-                            String result = parser.parseExpression((String) template, parserContext).getValue(evaluationContext, String.class);
+                            StringWriter out = new StringWriter();
+                            new Template("template", new StringReader((String) template), cfg).process(value, out);
+                            String result = out.toString();
                             exchange.getIn().setBody(result);
                         })
                         .end();

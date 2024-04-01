@@ -8,7 +8,7 @@ plugins {
 }
 
 group = 'io.micrc.core'
-version = 'v0.0.31'
+version = 'v0.0.32'
 sourceCompatibility = '11'
 targetCompatibility = '11'
 
@@ -31,6 +31,7 @@ ext {
     set('jwt.version', '3.4.1')
     set('shiro.version', '1.7.1')
     set('mysql-connector-java.version', '8.0.30')
+    set("freemarker.version", '2.3.31')
 }
 
 configurations {
@@ -136,6 +137,8 @@ dependencies {
     implementation "org.apache.shiro:shiro-spring-boot-web-starter:${property('shiro.version')}"
     // shiro
     implementation "com.auth0:java-jwt:${property('jwt.version')}"
+    // freemarker
+    implementation "org.freemarker:freemarker:${property('freemarker.version')}"
 }
 
 task sourcesJar(type: Jar) {
