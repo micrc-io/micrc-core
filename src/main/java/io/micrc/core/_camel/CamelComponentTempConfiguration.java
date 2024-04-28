@@ -419,9 +419,11 @@ public class CamelComponentTempConfiguration {
                             StringWriter out = new StringWriter();
                             new Template("template", new StringReader((String) template), cfg).process(value, out);
                             String result = out.toString();
-                            exchange.getIn().setBody(result);
+                            exchange.getIn().setBody(JsonUtil.writeValueAsString(result));
                         })
                         .end();
+
+                // 以下路由为路由脚本文件中使用的特定路由，返回结果不受形式限制
 
                 from("direct://base64Encode")
                         .process(exchange -> {
@@ -441,7 +443,7 @@ public class CamelComponentTempConfiguration {
                             if (key == null) {
                                 throw new RuntimeException("[key] must not be null");
                             }
-                            exchange.getIn().setBody(JsonUtil.writeValueAsString(EncryptUtils.HMACSHA256(data, key)));
+                            exchange.getIn().setBody(EncryptUtils.HMACSHA256(data, key));
                         })
                         .end();
             }
