@@ -65,7 +65,7 @@ public class CustomCamelComponentAutoConfiguration {
 
     /**
      * 加密工具类
-     * @return
+     * @return EncryptUtils
      */
     @Bean("encryptUtils")
     public EncryptUtils encryptUtils() {
@@ -74,7 +74,7 @@ public class CustomCamelComponentAutoConfiguration {
 
     /**
      * 输出交换区
-     * @return
+     * @return EchoProcessor
      */
     @Bean("echoProcessor")
     public EchoProcessor echoProcessor() {

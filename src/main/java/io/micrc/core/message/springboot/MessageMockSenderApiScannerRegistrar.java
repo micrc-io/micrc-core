@@ -1,6 +1,7 @@
 package io.micrc.core.message.springboot;
 
 import io.micrc.core.EnableMicrcSupport;
+import io.micrc.core.annotations.message.Adapter;
 import io.micrc.core.annotations.message.MessageAdapter;
 import io.micrc.core.message.MessageMockSenderRouteConfiguration;
 import io.micrc.core.message.MessageMockSenderRouteTemplateParameterSource;
@@ -14,6 +15,7 @@ import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.BeanNameGenerator;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.ClassPathBeanDefinitionScanner;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
@@ -90,7 +92,6 @@ public class MessageMockSenderApiScannerRegistrar implements ImportBeanDefinitio
     public void setEnvironment(Environment environment) {
         this.env = environment;
     }
-
 }
 
 /**
@@ -105,7 +106,7 @@ class MessageMockSenderApiScanner extends ClassPathBeanDefinitionScanner {
 
     private static final AtomicInteger INDEX = new AtomicInteger();
     private final MessageMockSenderRouteTemplateParameterSource sourceDefinition;
-
+    private ApplicationContext applicationContext;
     public MessageMockSenderApiScanner(BeanDefinitionRegistry registry,
                                        MessageMockSenderRouteTemplateParameterSource source) {
         super(registry, false);
@@ -132,67 +133,72 @@ class MessageMockSenderApiScanner extends ClassPathBeanDefinitionScanner {
             // 获取MessageAdapter注解参数
             MessageAdapter messageAdapter = listenerClass.getAnnotation(MessageAdapter.class);
             listenerClass.getDeclaringClass();
-            String[] servicePathArray = messageAdapter.commandServicePath().split("\\.");
-            String serviceName = servicePathArray[servicePathArray.length - 1];
-            // 获取实现方法中的topic
-            Class<?>[] innerClasses = listenerClass.getDeclaredClasses();
-            Class<?> implClass = Arrays.stream(innerClasses)
-                    .filter(innerClass -> (listenerName + "Impl").equals(innerClass.getSimpleName()))
-                    .findFirst().orElseThrow();
-            String topicName = Arrays.stream(implClass.getDeclaredMethods()).map(method -> {
-                KafkaListener kafkaListener = method.getAnnotation(KafkaListener.class);
-                return kafkaListener.topics()[0];
-            }).findFirst().orElseThrow();
-            MessageMockSenderRouteConfiguration.MessageMockSenderDefinition build = MessageMockSenderRouteConfiguration.MessageMockSenderDefinition.builder()
-                    .templateId(MessageMockSenderRouteConfiguration.ROUTE_TMPL_MESSAGE_SENDER)
-                    .listenerName(listenerName)
-                    .eventName(messageAdapter.eventName())
-                    .serviceName(serviceName)
-                    .topicName(topicName)
-                    .build();
-            sourceDefinition.addParameter(routeId(listenerName),build);
-            path.append("," +
-                    "\"/" + listenerName + "-" + serviceName + "\": {\n" +
-                            "      \"post\": {\n" +
-                            "        \"operationId\": \"" + listenerName + "-" + serviceName + "\",\n" +
-                            "        \"parameters\": [\n" +
-                            "          {\n" +
-                            "            \"name\": \"batchModel\",\n" +
-                            "            \"in\": \"header\",\n" +
-                            "            \"required\": false,\n" +
-                            "            \"schema\": {\n" +
-                            "              \"type\": \"string\"\n" +
-                            "            },\n" +
-                            "            \"description\": \"batch model\"\n" +
-                            "          },\n" +
-                            "          {\n" +
-                            "            \"name\": \"messageMappingContent\",\n" +
-                            "            \"in\": \"header\",\n" +
-                            "            \"required\": false,\n" +
-                            "            \"schema\": {\n" +
-                            "              \"type\": \"string\"\n" +
-                            "            },\n" +
-                            "            \"description\": \"message mapping content\"\n" +
-                            "          }\n" +
-                            "        ],\n" +
-                            "        \"requestBody\": {\n" +
-                            "          \"content\": {\n" +
-                            "            \"application/json\": {\n" +
-                            "              \"schema\": {\n" +
-                            "              }\n" +
-                            "            }\n" +
-                            "          }\n" +
-                            "        },\n" +
-                            "        \"responses\": {\n" +
-                            "          \"content\": {\n" +
-                            "            \"application/json\": {\n" +
-                            "              \"schema\": {\n" +
-                            "              }\n" +
-                            "            }\n" +
-                            "          }\n" +
-                            "        }\n" +
-                            "      }\n" +
-                            "    }\n");
+            Adapter[] adapters = messageAdapter.value();
+            Arrays.stream(adapters).forEach(adapter -> {
+                String[] servicePathArray = adapter.commandServicePath().split("\\.");
+                String serviceName = servicePathArray[servicePathArray.length - 1];
+                // 获取实现方法中的topic
+                Class<?>[] innerClasses = listenerClass.getDeclaredClasses();
+                Class<?> implClass = Arrays.stream(innerClasses)
+                        .filter(innerClass -> (listenerName + "Impl").equals(innerClass.getSimpleName()))
+                        .findFirst().orElseThrow();
+                String[] topicNames = Arrays.stream(implClass.getDeclaredMethods()).map(method -> {
+                    KafkaListener kafkaListener = method.getAnnotation(KafkaListener.class);
+                    return kafkaListener.topics();
+                }).findFirst().orElseThrow();
+
+                MessageMockSenderRouteConfiguration.MessageMockSenderDefinition build = MessageMockSenderRouteConfiguration.MessageMockSenderDefinition.builder()
+                        .templateId(MessageMockSenderRouteConfiguration.ROUTE_TMPL_MESSAGE_SENDER)
+                        .listenerName(listenerName)
+                        .eventName(adapter.eventName())
+                        .serviceName(serviceName)
+                        .topicName(adapter.topicName())
+                        .build();
+                sourceDefinition.addParameter(routeId(listenerName),build);
+                path.append("," +
+                        "\"/" + listenerName + "-" + serviceName + "\": {\n" +
+                        "      \"post\": {\n" +
+                        "        \"operationId\": \"" + listenerName + "-" + serviceName + "\",\n" +
+                        "        \"parameters\": [\n" +
+                        "          {\n" +
+                        "            \"name\": \"batchModel\",\n" +
+                        "            \"in\": \"header\",\n" +
+                        "            \"required\": false,\n" +
+                        "            \"schema\": {\n" +
+                        "              \"type\": \"string\"\n" +
+                        "            },\n" +
+                        "            \"description\": \"batch model\"\n" +
+                        "          },\n" +
+                        "          {\n" +
+                        "            \"name\": \"messageMappingContent\",\n" +
+                        "            \"in\": \"header\",\n" +
+                        "            \"required\": false,\n" +
+                        "            \"schema\": {\n" +
+                        "              \"type\": \"string\"\n" +
+                        "            },\n" +
+                        "            \"description\": \"message mapping content\"\n" +
+                        "          }\n" +
+                        "        ],\n" +
+                        "        \"requestBody\": {\n" +
+                        "          \"content\": {\n" +
+                        "            \"application/json\": {\n" +
+                        "              \"schema\": {\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        },\n" +
+                        "        \"responses\": {\n" +
+                        "          \"content\": {\n" +
+                        "            \"application/json\": {\n" +
+                        "              \"schema\": {\n" +
+                        "              }\n" +
+                        "            }\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n");
+            });
+
         }
         String doc = "{\n" +
                 "  \"openapi\" : \"3.0.3\",\n" +

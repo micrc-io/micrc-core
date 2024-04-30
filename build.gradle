@@ -8,7 +8,7 @@ plugins {
 }
 
 group = 'io.micrc.core'
-version = 'v0.0.32'
+version = 'v0.0.33'
 sourceCompatibility = '11'
 targetCompatibility = '11'
 
@@ -52,7 +52,7 @@ dependencyManagement {
 }
 
 dependencies {
-    implementation "io.micrc.core:micrc-annotations:v0.0.6"
+    implementation "io.micrc.core:micrc-annotations:test"
 
     // springboot basic
     implementation "org.springframework.boot:spring-boot-starter"

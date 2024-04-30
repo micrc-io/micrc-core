@@ -1,5 +1,6 @@
 package io.micrc.core.message;
 
+import io.micrc.core.annotations.message.Adapter;
 import io.micrc.core.annotations.message.MessageAdapter;
 import io.micrc.core.message.store.EventMessage;
 import io.micrc.core.message.store.EventMessageRepository;
@@ -28,9 +29,7 @@ import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Method;
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 /**
  * 消息消费路由执行
@@ -87,17 +86,23 @@ public class MessageConsumeRouterExecution implements Ordered {
         }
         Class<?> adapter = interfaces[0];
         String adapterName = adapter.getSimpleName();
-        MessageAdapter annotation = adapter.getAnnotation(MessageAdapter.class);
-        String servicePath = annotation.commandServicePath();
-        String[] servicePathSplit = servicePath.split("\\.");
-        String serviceName = servicePathSplit[servicePathSplit.length - 1];
-        boolean custom = annotation.custom();
+        MessageAdapter messageAdapter = adapter.getAnnotation(MessageAdapter.class);
 
         // 解析消息详情
         HashMap<String, String> messageDetail = new HashMap<>();
-        messageDetail.put("serviceName", serviceName);
         transMessageHeaders(consumerRecord, messageDetail);
 
+        Adapter[]  adapters = messageAdapter.value();
+        Optional<Adapter> optionalAnnotation = Arrays.stream(adapters).filter(a ->  a.eventName().equals(messageDetail.get("event"))).findFirst();
+        Adapter annotation = optionalAnnotation.orElse(null);
+        if (null == annotation) {
+            throw new IllegalStateException("sys execute error");
+        }
+        String servicePath = annotation.commandServicePath();
+        String[] servicePathSplit = servicePath.split("\\.");
+        String serviceName = servicePathSplit[servicePathSplit.length - 1];
+        boolean custom = messageAdapter.custom();
+        messageDetail.put("serviceName", serviceName);
         // 死信用groupID过滤
         String messageGroupId = messageDetail.get("groupId");
         KafkaListener listenerAnnotation = getListenerAnnotation(proceedingJoinPoint);
@@ -153,11 +158,12 @@ public class MessageConsumeRouterExecution implements Ordered {
             String batchModelPath = "/" + batchModel;
             Object eventDataList = JsonUtil.readPath(contentString, batchModelPath);
             if (eventDataList instanceof List) {
+                ConsumerRecord<?, ?> finalConsumerRecord = consumerRecord;
                 ((List) eventDataList).forEach(eventData -> {
                     EventMessage eventMessage = new EventMessage();
                     String splitContentString = JsonUtil.patch(contentString, batchModelPath, JsonUtil.writeValueAsString(eventData));
                     eventMessage.setContent(splitContentString);
-                    eventMessage.setOriginalTopic(listenerAnnotation.topics()[0]);
+                    eventMessage.setOriginalTopic(finalConsumerRecord.topic());
                     eventMessage.setOriginalMapping(JsonUtil.writeValueAsString(mappingObj));
                     eventMessage.setRegion(messageEvent);
                     eventMessage.setStatus("WAITING");

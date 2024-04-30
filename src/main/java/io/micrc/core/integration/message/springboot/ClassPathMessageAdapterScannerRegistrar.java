@@ -1,5 +1,6 @@
 package io.micrc.core.integration.message.springboot;
 
+import io.micrc.core.annotations.message.Adapter;
 import io.micrc.core.annotations.message.MessageAdapter;
 import io.micrc.core.integration.message.EnableMessageAdapter;
 import io.micrc.core.integration.message.MessageAdapterRouteConfiguration;
@@ -133,40 +134,47 @@ class ApplicationMessageAdapterScanner extends ClassPathBeanDefinitionScanner {
                         + " need extends MessageIntegrationAdapter. please check");
             }
             MessageAdapter messageAdapter = beanDefinition.getBeanClass().getAnnotation(MessageAdapter.class);
-            String servicePath = messageAdapter.commandServicePath();
-            String[] servicePathSplit = servicePath.split("\\.");
-            Class<?> service = Class.forName(servicePath);
-            if (null == service) {
-                throw new ClassNotFoundException(
-                        " the application service interface " + servicePath + " not exist. please check");
-            }
+            Adapter[] adapters = messageAdapter.value();
+            Arrays.stream(adapters).forEach(adapter-> {
+                String servicePath = adapter.commandServicePath();
+                String[] servicePathSplit = servicePath.split("\\.");
+                Class<?> service = null;
+                try {
+                    service = Class.forName(servicePath);
+                } catch (ClassNotFoundException e) {
+                    logger.warn("/******************************************/");
+                    logger.warn("in dev,can not find class " + servicePath+",if env is ga, this is a bug, no checked");
+                    logger.warn("/******************************************/");
+                    return;
+                }
 
-            Method[] serviceMethods = service.getDeclaredMethods();
-            List<Method> haveExecuteMethod = Arrays.stream(serviceMethods)
-                    .filter(method -> "execute".equals(method.getName()) && !method.isBridge())
-                    .collect(Collectors.toList());
-            if (haveExecuteMethod.size() != 1) {
-                throw new MethodAdapterDesignException(" the application service interface " + servicePath
-                        + " need extends ApplicationBusinessesService. please check");
-            }
-            Class<?>[] serviceMethodParameterTypes = serviceMethods[0].getParameterTypes();
-            if (serviceMethodParameterTypes.length != 1) {
-                throw new MethodAdapterDesignException(" the message endpoint service interface " + servicePath
-                        + " method execute param only can use command and only one param. please check");
-            }
-            String commandPath = serviceMethodParameterTypes[0].getName();
+                Method[] serviceMethods = service.getDeclaredMethods();
+                List<Method> haveExecuteMethod = Arrays.stream(serviceMethods)
+                        .filter(method -> "execute".equals(method.getName()) && !method.isBridge())
+                        .collect(Collectors.toList());
+                if (haveExecuteMethod.size() != 1) {
+                    throw new MethodAdapterDesignException(" the application service interface " + servicePath
+                            + " need extends ApplicationBusinessesService. please check");
+                }
+                Class<?>[] serviceMethodParameterTypes = serviceMethods[0].getParameterTypes();
+                if (serviceMethodParameterTypes.length != 1) {
+                    throw new MethodAdapterDesignException(" the message endpoint service interface " + servicePath
+                            + " method execute param only can use command and only one param. please check");
+                }
+                String commandPath = serviceMethodParameterTypes[0].getName();
 
-            sourceDefinition.addParameter(
-                    routeId(adapterName),
-                    ApplicationMessageRouteTemplateParamDefinition.builder()
-                            .templateId(MessageAdapterRouteConfiguration.ROUTE_TMPL_MESSAGE)
-                            .name(adapterName)
-                            .commandPath(commandPath)
-                            .serviceName(servicePathSplit[servicePathSplit.length - 1])
-                            .event(messageAdapter.eventName())
+                sourceDefinition.addParameter(
+                        routeId(adapterName),
+                        ApplicationMessageRouteTemplateParamDefinition.builder()
+                                .templateId(MessageAdapterRouteConfiguration.ROUTE_TMPL_MESSAGE)
+                                .name(adapterName)
+                                .commandPath(commandPath)
+                                .serviceName(servicePathSplit[servicePathSplit.length - 1])
+                                .event(adapter.eventName())
 //                            .ordered(messageAdapter.ordered())
 //                            .receiveEntityName(messageAdapter.rootEntityName())
-                            .build());
+                                .build());
+            });
         }
         holders.clear();
         return holders;
