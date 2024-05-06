@@ -184,7 +184,7 @@ public class MessageConsumeRouterExecution implements Ordered {
         }
 
         // 如果非已重复消息 转发至相应适配器
-        Object resultObj = template.requestBody("message://" + adapterName, messageDetail.get("content"));
+        Object resultObj = template.requestBody("message://" + adapterName + "-" + messageEvent + "-" + serviceName, messageDetail.get("content"));
         Result<?> result = new Result<>();
         if(resultObj instanceof String){
             result = JsonUtil.writeValueAsObjectRetainNull((String) resultObj, Result.class);

@@ -138,6 +138,7 @@ class ApplicationMessageAdapterScanner extends ClassPathBeanDefinitionScanner {
             Arrays.stream(adapters).forEach(adapter-> {
                 String servicePath = adapter.commandServicePath();
                 String[] servicePathSplit = servicePath.split("\\.");
+                String serviceName = servicePathSplit[servicePathSplit.length - 1];
                 Class<?> service = null;
                 try {
                     service = Class.forName(servicePath);
@@ -163,13 +164,14 @@ class ApplicationMessageAdapterScanner extends ClassPathBeanDefinitionScanner {
                 }
                 String commandPath = serviceMethodParameterTypes[0].getName();
 
+                String messageAdapterPath = adapterName + "-" + adapter.eventName() + "-" + serviceName;
                 sourceDefinition.addParameter(
-                        routeId(adapterName),
+                        routeId(messageAdapterPath),
                         ApplicationMessageRouteTemplateParamDefinition.builder()
                                 .templateId(MessageAdapterRouteConfiguration.ROUTE_TMPL_MESSAGE)
-                                .name(adapterName)
+                                .name(messageAdapterPath)
                                 .commandPath(commandPath)
-                                .serviceName(servicePathSplit[servicePathSplit.length - 1])
+                                .serviceName(serviceName)
                                 .event(adapter.eventName())
 //                            .ordered(messageAdapter.ordered())
 //                            .receiveEntityName(messageAdapter.rootEntityName())

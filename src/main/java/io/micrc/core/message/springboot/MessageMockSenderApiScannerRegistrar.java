@@ -154,11 +154,11 @@ class MessageMockSenderApiScanner extends ClassPathBeanDefinitionScanner {
                         .serviceName(serviceName)
                         .topicName(adapter.topicName())
                         .build();
-                sourceDefinition.addParameter(routeId(listenerName),build);
+                sourceDefinition.addParameter(routeId(listenerName + "-" + adapter.eventName() + "-" + serviceName),build);
                 path.append("," +
-                        "\"/" + listenerName + "-" + serviceName + "\": {\n" +
+                        "\"/" + listenerName + "-" + adapter.eventName() + "-" + serviceName + "\": {\n" +
                         "      \"post\": {\n" +
-                        "        \"operationId\": \"" + listenerName + "-" + serviceName + "\",\n" +
+                        "        \"operationId\": \"" + listenerName + "-" + adapter.eventName() + "-" + serviceName + "\",\n" +
                         "        \"parameters\": [\n" +
                         "          {\n" +
                         "            \"name\": \"batchModel\",\n" +
