@@ -52,7 +52,7 @@ dependencyManagement {
 }
 
 dependencies {
-    implementation "io.micrc.core:micrc-annotations:test"
+    implementation "io.micrc.core:micrc-annotations:v0.0.9"
 
     // springboot basic
     implementation "org.springframework.boot:spring-boot-starter"
