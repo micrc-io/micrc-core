@@ -142,7 +142,7 @@ public class MessageConsumeRouterExecution implements Ordered {
             acknowledgment.nack(Duration.ofMillis(5 * 1000));
             return null;
         }
-        log.info("接到消息：" + messageDetail.get("messageId") + "，当前组" + listenerGroupId + "，来自死信" + (null != messageGroupId));
+        log.info("接到消息：" + messageDetail.get("messageId") + "，当前组" + listenerGroupId + ":" + messageEvent + ":" + serviceName + "，来自死信" + (null != messageGroupId));
         // 转发调度
         if(consumed){
             // 如果是已重复消息 则先进行事务提交,然后进行ack应答
