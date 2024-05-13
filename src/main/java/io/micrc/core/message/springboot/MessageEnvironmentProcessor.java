@@ -47,6 +47,7 @@ public class MessageEnvironmentProcessor implements EnvironmentPostProcessor {
 
             properties.setProperty("micrc.embedded.kafka.brokerList", "${embedded.kafka.brokerList}");
         }
+        // todo,集群环境需在这个位置统一拼接配置
         if (profiles.contains("default")) {
             // default kafka config
             // use plaintext
