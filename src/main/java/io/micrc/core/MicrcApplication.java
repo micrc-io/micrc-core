@@ -16,7 +16,7 @@ import java.util.TimeZone;
 /**
  * micrc core application
  * support default(local), local(local cluster), dev(dev cluster),
- *         production(pre-/production cluster), verify(test cluster) profile
+ *         release(release cluster)
  * support dbinit standalone app in container
  * start h2 tcp server for local profile with local cluster env
  *
@@ -51,13 +51,8 @@ public final class MicrcApplication {
             SpringApplication.run(appClazz, argList.toArray(String[]::new));
             return;
         }
-        if (argList.contains("production")) {
-            argList.add("--spring.profiles.active=production");
-            SpringApplication.run(appClazz, argList.toArray(String[]::new));
-            return;
-        }
-        if (argList.contains("verify")) {
-            argList.add("--spring.profiles.active=verify");
+        if (argList.contains("release")) {
+            argList.add("--spring.profiles.active=release");
             SpringApplication.run(appClazz, argList.toArray(String[]::new));
             return;
         }

@@ -41,7 +41,7 @@ public class CacheEnvironmentProcessor implements EnvironmentPostProcessor {
         }
         // 目前redis-stack不支持cluster，也不使用客户端直连cluster的方式
         // default使用单机redis
-        // dev，verify，production(ack)集群环境中，额外部署redis-cluster-proxy对集群进行代理，云redis自带代理
+        // dev，release(ack)集群环境中，额外部署redis-cluster-proxy对集群进行代理，云redis自带代理
         // 客户端连接方式保持一致，均为单机连接方式
         if (profiles.contains("default")) {
             log.info("Embedded redis server configuration for profile: 'default'");

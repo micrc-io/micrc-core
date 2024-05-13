@@ -81,11 +81,8 @@ public class MessageAutoConfiguration implements BeanFactoryPostProcessor, Envir
             Arrays.stream(providers)
                     .filter(provider -> !provider.isEmpty())
                     .forEach(provider -> {
-                        // find host and port
-                        String host = findBrokerDefine(provider, "host");
-                        String port = findBrokerDefine(provider, "port");
-                        String server = host + ":" + port;
-                        registerContainerFactoryAndTemplate(beanFactory, server, properties, provider);
+                        String servers = findBrokerDefine(provider, "servers");
+                        registerContainerFactoryAndTemplate(beanFactory, servers, properties, provider);
                     });
         }
     }
