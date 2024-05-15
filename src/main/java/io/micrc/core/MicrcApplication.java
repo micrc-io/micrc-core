@@ -51,6 +51,16 @@ public final class MicrcApplication {
             SpringApplication.run(appClazz, argList.toArray(String[]::new));
             return;
         }
+        if (argList.contains("alpha")) {
+            argList.add("--spring.profiles.active=alpha");
+            SpringApplication.run(appClazz, argList.toArray(String[]::new));
+            return;
+        }
+        if (argList.contains("beta")) {
+            argList.add("--spring.profiles.active=beta");
+            SpringApplication.run(appClazz, argList.toArray(String[]::new));
+            return;
+        }
         if (argList.contains("release")) {
             argList.add("--spring.profiles.active=release");
             SpringApplication.run(appClazz, argList.toArray(String[]::new));
