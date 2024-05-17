@@ -126,9 +126,9 @@ public class MessageConsumeRouterExecution implements Ordered {
             acknowledgment.acknowledge();
             return null;
         }
-        Object content = consumerRecord.value();
-        String contentString = JsonUtil.transform(mappingString, content);
-        messageDetail.put("content", contentString);
+        Object sourceContent = consumerRecord.value();
+        String targetContent = JsonUtil.transform(mappingString, sourceContent);
+        messageDetail.put("content", targetContent);
 
         // 事务处理器,手动开启事务
         TransactionStatus transactionStatus = platformTransactionManager.getTransaction(transactionDefinition);
@@ -142,7 +142,8 @@ public class MessageConsumeRouterExecution implements Ordered {
             acknowledgment.nack(Duration.ofMillis(5 * 1000));
             return null;
         }
-        log.info("接到消息：" + messageDetail.get("messageId") + "，当前组" + listenerGroupId + ":" + messageEvent + ":" + serviceName + "，来自死信" + (null != messageGroupId));
+        log.info("接到消息：" + messageDetail.get("messageId") + "，当前组" + listenerGroupId + ":" + messageEvent + ":"
+                + serviceName + "，参数: " + targetContent + "，来自死信" + (null != messageGroupId));
         // 转发调度
         if(consumed){
             // 如果是已重复消息 则先进行事务提交,然后进行ack应答
@@ -156,15 +157,17 @@ public class MessageConsumeRouterExecution implements Ordered {
         if (batchModel != null && !batchModel.isEmpty()) {
             // 批量事件需要拆分重发
             String batchModelPath = "/" + batchModel;
-            Object eventDataList = JsonUtil.readPath(contentString, batchModelPath);
+            Object eventDataList = JsonUtil.readPath(targetContent, batchModelPath);
             if (eventDataList instanceof List) {
+                mapping.put("mappingPath", ".");
+                mapping.put("batchModel", null);
                 ConsumerRecord<?, ?> finalConsumerRecord = consumerRecord;
                 ((List) eventDataList).forEach(eventData -> {
                     EventMessage eventMessage = new EventMessage();
-                    String splitContentString = JsonUtil.patch(contentString, batchModelPath, JsonUtil.writeValueAsString(eventData));
+                    String splitContentString = JsonUtil.patch(targetContent, batchModelPath, JsonUtil.writeValueAsString(eventData));
                     eventMessage.setContent(splitContentString);
                     eventMessage.setOriginalTopic(finalConsumerRecord.topic());
-                    eventMessage.setOriginalMapping(JsonUtil.writeValueAsString(mappingObj));
+                    eventMessage.setOriginalMapping(JsonUtil.writeValueAsString(mapping));
                     eventMessage.setRegion(messageEvent);
                     eventMessage.setStatus("WAITING");
                     eventMessageRepository.save(eventMessage);
