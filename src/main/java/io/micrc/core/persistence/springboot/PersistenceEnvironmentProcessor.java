@@ -122,11 +122,13 @@ public class PersistenceEnvironmentProcessor implements EnvironmentPostProcessor
             properties.setProperty("micrc.spring.memory-db.host", "${embedded.redistack.host}");
             properties.setProperty("micrc.spring.memory-db.port", "${embedded.redistack.port}");
             properties.setProperty("micrc.spring.memory-db.password", "${embedded.redistack.password}");
+            properties.setProperty("micrc.spring.memory-db.username", "${embedded.redistack.username}");
         } else {
             // k8s集群中读取的configmap中的host，port和passwd
             properties.setProperty("micrc.spring.memory-db.host", "${" + provider + "_memdb_host}");
             properties.setProperty("micrc.spring.memory-db.port", "${" + provider + "_memdb_port}");
             properties.setProperty("micrc.spring.memory-db.password", "${" + provider + "_memdb_password}");
+            properties.setProperty("micrc.spring.memory-db.username", "${" + provider + "_memdb_username}");
         }
         // 任何环境使用统一的连接配置
         properties.setProperty("micrc.spring.memory-db.database", "15");

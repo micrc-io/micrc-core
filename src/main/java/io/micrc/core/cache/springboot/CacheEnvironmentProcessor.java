@@ -60,12 +60,14 @@ public class CacheEnvironmentProcessor implements EnvironmentPostProcessor {
             properties.setProperty("spring.redis.host", "${embedded.redistack.host}");
             properties.setProperty("spring.redis.port", "${embedded.redistack.port}");
             properties.setProperty("spring.redis.password", "${embedded.redistack.password}");
+            properties.setProperty("spring.redis.username", "${embedded.redistack.username}");
 
         } else {
             // k8s集群中读取的configmap中的host，port和passwd
             properties.setProperty("spring.redis.host", "${" + provider + "_cache_host}");
             properties.setProperty("spring.redis.port", "${" + provider + "_cache_port}");
             properties.setProperty("spring.redis.password", "${" + provider + "_cache_password}");
+            properties.setProperty("spring.redis.username", "${" + provider + "_cache_username}");
         }
         // 任何环境使用统一的连接配置
         properties.setProperty("spring.redis.database", "0");

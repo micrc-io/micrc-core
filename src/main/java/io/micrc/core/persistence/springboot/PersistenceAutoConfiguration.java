@@ -45,12 +45,16 @@ public class PersistenceAutoConfiguration {
     @Value("${micrc.spring.memory-db.database}")
     private Integer database= 15;
 
+    @Value("${micrc.spring.memory-db.username}")
+    private String username;
+
 
     public RedisConnectionFactory memoryDbConnectionFactory() {
         RedisStandaloneConfiguration redisStandaloneConfiguration = new RedisStandaloneConfiguration();
         redisStandaloneConfiguration.setDatabase(database);
         redisStandaloneConfiguration.setHostName(host);
         redisStandaloneConfiguration.setPort(port);
+        redisStandaloneConfiguration.setUsername(username);
         redisStandaloneConfiguration.setPassword(RedisPassword.of(password));
         LettuceConnectionFactory factory = new LettuceConnectionFactory(redisStandaloneConfiguration);
         factory.afterPropertiesSet();

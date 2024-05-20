@@ -29,6 +29,7 @@ class EnvUtils {
         map.put("embedded.redistack.host", properties.getHost());
         map.put("embedded.redistack.httpPort", httpPort);
         map.put("embedded.redistack.password", properties.getPassword());
+        map.put("embedded.redistack.username", properties.getUsername());
         MapPropertySource propertySource = new MapPropertySource("embeddedRedistackInfo", map);
         environment.getPropertySources().addFirst(propertySource);
         return map;

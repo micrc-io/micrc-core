@@ -25,6 +25,7 @@ public class RedistackProperties extends CommonContainerProperties {
 
     private String password = "passw";
     private String host = "localhost";
+    private String username = "";
     private int port = 6379;
     private int httpPort = 8001;
     private boolean clustered = true;
