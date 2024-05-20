@@ -70,7 +70,6 @@ public class ApplicationPresentationsServiceRouteConfiguration extends MicrcRout
                 .end();
 
         from("direct://handle-request-presentation")
-                .setProperty("param", body())
                 .setHeader("path", constant("/_param"))
                 .setHeader("value", body())
                 .setBody(constant("{}"))
