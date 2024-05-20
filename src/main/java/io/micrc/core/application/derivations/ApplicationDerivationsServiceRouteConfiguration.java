@@ -88,7 +88,6 @@ public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteB
                 .end();
 
         from("direct://handle-request-derivation")
-                .setProperty("param", body())
                 .setHeader("path", constant("/_param"))
                 .setHeader("value", body())
                 .setBody(constant("{}"))

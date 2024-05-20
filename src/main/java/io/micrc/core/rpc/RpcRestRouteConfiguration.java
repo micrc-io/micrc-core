@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import org.apache.camel.Exchange;
 import org.apache.shiro.web.servlet.ShiroHttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
@@ -55,6 +56,16 @@ public class RpcRestRouteConfiguration extends MicrcRouteBuilder {
                     IntegrationsInfo.Integration integrationInfo = exchange.getProperty("integrationInfo", IntegrationsInfo.Integration.class);
                     exchange.setProperty("url", "/api" + integrationInfo.getUrl());
                     exchange.setProperty("host", spliceHost(integrationInfo.getXHost()));
+                    // 传递业务逻辑/交互逻辑的origin信息到衍生逻辑
+                    String buffer = (String) exchange.getProperty("buffer");
+                    String commandJson = (String) exchange.getProperty("commandJson");
+                    String originHost = null;
+                    if (buffer != null) {
+                        originHost = (String) JsonUtil.readPath(buffer, "/_param/_originHost");
+                    } else if (commandJson != null) {
+                        originHost = (String) JsonUtil.readPath(commandJson, "/_originHost");
+                    }
+                    exchange.getIn().setHeader("origin", originHost);
                 })
                 .toD("rest-openapi-ssl://${exchange.properties.get(integrationInfo).getProtocolFilePath()}#${exchange.properties.get(integrationInfo).getOperationId()}?host=${exchange.properties.get(host)}&basePath=${exchange.properties.get(url)}")
                 .convertBodyTo(String.class)
@@ -71,26 +82,49 @@ public class RpcRestRouteConfiguration extends MicrcRouteBuilder {
                 .convertBodyTo(String.class)
                 .setHeader("subjectPath", constant("{{subjectPath}}"))
                 .process(exchange -> {
-                    String xSubjectPath = (String) exchange.getIn().getHeader("subjectPath");
-                    if (xSubjectPath.isEmpty()) {
-                        return;
-                    }
                     String body = (String) exchange.getIn().getBody();
-                    Object camelHttpServletRequest = exchange.getIn().getHeader("CamelHttpServletRequest");
-                    if (camelHttpServletRequest instanceof ShiroHttpServletRequest) {
-                        ShiroHttpServletRequest shiroHttpServletRequest = (ShiroHttpServletRequest) camelHttpServletRequest;
-                        String remoteUser = shiroHttpServletRequest.getRemoteUser();
-                        try {
-                            body = JsonUtil.add(body, xSubjectPath, remoteUser);
-                        } catch (Exception e) {
-                            body = JsonUtil.patch(body, xSubjectPath, remoteUser);
-                        }
+                    if (body == null) {
+                        body = "{}";
                     }
-                    exchange.getIn().setBody(body);
+                    // 获取远程用户信息
+                    String userParam = patchRemoteUserToSubjectPath(exchange, body);
+                    // 对于object格式的json请求参数追加时间戳和主机信息
+                    if (userParam.startsWith("{") && userParam.endsWith("}")) {
+                        userParam = JsonUtil.add(userParam, "/_timestamp", String.valueOf(System.currentTimeMillis()));
+                        userParam = JsonUtil.add(userParam, "/_originHost", JsonUtil.writeValueAsString(getOriginHost(exchange)));
+                        exchange.getIn().setBody(userParam);
+                    }
                 })
                 .to("{{routeProtocol}}://{{adapterName}}")
                 .marshal().json().convertBodyTo(String.class)
                 .end();
+    }
+
+    private String getOriginHost(Exchange exchange) {
+        String origin = (String) exchange.getIn().getHeader("origin");
+        if (origin == null || origin.isEmpty()) {
+            return "";
+        }
+        String[] split = origin.split(":");
+        return split[0] + ":" + split[1];
+    }
+
+    private String patchRemoteUserToSubjectPath(Exchange exchange, String body) {
+        String xSubjectPath = (String) exchange.getIn().getHeader("subjectPath");
+        if (xSubjectPath.isEmpty()) {
+            return body;
+        }
+        Object camelHttpServletRequest = exchange.getIn().getHeader("CamelHttpServletRequest");
+        if (camelHttpServletRequest instanceof ShiroHttpServletRequest) {
+            ShiroHttpServletRequest shiroHttpServletRequest = (ShiroHttpServletRequest) camelHttpServletRequest;
+            String remoteUser = shiroHttpServletRequest.getRemoteUser();
+            try {
+                body = JsonUtil.add(body, xSubjectPath, remoteUser);
+            } catch (Exception e) {
+                body = JsonUtil.patch(body, xSubjectPath, remoteUser);
+            }
+        }
+        return body;
     }
 
     private String spliceHost(String xHost) {
