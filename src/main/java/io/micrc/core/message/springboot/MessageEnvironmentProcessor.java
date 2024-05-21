@@ -64,6 +64,8 @@ public class MessageEnvironmentProcessor implements EnvironmentPostProcessor {
         // use plaintext
         // properties.setProperty("spring.kafka.security.protocol", "SASL_PLAINTEXT");
         // properties.setProperty("spring.kafka.sasl.mechanism", "PLAIN");
+        // 幂等生产
+        properties.setProperty("spring.kafka.producer.properties.enable.idempotence", "false");
         // 重试次数
         properties.setProperty("spring.kafka.producer.retries", "3");
         // ACK应答模式

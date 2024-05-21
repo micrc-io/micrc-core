@@ -100,6 +100,7 @@ public class MessageAutoConfiguration implements BeanFactoryPostProcessor, Envir
         producerMap.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, server);
         producerMap.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
         producerMap.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+        producerMap.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, properties.getProperty("spring.kafka.producer.properties.enable.idempotence"));
         producerMap.put(ProducerConfig.RETRIES_CONFIG, properties.getProperty("spring.kafka.producer.retries"));
         producerMap.put(ProducerConfig.ACKS_CONFIG, properties.getProperty("spring.kafka.producer.acks"));
         producerMap.put(ProducerConfig.BATCH_SIZE_CONFIG, properties.getProperty("spring.kafka.producer.batch-size"));
