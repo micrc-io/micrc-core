@@ -96,7 +96,9 @@ public class MessageConsumeRouterExecution implements Ordered {
         Optional<Adapter> optionalAnnotation = Arrays.stream(adapters).filter(a ->  a.eventName().equals(messageDetail.get("event"))).findFirst();
         Adapter annotation = optionalAnnotation.orElse(null);
         if (null == annotation) {
-            throw new IllegalStateException("sys execute error");
+            // cannot find service ack
+            acknowledgment.acknowledge();
+            return null;
         }
         String servicePath = annotation.commandServicePath();
         String[] servicePathSplit = servicePath.split("\\.");
