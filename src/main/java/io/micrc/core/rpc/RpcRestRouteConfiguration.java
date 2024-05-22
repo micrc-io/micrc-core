@@ -8,11 +8,11 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import org.apache.camel.Exchange;
-import org.apache.shiro.web.servlet.ShiroHttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpHeaders;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.*;
 
 /**
@@ -115,9 +115,9 @@ public class RpcRestRouteConfiguration extends MicrcRouteBuilder {
             return body;
         }
         Object camelHttpServletRequest = exchange.getIn().getHeader("CamelHttpServletRequest");
-        if (camelHttpServletRequest instanceof ShiroHttpServletRequest) {
-            ShiroHttpServletRequest shiroHttpServletRequest = (ShiroHttpServletRequest) camelHttpServletRequest;
-            String remoteUser = shiroHttpServletRequest.getRemoteUser();
+        if (camelHttpServletRequest instanceof HttpServletRequest) {
+            HttpServletRequest httpServletRequest = (HttpServletRequest) camelHttpServletRequest;
+            String remoteUser = httpServletRequest.getRemoteUser();
             try {
                 body = JsonUtil.add(body, xSubjectPath, remoteUser);
             } catch (Exception e) {
