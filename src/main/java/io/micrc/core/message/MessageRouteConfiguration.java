@@ -126,10 +126,16 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
         String content = (String) eventObject.get("content");
         Long messageId = (Long) eventObject.get("messageId");
         Object groupId = eventObject.get("groupId");
-        Map<String, EventsInfo.EventMapping> mappingMap = eventInfo.getEventMappings().stream().collect(Collectors.toMap(EventsInfo.EventMapping::getMappingKey, i -> i, (i1, i2) -> i1));
-
+        Map<String, EventsInfo.EventMapping> mappingMap = eventInfo.getEventMappings().stream().map(eventMapping -> {
+            String mappingPath = eventMapping.getMappingPath();
+            String result = JsonUtil.transform(mappingPath, content);
+            eventMapping.setMappingPath(result);
+            return eventMapping;
+        }).collect(Collectors.toMap(EventsInfo.EventMapping::getMappingKey, i -> i, (i1, i2) -> i1));
+        // for kafka stringSerializer
+        String mappingMapContent = JsonUtil.writeValueAsString(mappingMap);
         Message<?> objectMessage = MessageBuilder
-                .withPayload(content)
+                .withPayload(mappingMapContent)
                 .setHeader(KafkaHeaders.TOPIC, eventInfo.getTopicName())
                 .setHeader("groupId", "".equals(groupId) ? null : groupId) // 正常消息或发送错误的错误消息全发，死信重发时指定GROUP
                 .setHeader("senderHost", environment.getProperty("micrc.x-host"))

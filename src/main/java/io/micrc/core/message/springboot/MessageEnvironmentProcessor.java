@@ -70,18 +70,22 @@ public class MessageEnvironmentProcessor implements EnvironmentPostProcessor {
         properties.setProperty("spring.kafka.producer.retries", "3");
         // ACK应答模式
         properties.setProperty("spring.kafka.producer.acks", "all");
+        // 来控制发送请求的最大大小 10M
+        properties.setProperty("spring.kafka.producer.max.request.size", "10485760");
         // 批量发送的消息数量
-        properties.setProperty("spring.kafka.producer.batch-size", "1000");
+       // properties.setProperty("spring.kafka.producer.batch-size", "1000");
         // 32MB的批处理缓冲区
-        properties.setProperty("spring.kafka.producer.buffer-memory", "33554432");
+      //  properties.setProperty("spring.kafka.producer.buffer-memory", "33554432");
         // 默认消费者组
         Properties loadMicrcProperties = loadMicrcProperties();
         String applicationName = loadMicrcProperties.getProperty("spring.application.name");
         properties.setProperty("spring.kafka.consumer.group-id", applicationName);
         // 最早未被消费的offset
         properties.setProperty("spring.kafka.consumer.auto-offset-reset", "latest");
+        // 配置的是单个分区一次性拉取的最大数据量
+        properties.setProperty("spring.kafka.consumer.max.partition.fetch.bytes", "10485760");
         // 批量一次最大拉取数据量
-        properties.setProperty("spring.kafka.consumer.max-poll-records", "4000");
+       // properties.setProperty("spring.kafka.consumer.max-poll-records", "4000");
         // 是否自动提交
         properties.setProperty("spring.kafka.consumer.enable-auto-commit", "false");
         // 批消费并发量，小于或等于Topic的分区数

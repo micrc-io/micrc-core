@@ -103,8 +103,9 @@ public class MessageAutoConfiguration implements BeanFactoryPostProcessor, Envir
         producerMap.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, properties.getProperty("spring.kafka.producer.properties.enable.idempotence"));
         producerMap.put(ProducerConfig.RETRIES_CONFIG, properties.getProperty("spring.kafka.producer.retries"));
         producerMap.put(ProducerConfig.ACKS_CONFIG, properties.getProperty("spring.kafka.producer.acks"));
-        producerMap.put(ProducerConfig.BATCH_SIZE_CONFIG, properties.getProperty("spring.kafka.producer.batch-size"));
-        producerMap.put(ProducerConfig.BUFFER_MEMORY_CONFIG, properties.getProperty("spring.kafka.producer.buffer-memory"));
+       // producerMap.put(ProducerConfig.BATCH_SIZE_CONFIG, properties.getProperty("spring.kafka.producer.batch-size"));
+       // producerMap.put(ProducerConfig.BUFFER_MEMORY_CONFIG, properties.getProperty("spring.kafka.producer.buffer-memory"));
+        producerMap.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, properties.getProperty("spring.kafka.producer.max.request.size"));
         ProducerFactory<String, String> producerFactory = new DefaultKafkaProducerFactory<>(producerMap);
         KafkaTemplate<String, String> kafkaTemplate = new KafkaTemplate<>(producerFactory);
         beanFactory.registerSingleton("kafkaTemplate" + provider, kafkaTemplate);
@@ -114,7 +115,8 @@ public class MessageAutoConfiguration implements BeanFactoryPostProcessor, Envir
         consumerMap.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
         consumerMap.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
         consumerMap.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, properties.getProperty("spring.kafka.consumer.enable-auto-commit"));
-        consumerMap.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, properties.getProperty("spring.kafka.consumer.max-poll-records"));
+        // consumerMap.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, properties.getProperty("spring.kafka.consumer.max-poll-records"));
+        consumerMap.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, properties.getProperty("spring.kafka.consumer.max.partition.fetch.bytes"));
         consumerMap.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, properties.getProperty("spring.kafka.consumer.auto-offset-reset"));
         consumerMap.put(ConsumerConfig.GROUP_ID_CONFIG, properties.getProperty("spring.kafka.consumer.group-id"));
         ConsumerFactory<String, String> consumerFactory1 = new DefaultKafkaConsumerFactory<>(consumerMap);
