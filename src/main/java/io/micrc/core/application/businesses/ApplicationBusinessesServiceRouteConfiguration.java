@@ -77,7 +77,6 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .setProperty("logicIntegrationJson").groovy("new String(java.util.Base64.getDecoder().decode('{{logicIntegrationJson}}'))")
                 .setProperty("timePathsJson", constant("{{timePathsJson}}"))
                 .setProperty("fieldMap", constant("{{fieldMap}}"))
-                .transacted()
                 // 1.处理请求
                 .to("direct://handle-request")
                 // 2.解析时间
@@ -91,6 +90,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .end();
 
         from("direct://executor-data-one")
+                .transacted()
                 // 3.1.复制资源
                 .to("direct://copy-source")
                 // 3.2.执行逻辑
