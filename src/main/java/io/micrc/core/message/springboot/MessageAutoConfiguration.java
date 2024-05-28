@@ -71,7 +71,7 @@ public class MessageAutoConfiguration implements BeanFactoryPostProcessor, Envir
         Optional<String> profileStr = Optional.ofNullable(environment.getProperty("application.profiles"));
         List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
         if (profiles.contains("default")) {
-            String server = environment.getProperty("micrc.embedded.kafka.brokerList");
+            String server = environment.getProperty("spring.kafka.bootstrap-servers");
             registerContainerFactoryAndTemplate(beanFactory, server, properties, "public");
         } else {
             String[] providers = obtainProvider();

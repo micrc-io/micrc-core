@@ -7,7 +7,6 @@ import io.micrc.core.message.store.EventMessageRepository;
 import io.micrc.core.message.store.IdempotentMessage;
 import io.micrc.core.message.store.IdempotentMessageRepository;
 import io.micrc.lib.JsonUtil;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -126,12 +125,13 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
         String content = (String) eventObject.get("content");
         Long messageId = (Long) eventObject.get("messageId");
         Object groupId = eventObject.get("groupId");
-        Map<String, EventsInfo.EventMapping> mappingMap = eventInfo.getEventMappings().stream().map(eventMapping -> {
-            String mappingPath = eventMapping.getMappingPath();
-            String result = JsonUtil.transform(mappingPath, content);
-            eventMapping.setMappingPath(result);
-            return eventMapping;
-        }).collect(Collectors.toMap(EventsInfo.EventMapping::getMappingKey, i -> i, (i1, i2) -> i1));
+        Map<String, EventsInfo.EventMapping> mappingMap = eventInfo.getEventMappings().stream()
+                .map(eventMapping -> EventsInfo.EventMapping.builder()
+                        .mappingKey(eventMapping.getMappingKey())
+                        .mappingPath(JsonUtil.transform(eventMapping.getMappingPath(), content))
+                        .receiverAddress(eventMapping.getReceiverAddress())
+                        .batchModel(eventMapping.getBatchModel()).build()
+                ).collect(Collectors.toMap(EventsInfo.EventMapping::getMappingKey, i -> i, (i1, i2) -> i1));
         // for kafka stringSerializer
         String mappingMapContent = JsonUtil.writeValueAsString(mappingMap);
         Message<?> objectMessage = MessageBuilder
@@ -586,23 +586,21 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
             /**
              * 发送主题名称
              */
-            private String topicName;
+            final private String topicName;
 
             /**
              * 事件名称
              */
-            private String eventName;
+            final private String eventName;
 
             /**
              * 消息映射
              */
-            private List<EventMapping> eventMappings;
+            final private List<EventMapping> eventMappings;
 
         }
 
         @Data
-        @NoArgsConstructor
-        @AllArgsConstructor
         @SuperBuilder
         public static class EventMapping {
 
@@ -611,26 +609,26 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
              *
              * @return
              */
-            private String mappingKey;
+            final private String mappingKey;
 
             /**
              * 对端映射文件地址
              *
              * @return
              */
-            private String mappingPath;
+            final private String mappingPath;
 
             /**
              * 接收方地址 - 放入消息header
              *
              * @return
              */
-            private String receiverAddress;
+            final private String receiverAddress;
 
             /**
              * 批量概念
              */
-            private String batchModel;
+            final private String batchModel;
         }
     }
 
