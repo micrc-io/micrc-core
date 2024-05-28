@@ -601,6 +601,7 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
         }
 
         @Data
+        @NoArgsConstructor
         @SuperBuilder
         public static class EventMapping {
 
@@ -609,26 +610,26 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
              *
              * @return
              */
-            final private String mappingKey;
+            private String mappingKey;
 
             /**
              * 对端映射文件地址
              *
              * @return
              */
-            final private String mappingPath;
+            private String mappingPath;
 
             /**
              * 接收方地址 - 放入消息header
              *
              * @return
              */
-            final private String receiverAddress;
+            private String receiverAddress;
 
             /**
              * 批量概念
              */
-            final private String batchModel;
+            private String batchModel;
         }
     }
 
