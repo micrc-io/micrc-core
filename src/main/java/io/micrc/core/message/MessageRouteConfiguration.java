@@ -6,6 +6,7 @@ import io.micrc.core.message.store.EventMessage;
 import io.micrc.core.message.store.EventMessageRepository;
 import io.micrc.core.message.store.IdempotentMessage;
 import io.micrc.core.message.store.IdempotentMessageRepository;
+import io.micrc.lib.ClassCastUtils;
 import io.micrc.lib.JsonUtil;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -127,13 +128,18 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
         Long messageId = (Long) eventObject.get("messageId");
         Object groupId = eventObject.get("groupId");
         boolean isDeadLetter = StringUtils.hasText((String) groupId);
-        Map<String, EventsInfo.EventMapping> mappingMap = eventInfo.getEventMappings().stream()
-                .map(eventMapping -> EventsInfo.EventMapping.builder()
-                        .mappingKey(eventMapping.getMappingKey())
-                        .mappingPath(isDeadLetter ? content : JsonUtil.transform(eventMapping.getMappingPath(), content))
-                        .receiverAddress(eventMapping.getReceiverAddress())
-                        .batchModel(eventMapping.getBatchModel()).build()
-                ).collect(Collectors.toMap(EventsInfo.EventMapping::getMappingKey, i -> i, (i1, i2) -> i1));
+        Map<String, EventsInfo.EventMapping> mappingMap;
+        if (isDeadLetter) {
+            mappingMap = JsonUtil.writeValueAsObject(content, HashMap.class);
+        } else {
+            mappingMap = eventInfo.getEventMappings().stream()
+                    .map(eventMapping -> EventsInfo.EventMapping.builder()
+                            .mappingKey(eventMapping.getMappingKey())
+                            .mappingPath(JsonUtil.transform(eventMapping.getMappingPath(), content))
+                            .receiverAddress(eventMapping.getReceiverAddress())
+                            .batchModel(eventMapping.getBatchModel()).build()
+                    ).collect(Collectors.toMap(EventsInfo.EventMapping::getMappingKey, i -> i, (i1, i2) -> i1));
+        }
         // for kafka stringSerializer
         String mappingMapContent = JsonUtil.writeValueAsString(mappingMap);
         Message<?> objectMessage = MessageBuilder
