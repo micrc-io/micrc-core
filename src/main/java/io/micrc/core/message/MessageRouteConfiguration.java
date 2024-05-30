@@ -29,6 +29,7 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.util.StringUtils;
 import org.springframework.util.concurrent.ListenableFuture;
 
 import java.time.Duration;
@@ -125,10 +126,11 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
         String content = (String) eventObject.get("content");
         Long messageId = (Long) eventObject.get("messageId");
         Object groupId = eventObject.get("groupId");
+        boolean isDeadLetter = StringUtils.hasText((String) groupId);
         Map<String, EventsInfo.EventMapping> mappingMap = eventInfo.getEventMappings().stream()
                 .map(eventMapping -> EventsInfo.EventMapping.builder()
                         .mappingKey(eventMapping.getMappingKey())
-                        .mappingPath(JsonUtil.transform(eventMapping.getMappingPath(), content))
+                        .mappingPath(isDeadLetter ? content : JsonUtil.transform(eventMapping.getMappingPath(), content))
                         .receiverAddress(eventMapping.getReceiverAddress())
                         .batchModel(eventMapping.getBatchModel()).build()
                 ).collect(Collectors.toMap(EventsInfo.EventMapping::getMappingKey, i -> i, (i1, i2) -> i1));
@@ -137,7 +139,7 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
         Message<?> objectMessage = MessageBuilder
                 .withPayload(mappingMapContent)
                 .setHeader(KafkaHeaders.TOPIC, eventInfo.getTopicName())
-                .setHeader("groupId", "".equals(groupId) ? null : groupId) // 正常消息或发送错误的错误消息全发，死信重发时指定GROUP
+                .setHeader("groupId", isDeadLetter ? groupId : null)
                 .setHeader("senderHost", environment.getProperty("micrc.x-host"))
                 .setHeader("messageId", messageId)
                 .setHeader("isCopyEvent", isCopyEvent)
