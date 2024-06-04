@@ -50,7 +50,7 @@ public interface EventMessageRepository extends JpaRepository<EventMessage, Long
                     "ms.region = :region " +
                     "and ms.original_topic is null " +
                     "and ms.status ='SENT' " +
-                    "and ms.create_time < (UNIX_TIMESTAMP() - 604800) * 1000" +
+                    "and ms.create_time < (UNIX_TIMESTAMP() - 604800) * 1000 " +
                     "order by ms.message_id asc " +
                     "limit :count")
     List<Long> findSentIdByRegionLimitCount(@Param(value = "region") String region, @Param("count") Integer count);
@@ -60,7 +60,7 @@ public interface EventMessageRepository extends JpaRepository<EventMessage, Long
                     "where " +
                     "ms.original_topic is not null " +
                     "and ms.status ='SENT' " +
-                    "and ms.create_time < (UNIX_TIMESTAMP() - 604800) * 1000" +
+                    "and ms.create_time < (UNIX_TIMESTAMP() - 604800) * 1000 " +
                     "order by ms.message_id asc " +
                     "limit 1000 ")
     List<Long> findSentIdByOriginalExists();
