@@ -4,9 +4,7 @@ import io.micrc.core.message.error.ErrorMessage;
 import io.micrc.core.message.error.ErrorMessageRepository;
 import io.micrc.core.message.store.EventMessage;
 import io.micrc.core.message.store.EventMessageRepository;
-import io.micrc.core.message.store.IdempotentMessage;
 import io.micrc.core.message.store.IdempotentMessageRepository;
-import io.micrc.lib.ClassCastUtils;
 import io.micrc.lib.JsonUtil;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -263,21 +261,6 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
     }
 
     /**
-     * 组装幂等消息
-     *
-     * @param messageDetail messageDetail
-     * @return              IdempotentMessage
-     */
-    @Consume("subscribe://idempotent-message")
-    public IdempotentMessage idempotent(Map<String, Object> messageDetail) {
-        IdempotentMessage idempotent = new IdempotentMessage();
-        idempotent.setSender((String) messageDetail.get("senderHost"));
-        idempotent.setSequence(Long.valueOf(messageDetail.get("messageId").toString()));
-        idempotent.setReceiver((String) messageDetail.get("serviceName"));
-        return idempotent;
-    }
-
-    /**
      * 用幂等仓过滤ID
      *
      * @param messageIds    messageIds
@@ -387,23 +370,6 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
                 .bean(ErrorMessageRepository.class, "save")
                 .setHeader("eventInfo", exchangeProperty("eventInfo"))
                 .to("publish://sending-message")
-                .end();
-
-        // 幂等性消费仓库检查
-        from("subscribe://idempotent-check")
-                .routeId("subscribe://idempotent-check")
-                .setHeader("messageDetail", body())
-                .bean(IdempotentMessageRepository.class, "findFirstBySequenceAndReceiver(${body.get(sequence)}, ${body.get(servicePath)})")
-                .choice()
-                    .when(body().isNull())
-                        .setBody(header("messageDetail"))
-                        .to("subscribe://idempotent-message")
-                        .bean(IdempotentMessageRepository.class, "save")
-                        .setBody(constant(false))
-                    .endChoice()
-                    .otherwise()
-                        .setBody(constant(true))
-                    .endChoice()
                 .end();
 
         // 发送失败监听路由

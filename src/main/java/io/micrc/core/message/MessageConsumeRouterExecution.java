@@ -4,6 +4,8 @@ import io.micrc.core.annotations.message.Adapter;
 import io.micrc.core.annotations.message.MessageAdapter;
 import io.micrc.core.message.store.EventMessage;
 import io.micrc.core.message.store.EventMessageRepository;
+import io.micrc.core.message.store.IdempotentMessage;
+import io.micrc.core.message.store.IdempotentMessageRepository;
 import io.micrc.core.rpc.Result;
 import io.micrc.lib.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -22,15 +24,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.util.StringUtils;
+import org.springframework.transaction.*;
 
 import java.lang.reflect.Method;
-import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 /**
  * 消息消费路由执行
  *
@@ -43,8 +40,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @Configuration
 public class MessageConsumeRouterExecution implements Ordered {
 
-    private final ConcurrentHashMap<Long, Integer> map = new ConcurrentHashMap<>();
-
     @EndpointInject
     private ProducerTemplate template;
 
@@ -56,6 +51,9 @@ public class MessageConsumeRouterExecution implements Ordered {
 
     @Autowired
     private EventMessageRepository eventMessageRepository;
+
+    @Autowired
+    private IdempotentMessageRepository idempotentMessageRepository;
 
     @Pointcut("@annotation(io.micrc.core.annotations.message.MessageExecution)")
     public void annotationPointCut() {/* leave it out */}
@@ -91,123 +89,111 @@ public class MessageConsumeRouterExecution implements Ordered {
         // 解析消息详情
         HashMap<String, String> messageDetail = new HashMap<>();
         transMessageHeaders(consumerRecord, messageDetail);
+        String eventName = messageDetail.get("event");
+        String messageGroupId = messageDetail.get("groupId");
+        String mappingMapString = messageDetail.get("mappingMap");
+        String messageId = messageDetail.get("messageId");
+        String senderHost = messageDetail.get("senderHost");
 
         Adapter[]  adapters = messageAdapter.value();
-        Optional<Adapter> optionalAnnotation = Arrays.stream(adapters).filter(a ->  a.eventName().equals(messageDetail.get("event"))).findFirst();
+        Optional<Adapter> optionalAnnotation = Arrays.stream(adapters).filter(a -> a.eventName().equals(eventName)).findFirst();
         Adapter annotation = optionalAnnotation.orElse(null);
         if (null == annotation) {
-            // cannot find service ack
+            // 接收方未指定执行逻辑
             acknowledgment.acknowledge();
             return null;
         }
         String servicePath = annotation.commandServicePath();
         String[] servicePathSplit = servicePath.split("\\.");
         String serviceName = servicePathSplit[servicePathSplit.length - 1];
-        boolean custom = messageAdapter.custom();
         messageDetail.put("serviceName", serviceName);
-        // 死信用groupID过滤
-        String messageGroupId = messageDetail.get("groupId");
+
         KafkaListener listenerAnnotation = getListenerAnnotation(proceedingJoinPoint);
         String listenerGroupId = listenerAnnotation.groupId();
         if (null != messageGroupId && !messageGroupId.isEmpty() && !messageGroupId.equals(listenerGroupId)) {
-            // 无关死信
+            // 发给其他指定组的无关死信
             acknowledgment.acknowledge();
+            log.info("接收到无关死信: " + messageId + "，当前组: " + listenerGroupId);
             return null;
         }
 
-        String mappingMapString = messageDetail.get("mappingMap");
         HashMap mappingMap = JsonUtil.writeValueAsObject(mappingMapString, HashMap.class);
         Object mappingObj = mappingMap.get(serviceName);
         HashMap mapping = JsonUtil.writeObjectAsObject(mappingObj, HashMap.class);
         String mappingString = mapping == null ? null : (String) mapping.get("mappingPath");
-
-        String listenerEvent = annotation.eventName();
-        String messageEvent = messageDetail.get("event");
-        if (null == mappingString || !listenerEvent.equals(messageEvent)) {
-            // 不需要消费
+        if (null == mappingString) {
+            // 发送方未指定消息映射
             acknowledgment.acknowledge();
+            return null;
+        }
+
+        IdempotentMessage idempotentMessage = idempotentMessageRepository.findFirstBySequenceAndReceiver(Long.valueOf(messageId), serviceName);
+        if (idempotentMessage != null) {
+            // 已经消费过的重复消息
+            acknowledgment.acknowledge();
+            log.info("接收到重复消息: " + messageId + "，当前组: " + listenerGroupId);
             return null;
         }
         Object sourceContent = consumerRecord.value();
         String targetContent = JsonUtil.transform(mappingString, sourceContent);
         messageDetail.put("content", targetContent);
-
+        log.info("接收开始: " + messageId + "，当前组: " + listenerGroupId + "，参数: " + targetContent + "，来自死信: " + (null != messageGroupId));
         // 事务处理器,手动开启事务
         TransactionStatus transactionStatus = platformTransactionManager.getTransaction(transactionDefinition);
-        // 幂等检查
-        Boolean consumed = null;
         try {
-            consumed = template.requestBody("subscribe://idempotent-check", messageDetail, Boolean.class);
-        } catch (IllegalStateException e) {
-            platformTransactionManager.rollback(transactionStatus);
-            // 稍后5秒消费
-            acknowledgment.nack(Duration.ofMillis(5 * 1000));
-            return null;
-        }
-        log.info("接到消息：" + messageDetail.get("messageId") + "，当前组" + listenerGroupId + ":" + messageEvent + ":"
-                + serviceName + "，参数: " + targetContent + "，来自死信" + (null != messageGroupId));
-        // 转发调度
-        if(consumed){
-            // 如果是已重复消息 则先进行事务提交,然后进行ack应答
-            platformTransactionManager.commit(transactionStatus);
-            acknowledgment.acknowledge();
-            log.warn("接收失败: 重复消费" + messageDetail.get("messageId"));
-            return null;
-        }
-
-        String batchModel = (String) mapping.get("batchModel");
-        if (batchModel != null && !batchModel.isEmpty()) {
-            // 批量事件需要拆分重发
+            Object executeResult = null;
+            idempotentMessage = new IdempotentMessage();
+            idempotentMessage.setSender(senderHost);
+            idempotentMessage.setSequence(Long.valueOf(messageId));
+            idempotentMessage.setReceiver(serviceName);
+            idempotentMessageRepository.save(idempotentMessage);
+            String batchModel = (String) mapping.get("batchModel");
             String batchModelPath = "/" + batchModel;
-            Object eventDataList = JsonUtil.readPath(targetContent, batchModelPath);
-            if (eventDataList instanceof List) {
-                mapping.put("mappingPath", ".");
-                mapping.put("batchModel", null);
-                ConsumerRecord<?, ?> finalConsumerRecord = consumerRecord;
-                ((List) eventDataList).forEach(eventData -> {
-                    EventMessage eventMessage = new EventMessage();
-                    String splitContentString = JsonUtil.patch(targetContent, batchModelPath, JsonUtil.writeValueAsString(eventData));
-                    eventMessage.setContent(splitContentString);
-                    eventMessage.setOriginalTopic(finalConsumerRecord.topic());
-                    eventMessage.setOriginalMapping(JsonUtil.writeValueAsString(mapping));
-                    eventMessage.setRegion(messageEvent);
-                    eventMessage.setStatus("WAITING");
-                    eventMessageRepository.save(eventMessage);
-                });
-                platformTransactionManager.commit(transactionStatus);
-                acknowledgment.acknowledge();
-                return null;
+            if (batchModel != null && !batchModel.isEmpty() && JsonUtil.readPath(targetContent, batchModelPath) instanceof List) {
+                // 拆分批量事件
+                copyEvent(mapping, consumerRecord, targetContent, batchModelPath, eventName);
+            } else if (messageAdapter.custom()) {
+                // 自定义实现
+                executeResult = proceedingJoinPoint.proceed(proceedingJoinPoint.getArgs());
+            } else {
+                // 执行业务逻辑
+                Object resultObj = template.requestBody("message://" + adapterName + "-" + eventName + "-" + serviceName, targetContent);
+                Result<?> result = new Result<>();
+                if(resultObj instanceof String){
+                    result = JsonUtil.writeValueAsObjectRetainNull((String) resultObj, Result.class);
+                } else if(resultObj instanceof Result){
+                    result = (Result<?>) resultObj;
+                }
+                if(!"200".equals(result.getCode())){
+                    throw new RuntimeException("message adapter result code: " + result.getCode());
+                }
             }
-        }
-
-        if (custom) {
-            Object obj = proceedingJoinPoint.proceed(proceedingJoinPoint.getArgs());
             platformTransactionManager.commit(transactionStatus);
             acknowledgment.acknowledge();
-            log.info("接收成功: " + messageDetail.get("messageId"));
-            return obj;
-        }
-
-        // 如果非已重复消息 转发至相应适配器
-        Object resultObj = template.requestBody("message://" + adapterName + "-" + messageEvent + "-" + serviceName, messageDetail.get("content"));
-        Result<?> result = new Result<>();
-        if(resultObj instanceof String){
-            result = JsonUtil.writeValueAsObjectRetainNull((String) resultObj, Result.class);
-        } else if(resultObj instanceof Result){
-            result = (Result<?>) resultObj;
-        }
-        if(StringUtils.hasText(result.getCode()) && !"200".equals(result.getCode())){
-            // 如果有异常 回滚事务 并应答失败进入死信
+            log.info("接收成功: " + messageId + "，当前组: " + listenerGroupId);
+            return executeResult;
+        } catch (Throwable throwable) {
             platformTransactionManager.rollback(transactionStatus);
-            log.error("接收失败: " + messageDetail.get("messageId"));
-            throw new IllegalStateException("sys execute error");
-        } else {
-            // 如果执行正常则提交事务并应答成功
-            platformTransactionManager.commit(transactionStatus);
             acknowledgment.acknowledge();
-            log.info("接收成功: " + messageDetail.get("messageId"));
-            return null;
+            log.error("接收失败: " + messageId + "，当前组: " + listenerGroupId + ", 错误信息: " + throwable.getLocalizedMessage());
+            throw throwable;
         }
+    }
+
+    private void copyEvent(HashMap mapping, ConsumerRecord<?, ?> consumerRecord, String targetContent, String batchModelPath, String eventName) {
+        mapping.put("mappingPath", ".");
+        mapping.put("batchModel", null);
+        ConsumerRecord<?, ?> finalConsumerRecord = consumerRecord;
+        ((List) JsonUtil.readPath(targetContent, batchModelPath)).forEach(eventData -> {
+            EventMessage eventMessage = new EventMessage();
+            String splitContentString = JsonUtil.patch(targetContent, batchModelPath, JsonUtil.writeValueAsString(eventData));
+            eventMessage.setContent(splitContentString);
+            eventMessage.setOriginalTopic(finalConsumerRecord.topic());
+            eventMessage.setOriginalMapping(JsonUtil.writeValueAsString(mapping));
+            eventMessage.setRegion(eventName);
+            eventMessage.setStatus("WAITING");
+            eventMessageRepository.save(eventMessage);
+        });
     }
 
     private static KafkaListener getListenerAnnotation(ProceedingJoinPoint proceedingJoinPoint) throws NoSuchMethodException {

@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: message-idempotent-message-add-sequence-and-receiver-unique-constraint-0.0.46
+      author: micrc
+      changes:
+        - addUniqueConstraint:
+            constraintName: sequence_and_receiver_unique
+            tableName: message_idempotent_message
+            columnNames: sequence, receiver
