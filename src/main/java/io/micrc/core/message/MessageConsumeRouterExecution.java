@@ -108,15 +108,6 @@ public class MessageConsumeRouterExecution implements Ordered {
         String serviceName = servicePathSplit[servicePathSplit.length - 1];
         messageDetail.put("serviceName", serviceName);
 
-        KafkaListener listenerAnnotation = getListenerAnnotation(proceedingJoinPoint);
-        String listenerGroupId = listenerAnnotation.groupId();
-        if (null != messageGroupId && !messageGroupId.isEmpty() && !messageGroupId.equals(listenerGroupId)) {
-            // 发给其他指定组的无关死信
-            acknowledgment.acknowledge();
-            log.info("接收到无关死信: " + messageId + "，当前组: " + listenerGroupId);
-            return null;
-        }
-
         HashMap mappingMap = JsonUtil.writeValueAsObject(mappingMapString, HashMap.class);
         Object mappingObj = mappingMap.get(serviceName);
         HashMap mapping = JsonUtil.writeObjectAsObject(mappingObj, HashMap.class);
@@ -127,11 +118,20 @@ public class MessageConsumeRouterExecution implements Ordered {
             return null;
         }
 
+        KafkaListener listenerAnnotation = getListenerAnnotation(proceedingJoinPoint);
+        String listenerGroupId = listenerAnnotation.groupId();
+        if (null != messageGroupId && !messageGroupId.isEmpty() && !messageGroupId.equals(listenerGroupId)) {
+            // 发给其他指定组的无关死信
+            acknowledgment.acknowledge();
+            log.info("接收到无关死信: " + messageId + "，当前组: " + listenerGroupId);
+            return null;
+        }
+
         IdempotentMessage idempotentMessage = idempotentMessageRepository.findFirstBySequenceAndReceiver(Long.valueOf(messageId), serviceName);
         if (idempotentMessage != null) {
             // 已经消费过的重复消息
             acknowledgment.acknowledge();
-            log.info("接收到重复消息: " + messageId + "，当前组: " + listenerGroupId);
+            log.warn("接收到重复消息: " + messageId + "，当前组: " + listenerGroupId);
             return null;
         }
         Object sourceContent = consumerRecord.value();
