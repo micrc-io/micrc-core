@@ -17,8 +17,6 @@ import java.util.List;
 @Repository
 public interface IdempotentMessageRepository extends JpaRepository<IdempotentMessage, Long> {
 
-    IdempotentMessage findFirstBySequenceAndReceiver(Long sequence, String receiver);
-
     /**
      * 查找所有发送方
      *

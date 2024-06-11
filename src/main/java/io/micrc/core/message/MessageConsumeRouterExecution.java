@@ -19,9 +19,11 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.transaction.*;
@@ -123,26 +125,18 @@ public class MessageConsumeRouterExecution implements Ordered {
         if (null != messageGroupId && !messageGroupId.isEmpty() && !messageGroupId.equals(listenerGroupId)) {
             // 发给其他指定组的无关死信
             acknowledgment.acknowledge();
-            log.info("接收到无关死信: " + messageId + "，当前组: " + listenerGroupId);
             return null;
         }
 
-        IdempotentMessage idempotentMessage = idempotentMessageRepository.findFirstBySequenceAndReceiver(Long.valueOf(messageId), serviceName);
-        if (idempotentMessage != null) {
-            // 已经消费过的重复消息
-            acknowledgment.acknowledge();
-            log.warn("接收到重复消息: " + messageId + "，当前组: " + listenerGroupId);
-            return null;
-        }
         Object sourceContent = consumerRecord.value();
         String targetContent = JsonUtil.transform(mappingString, sourceContent);
         messageDetail.put("content", targetContent);
         log.info("接收开始: " + messageId + "，当前组: " + listenerGroupId + "，参数: " + targetContent + "，来自死信: " + (null != messageGroupId));
         // 事务处理器,手动开启事务
         TransactionStatus transactionStatus = platformTransactionManager.getTransaction(transactionDefinition);
+        Object executeResult = null;
         try {
-            Object executeResult = null;
-            idempotentMessage = new IdempotentMessage();
+            IdempotentMessage idempotentMessage = new IdempotentMessage();
             idempotentMessage.setSender(senderHost);
             idempotentMessage.setSequence(Long.valueOf(messageId));
             idempotentMessage.setReceiver(serviceName);
@@ -157,26 +151,25 @@ public class MessageConsumeRouterExecution implements Ordered {
                 executeResult = proceedingJoinPoint.proceed(proceedingJoinPoint.getArgs());
             } else {
                 // 执行业务逻辑
-                Object resultObj = template.requestBody("message://" + adapterName + "-" + eventName + "-" + serviceName, targetContent);
-                Result<?> result = new Result<>();
-                if(resultObj instanceof String){
-                    result = JsonUtil.writeValueAsObjectRetainNull((String) resultObj, Result.class);
-                } else if(resultObj instanceof Result){
-                    result = (Result<?>) resultObj;
-                }
+                Result<?> result = template.requestBody("message://" + adapterName + "-" + eventName + "-" + serviceName, targetContent, Result.class);
                 if(!"200".equals(result.getCode())){
                     throw new RuntimeException("message adapter result code: " + result.getCode());
                 }
             }
             platformTransactionManager.commit(transactionStatus);
-            acknowledgment.acknowledge();
             log.info("接收成功: " + messageId + "，当前组: " + listenerGroupId);
             return executeResult;
-        } catch (Throwable throwable) {
+        } catch (Throwable e) {
+            if (e instanceof DataIntegrityViolationException && e.getCause() instanceof ConstraintViolationException
+                    && ((ConstraintViolationException) e.getCause()).getSQLException().getErrorCode() == 1062) {
+                log.warn("接收重复: " + messageId + "，当前组: " + listenerGroupId);
+                return executeResult;
+            }
             platformTransactionManager.rollback(transactionStatus);
+            log.error("接收失败: " + messageId + "，当前组: " + listenerGroupId + ", 错误信息: " + e.getLocalizedMessage());
+            throw e;
+        } finally {
             acknowledgment.acknowledge();
-            log.error("接收失败: " + messageId + "，当前组: " + listenerGroupId + ", 错误信息: " + throwable.getLocalizedMessage());
-            throw throwable;
         }
     }
 
