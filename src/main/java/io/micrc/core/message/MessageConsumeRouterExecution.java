@@ -153,7 +153,7 @@ public class MessageConsumeRouterExecution implements Ordered {
                 // 执行业务逻辑
                 Result<?> result = template.requestBody("message://" + adapterName + "-" + eventName + "-" + serviceName, targetContent, Result.class);
                 if(!"200".equals(result.getCode())){
-                    throw new RuntimeException("message adapter result code: " + result.getCode());
+                    throw new RuntimeException("micrc: " + result.getMessage());
                 }
             }
             platformTransactionManager.commit(transactionStatus);
@@ -165,7 +165,11 @@ public class MessageConsumeRouterExecution implements Ordered {
                 log.warn("接收重复: " + messageId + "，当前组: " + listenerGroupId);
                 return executeResult;
             }
-            platformTransactionManager.rollback(transactionStatus);
+            try {
+                platformTransactionManager.rollback(transactionStatus);
+            } catch (IllegalTransactionStateException ex) {
+                // 忽略事务状态异常
+            }
             log.error("接收失败: " + messageId + "，当前组: " + listenerGroupId + ", 错误信息: " + e.getLocalizedMessage());
             throw e;
         } finally {

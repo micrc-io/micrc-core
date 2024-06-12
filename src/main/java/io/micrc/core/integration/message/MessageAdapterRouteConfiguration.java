@@ -17,7 +17,7 @@ import lombok.experimental.SuperBuilder;
  */
 public class MessageAdapterRouteConfiguration extends MicrcRouteBuilder {
 
-    public static final String ROUTE_TMPL_MESSAGE =
+    public static final String ROUTE_TMPL_MESSAGE_ADAPTER =
             MessageAdapterRouteConfiguration.class.getName() + ".messageAdapter";
 
     @Override
@@ -28,7 +28,7 @@ public class MessageAdapterRouteConfiguration extends MicrcRouteBuilder {
                 .handled(true)
                 .to("error-handle://system");
 
-        routeTemplate(ROUTE_TMPL_MESSAGE)
+        routeTemplate(ROUTE_TMPL_MESSAGE_ADAPTER)
                 .templateParameter("name", null, "the business adapter name")
                 .templateParameter("serviceName", null, "the business service name")
                 .templateParameter("commandPath", null, "the command full path")

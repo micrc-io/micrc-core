@@ -168,7 +168,7 @@ class ApplicationMessageAdapterScanner extends ClassPathBeanDefinitionScanner {
                 sourceDefinition.addParameter(
                         routeId(messageAdapterPath),
                         ApplicationMessageRouteTemplateParamDefinition.builder()
-                                .templateId(MessageAdapterRouteConfiguration.ROUTE_TMPL_MESSAGE)
+                                .templateId(MessageAdapterRouteConfiguration.ROUTE_TMPL_MESSAGE_ADAPTER)
                                 .name(messageAdapterPath)
                                 .commandPath(commandPath)
                                 .serviceName(serviceName)
@@ -192,7 +192,7 @@ class ApplicationMessageAdapterScanner extends ClassPathBeanDefinitionScanner {
         if (!StringUtils.hasText(routeId)) {
             routeId = String.valueOf(INDEX.getAndIncrement());
         }
-        return MessageAdapterRouteConfiguration.ROUTE_TMPL_MESSAGE + "-" + routeId;
+        return MessageAdapterRouteConfiguration.ROUTE_TMPL_MESSAGE_ADAPTER + "-" + routeId;
     }
 
 }
