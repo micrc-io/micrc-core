@@ -505,9 +505,13 @@ public class CamelComponentTempConfiguration {
                 if (InvocationTargetException.class.equals(throwable.getClass())) {
                     throwable = ((InvocationTargetException) throwable).getTargetException();
                 }
-                String message = throwable.getLocalizedMessage();
-                log.error(message);
-                return message;
+                if (null != throwable) {
+                    throwable.printStackTrace();
+                    String message = throwable.getLocalizedMessage();
+                    log.error(message);
+                    return message;
+                }
+                return "unknown error";
             }
         };
     }
