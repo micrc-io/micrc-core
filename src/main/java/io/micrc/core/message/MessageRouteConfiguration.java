@@ -341,6 +341,7 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
         // 通用消息存储路由
         from("eventstore://store")
                 .routeId("eventstore://store")
+                .transacted()
                 .setHeader("currentCommandJson", body())
                 .setHeader("pointer", constant("/event/eventName"))
                 .to("json-patch://select")

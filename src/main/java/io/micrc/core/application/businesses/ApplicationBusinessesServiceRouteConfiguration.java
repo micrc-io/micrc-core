@@ -77,6 +77,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .setProperty("logicIntegrationJson").groovy("new String(java.util.Base64.getDecoder().decode('{{logicIntegrationJson}}'))")
                 .setProperty("timePathsJson", constant("{{timePathsJson}}"))
                 .setProperty("fieldMap", constant("{{fieldMap}}"))
+                .transacted()
                 // 1.处理请求
                 .to("direct://handle-request")
                 // 2.解析时间
@@ -102,6 +103,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .end();
 
         from("direct://executor-data")
+                .transacted()
                 .choice()
                 .when(simple("${exchange.properties.get(batchNamePath)}").isNull())
                     .to("direct://executor-data-one")
@@ -170,6 +172,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .setProperty("commandJson", body());
 
         from("direct://save-entity")
+                .transacted()
                 .process(exchange -> {
                     Map<String, Object> properties = exchange.getProperties();
                     String commandJson = (String) exchange.getProperties().get("commandJson");
@@ -289,6 +292,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .end();
 
         from("direct://save-message")
+                .transacted()
                 .setBody(exchangeProperty("commandJson"))
                 .setHeader("pointer", constant("/event/eventName"))
                 .to("json-patch://select")
