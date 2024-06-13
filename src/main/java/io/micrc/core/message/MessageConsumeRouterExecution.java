@@ -123,7 +123,7 @@ public class MessageConsumeRouterExecution implements Ordered {
         Object sourceContent = consumerRecord.value();
         String targetContent = JsonUtil.transform(mappingString, sourceContent);
         messageDetail.put("content", targetContent);
-        log.info("接收开始: " + messageId + "，当前组: " + listenerGroupId + "，参数: " + targetContent + "，来自死信: " + (null != messageGroupId));
+        log.info("接收开始{}: 消息{}，参数{}，死信{}", serviceName, messageId, targetContent, null != messageGroupId);
         try {
             Object executeResult = null;
             IdempotentMessage idempotentMessage = new IdempotentMessage();
@@ -140,15 +140,15 @@ public class MessageConsumeRouterExecution implements Ordered {
             } else {
                 template.requestBody("message://" + adapterName + "-" + eventName + "-" + serviceName, targetContent);
             }
-            log.info("接收成功: " + messageId + "，当前组: " + listenerGroupId);
+            log.info("接收成功{}: 消息{}", serviceName, messageId);
             return executeResult;
         } catch (Throwable e) {
             if (e instanceof DataIntegrityViolationException && e.getCause() instanceof ConstraintViolationException
                     && ((ConstraintViolationException) e.getCause()).getSQLException().getErrorCode() == 1062) {
-                log.warn("接收重复: " + messageId + "，当前组: " + listenerGroupId);
+                log.warn("接收重复{}: 消息{}", serviceName, messageId);
                 return null;
             } else {
-                log.error("接收失败: " + messageId + "，当前组: " + listenerGroupId + ", 错误信息: " + e.getLocalizedMessage());
+                log.error("接收失败{}: 消息{}, 错误信息{}", serviceName, messageId, e.getLocalizedMessage());
                 throw e;
             }
         } finally {

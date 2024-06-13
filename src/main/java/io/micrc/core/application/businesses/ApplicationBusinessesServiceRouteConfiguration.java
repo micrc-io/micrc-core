@@ -356,11 +356,11 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 // 2.2 执行逻辑
                 .setBody(exchangeProperty("logicIntegrationJson"))
                 .unmarshal().json(LogicIntegration.class)
-                .bean(LogicInParamsResolve.class, "toLogicParams(${body}, ${exchange.properties.get(commandJson)}, ${exchange.properties.get(timePaths)}, ${exchange.properties.get(logicType)})")
+                .bean(LogicInParamsResolve.class, "toLogicParams(${body}, ${exchange.properties.get(commandJson)}, ${exchange.properties.get(timePaths)}, ${exchange.properties.get(logicType)}, ${exchange.properties.get(logicName)})")
                 .setHeader("logic", simple("${exchange.properties.get(logicName)}/logic"))
                 .bean(LogicRequest.class, "request")
                 .unmarshal().json(HashMap.class)
-                .bean(LogicInParamsResolve.class, "toTargetParams(${body}, ${exchange.properties.get(commandJson)}, ${exchange.properties.get(logicIntegrationJson)}, ${exchange.properties.get(timePaths)}, ${exchange.properties.get(logicType)})")
+                .bean(LogicInParamsResolve.class, "toTargetParams(${body}, ${exchange.properties.get(commandJson)}, ${exchange.properties.get(logicIntegrationJson)}, ${exchange.properties.get(timePaths)}, ${exchange.properties.get(logicType)}, ${exchange.properties.get(logicName)})")
                 .setProperty("commandJson", body())
                 // 2.3 执行后置校验
                 .setHeader("logic", simple("${exchange.properties.get(logicName)}/after"))
@@ -376,11 +376,11 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 // 执行逻辑
                 .setBody(exchangeProperty("logicIntegrationJson"))
                 .unmarshal().json(LogicIntegration.class)
-                .bean(LogicInParamsResolve.class, "toLogicParams(${body}, ${exchange.properties.get(commandJson)}, ${exchange.properties.get(timePaths)}, ${exchange.properties.get(logicType)})")
+                .bean(LogicInParamsResolve.class, "toLogicParams(${body}, ${exchange.properties.get(commandJson)}, ${exchange.properties.get(timePaths)}, ${exchange.properties.get(logicType)}, ${exchange.properties.get(logicName)})")
                 .setHeader("groovy", simple("${exchange.properties.get(logicPath)}"))
                 .to("dynamic-groovy://execute")
                 .unmarshal().json(HashMap.class)
-                .bean(LogicInParamsResolve.class, "toTargetParams(${body}, ${exchange.properties.get(commandJson)}, ${exchange.properties.get(logicIntegrationJson)}, ${exchange.properties.get(timePaths)}, ${exchange.properties.get(logicType)})")
+                .bean(LogicInParamsResolve.class, "toTargetParams(${body}, ${exchange.properties.get(commandJson)}, ${exchange.properties.get(logicIntegrationJson)}, ${exchange.properties.get(timePaths)}, ${exchange.properties.get(logicType)}, ${exchange.properties.get(logicName)})")
                 .setProperty("commandJson", body())
                 .end();
     }
@@ -556,7 +556,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
 @Slf4j
 class LogicInParamsResolve {
 
-    public String toLogicParams(LogicIntegration logicIntegration, String commandJson, List<String[]> timePathList, String logicType) {
+    public String toLogicParams(LogicIntegration logicIntegration, String commandJson, List<String[]> timePathList, String logicType, String logicName) {
         Map<String, Object> logicParams = new HashMap<>();
         logicIntegration.getParamMappingMap().forEach((key, mapping) -> {
             // 原始结果
@@ -572,15 +572,15 @@ class LogicInParamsResolve {
             logicParams.put(key, JsonUtil.writeValueAsObject(value, Object.class));
         });
         String params = JsonUtil.writeValueAsStringRetainNull(logicParams);
-        log.info("业务执行条件：{}", params);
+        log.info("业务执行条件{}：{}", logicName, params);
         return params;
     }
 
-    public String toTargetParams(Map<String, Object> logicResult, String commandJson, String logicIntegrationJson, List<String[]> timePathList, String logicType) {
+    public String toTargetParams(Map<String, Object> logicResult, String commandJson, String logicIntegrationJson, List<String[]> timePathList, String logicType, String logicName) {
         Object angle = logicResult.get("angle");
         LogicIntegration logicIntegration = JsonUtil.writeValueAsObject(logicIntegrationJson, LogicIntegration.class);
         String resultJson = JsonUtil.writeValueAsString(logicResult);
-        log.info("业务执行结果：{}", resultJson);
+        log.info("业务执行结果{}：{}", logicName, resultJson);
         for (Map.Entry<String, String> entry : logicIntegration.getResultMappingMap().entrySet()) {
             String targetPath = entry.getKey();
             // 需要赋值状态执行结果含纬度信息，则状态赋值到对应纬度
@@ -615,8 +615,9 @@ class IntegrationCommandParams {
         if (unIntegrateParams.isEmpty()) {
             return null;
         }
-        log.info("业务未集成：{}", unIntegrateParams.stream().map(CommandParamIntegration::getParamName).collect(Collectors.joining(",")));
-        Map<String, Object> currentIntegration = findExecutable(unIntegrateParams, (String) properties.get("commandJson"));
+        String logicName = (String) properties.get("logicName");
+        log.info("业务未集成{}：{}", logicName, unIntegrateParams.stream().map(CommandParamIntegration::getParamName).collect(Collectors.joining(",")));
+        Map<String, Object> currentIntegration = findExecutable(unIntegrateParams, (String) properties.get("commandJson"), logicName);
         if (null == currentIntegration) {
             // 清除中间变量
             properties.remove("currentIntegrateParam");
@@ -659,7 +660,7 @@ class IntegrationCommandParams {
                 .findFirst().orElseThrow();
         String data = JsonUtil.transform(find.getResponseMapping(), JsonUtil.writeValueAsString(body));
         // 判断返回结果是否需要进行批处理
-        log.info("业务已集成：{}，结果：{}", name, data);
+        log.info("业务已集成{}：{}，结果：{}", properties.get("logicName"), name, data);
         find.setIntegrationComplete(true);
         if (find.isBatchFlag()) {
             exchange.setProperty("batchNamePath", "/" + name);
@@ -684,7 +685,7 @@ class IntegrationCommandParams {
      * @param unIntegrateParams
      * @return
      */
-    public static Map<String, Object> findExecutable(List<CommandParamIntegration> unIntegrateParams, String commandJson) {
+    public static Map<String, Object> findExecutable(List<CommandParamIntegration> unIntegrateParams, String commandJson, String logicName) {
         Map<String, Object> executableIntegrationInfo = new HashMap<>();
         for (CommandParamIntegration commandParamIntegration : unIntegrateParams) {
             // 优先处理非批量集成
@@ -703,12 +704,12 @@ class IntegrationCommandParams {
             });
         }
         if (null != executableIntegrationInfo.get("paramName")) {
-            log.info("业务可集成：{}，参数：{}", executableIntegrationInfo.get("paramName"), JsonUtil.writeValueAsString(executableIntegrationInfo.get("integrateParams")));
+            log.info("业务可集成{}：{}，参数：{}", logicName, executableIntegrationInfo.get("paramName"), JsonUtil.writeValueAsString(executableIntegrationInfo.get("integrateParams")));
             return executableIntegrationInfo;
         }
         // 是否只剩下了可选集成
         if (unIntegrateParams.stream().allMatch(CommandParamIntegration::isIgnoreIfParamAbsent)) {
-            log.info("业务不集成：{}", unIntegrateParams.stream().map(CommandParamIntegration::getParamName).collect(Collectors.joining(",")));
+            log.info("业务不集成{}：{}", logicName, unIntegrateParams.stream().map(CommandParamIntegration::getParamName).collect(Collectors.joining(",")));
             return null;
         }
         throw new RuntimeException("the integration file have error, command need integrate, but the param can not use... ");
