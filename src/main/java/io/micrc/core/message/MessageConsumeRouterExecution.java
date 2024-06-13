@@ -6,7 +6,6 @@ import io.micrc.core.message.store.EventMessage;
 import io.micrc.core.message.store.EventMessageRepository;
 import io.micrc.core.message.store.IdempotentMessage;
 import io.micrc.core.message.store.IdempotentMessageRepository;
-import io.micrc.core.rpc.Result;
 import io.micrc.lib.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.EndpointInject;
@@ -26,7 +25,6 @@ import org.springframework.core.Ordered;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
-import org.springframework.transaction.*;
 
 import java.lang.reflect.Method;
 import java.util.*;
@@ -44,12 +42,6 @@ public class MessageConsumeRouterExecution implements Ordered {
 
     @EndpointInject
     private ProducerTemplate template;
-
-    @Autowired
-    private PlatformTransactionManager platformTransactionManager;
-
-    @Autowired
-    private TransactionDefinition transactionDefinition;
 
     @Autowired
     private EventMessageRepository eventMessageRepository;
@@ -132,8 +124,6 @@ public class MessageConsumeRouterExecution implements Ordered {
         String targetContent = JsonUtil.transform(mappingString, sourceContent);
         messageDetail.put("content", targetContent);
         log.info("接收开始: " + messageId + "，当前组: " + listenerGroupId + "，参数: " + targetContent + "，来自死信: " + (null != messageGroupId));
-        // 事务处理器,手动开启事务
-        TransactionStatus transactionStatus = platformTransactionManager.getTransaction(transactionDefinition);
         Object executeResult = null;
         try {
             IdempotentMessage idempotentMessage = new IdempotentMessage();
@@ -144,33 +134,21 @@ public class MessageConsumeRouterExecution implements Ordered {
             String batchModel = (String) mapping.get("batchModel");
             String batchModelPath = "/" + batchModel;
             if (batchModel != null && !batchModel.isEmpty() && JsonUtil.readPath(targetContent, batchModelPath) instanceof List) {
-                // 拆分批量事件
                 copyEvent(mapping, consumerRecord, targetContent, batchModelPath, eventName);
             } else if (messageAdapter.custom()) {
-                // 自定义实现
                 executeResult = proceedingJoinPoint.proceed(proceedingJoinPoint.getArgs());
             } else {
-                // 执行业务逻辑
-                Result<?> result = template.requestBody("message://" + adapterName + "-" + eventName + "-" + serviceName, targetContent, Result.class);
-                if(!"200".equals(result.getCode())){
-                    throw new RuntimeException("micrc: " + result.getMessage());
-                }
+                template.requestBody("message://" + adapterName + "-" + eventName + "-" + serviceName, targetContent);
             }
-            platformTransactionManager.commit(transactionStatus);
             log.info("接收成功: " + messageId + "，当前组: " + listenerGroupId);
             return executeResult;
         } catch (Throwable e) {
             if (e instanceof DataIntegrityViolationException && e.getCause() instanceof ConstraintViolationException
                     && ((ConstraintViolationException) e.getCause()).getSQLException().getErrorCode() == 1062) {
                 log.warn("接收重复: " + messageId + "，当前组: " + listenerGroupId);
-                return executeResult;
+            } else {
+                log.error("接收失败: " + messageId + "，当前组: " + listenerGroupId + ", 错误信息: " + e.getLocalizedMessage());
             }
-            try {
-                platformTransactionManager.rollback(transactionStatus);
-            } catch (IllegalTransactionStateException ex) {
-                // 忽略事务状态异常
-            }
-            log.error("接收失败: " + messageId + "，当前组: " + listenerGroupId + ", 错误信息: " + e.getLocalizedMessage());
             throw e;
         } finally {
             acknowledgment.acknowledge();
