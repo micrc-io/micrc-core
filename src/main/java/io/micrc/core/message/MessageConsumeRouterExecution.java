@@ -124,8 +124,8 @@ public class MessageConsumeRouterExecution implements Ordered {
         String targetContent = JsonUtil.transform(mappingString, sourceContent);
         messageDetail.put("content", targetContent);
         log.info("接收开始: " + messageId + "，当前组: " + listenerGroupId + "，参数: " + targetContent + "，来自死信: " + (null != messageGroupId));
-        Object executeResult = null;
         try {
+            Object executeResult = null;
             IdempotentMessage idempotentMessage = new IdempotentMessage();
             idempotentMessage.setSender(senderHost);
             idempotentMessage.setSequence(Long.valueOf(messageId));
@@ -146,10 +146,11 @@ public class MessageConsumeRouterExecution implements Ordered {
             if (e instanceof DataIntegrityViolationException && e.getCause() instanceof ConstraintViolationException
                     && ((ConstraintViolationException) e.getCause()).getSQLException().getErrorCode() == 1062) {
                 log.warn("接收重复: " + messageId + "，当前组: " + listenerGroupId);
+                return null;
             } else {
                 log.error("接收失败: " + messageId + "，当前组: " + listenerGroupId + ", 错误信息: " + e.getLocalizedMessage());
+                throw e;
             }
-            throw e;
         } finally {
             acknowledgment.acknowledge();
         }
