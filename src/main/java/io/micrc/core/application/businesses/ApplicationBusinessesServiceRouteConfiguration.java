@@ -308,7 +308,7 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .otherwise()
                     .setHeader("pointer", constant("/event/eventBatchData"))
                     .to("json-patch://select")
-                    .split(new SplitList()).parallelProcessing()
+                    .split(new SplitList())
                         .bean(JsonUtil.class, "writeValueAsString")
                         .setHeader("path", simple("${exchange.properties.get(batchPropertyPath)}"))
                         .setHeader("value", body())

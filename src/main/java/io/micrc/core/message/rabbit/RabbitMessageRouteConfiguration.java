@@ -50,7 +50,7 @@
 //                .routeId("eventstore://sender")
 //                .transacted()
 //                .bean(EventsInfo.class, "getAllEvents")
-//                .split(new SplitList()).parallelProcessing()
+//                .split(new SplitList())
 //                    .setProperty("eventInfo", body())
 //                    .bean(RabbitMessageTrackerRepository.class, "findFirstByChannel(${body.getChannel()})")
 //                    .choice()

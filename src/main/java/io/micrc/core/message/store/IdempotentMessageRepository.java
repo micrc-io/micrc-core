@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -15,6 +16,7 @@ import java.util.List;
  * @date 2022/12/2 9:11
  */
 @Repository
+@Transactional(rollbackFor = Exception.class)
 public interface IdempotentMessageRepository extends JpaRepository<IdempotentMessage, Long> {
 
     /**
@@ -22,7 +24,7 @@ public interface IdempotentMessageRepository extends JpaRepository<IdempotentMes
      *
      * @return  sender
      */
-    @Query(nativeQuery = true, value = "select distinct sender from message_idempotent_message")
+    @Query(nativeQuery = true, value = "select distinct sender from message_idempotent_message for update nowait")
     List<String> findSender();
 
     /**
@@ -36,7 +38,7 @@ public interface IdempotentMessageRepository extends JpaRepository<IdempotentMes
             value = "select sequence from message_idempotent_message " +
                     "where sender=:sender " +
                     "order by sequence asc " +
-                    "limit :count")
+                    "limit :count for update nowait")
     List<Long> findMessageIdsBySenderLimitCount(@Param("sender") String sender, @Param("count") Integer count);
 
     /**
@@ -49,7 +51,7 @@ public interface IdempotentMessageRepository extends JpaRepository<IdempotentMes
     @Query(nativeQuery = true,
             value = "select sequence from message_idempotent_message " +
                     "where sequence in :messageIds " +
-                    "and receiver=:receiver ")
+                    "and receiver=:receiver for update nowait")
     List<Long> filterMessageIdByMessageIdsAndReceiver(@Param("messageIds") List<Long> messageIds, @Param("receiver") String receiver);
 
     /**

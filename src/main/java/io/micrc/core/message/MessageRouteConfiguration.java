@@ -421,18 +421,33 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
                 .routeId("eventstore://sender")
                 // 需要发送的事件
                 .bean(EventsInfo.class, "getAllEvents")
-                .split(new SplitList()).parallelProcessing()
+                .split(new SplitList())
                     .setProperty("eventInfo", body())
-                    .bean(ErrorMessageRepository.class, "findErrorMessageByEventLimitByCount(${exchange.properties.get(eventInfo).getEventName()}, 100)")
+                    .bean(ErrorMessageRepository.class, "findErrorMessageByEventLimitByCount(${exchange.properties.get(eventInfo).getEventName()}, 10)")
                     .setHeader("errorMessageCount", simple("${body.size}"))
                     .setProperty("errorEvents", body())
                     .process(exchange -> {
                         Integer errorMessageCount = (Integer) exchange.getIn().getHeader("errorMessageCount");
-                        exchange.getIn().setHeader("normalMessageCount", 1000 - errorMessageCount);
+                        exchange.getIn().setHeader("normalMessageCount", 100 - errorMessageCount);
                     })
                     .bean(EventMessageRepository.class, "findEventMessageByRegionLimitByCount(${exchange.properties.get(eventInfo).getEventName()}, ${header.normalMessageCount})")
                     .setProperty("normalEvents", body())
                     .setBody(exchangeProperty("errorEvents"))
+                    .process(exchange -> {
+                        try {
+                            Map<String, Object> properties = exchange.getProperties();
+                            EventsInfo.Event eventInfo = (EventsInfo.Event) properties.get("eventInfo");
+                            List normalEvents = (List) properties.get("normalEvents");
+                            List errorEvents = (List) properties.get("errorEvents");
+                            int normalEventsSize = normalEvents.size();
+                            int errorEventsSize = errorEvents.size();
+                            if (normalEventsSize > 0 || errorEventsSize > 0) {
+                                log.info("调度发送{}, 正常数量{}, 错误数量{}", eventInfo.getEventName(), normalEventsSize, errorEventsSize);
+                            }
+                        } catch (Exception e) {
+                            log.error("调度统计错误！");
+                        }
+                    })
                     .split(new SplitList()).parallelProcessing()
                         .to("publish://send-error")
                         .end()
@@ -476,7 +491,7 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
                 .transacted()
                 // 发送出去的事件都被消费则清理
                 .bean(EventsInfo.class, "getAllEvents")
-                .split(new SplitList()).parallelProcessing()
+                .split(new SplitList())
                     .setHeader("eventInfo", body())
                     .bean(EventMessageRepository.class, "findSentIdByRegionLimitCount(${body.getEventName()},1000)")
                     .to("clean://idempotent-consumed-filter")
@@ -488,7 +503,7 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
                 .end()
                 // 在接收方复制并发送的事件被消费则清理
                 .bean(EventMessageRepository.class, "findSentIdByOriginalExists()")
-                .split(new SplitList()).parallelProcessing()
+                .split(new SplitList())
                     .process(exchange -> {
                         EventMessage eventMessage = exchange.getIn().getBody(EventMessage.class);
                         EventsInfo.EventMapping eventMapping = JsonUtil.writeValueAsObject(eventMessage.getOriginalMapping(), EventsInfo.EventMapping.class);
@@ -507,7 +522,7 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
                 .end()
                 // 接收到的事件已被删除的则清理幂等仓
                 .bean(IdempotentMessageRepository.class, "findSender")
-                .split(new SplitList()).parallelProcessing()
+                .split(new SplitList())
                     .setHeader("senderAddress", body())
                     .bean(IdempotentMessageRepository.class, "findMessageIdsBySenderLimitCount(${body},1000)")
                     .to("clean://store-removed-filter")

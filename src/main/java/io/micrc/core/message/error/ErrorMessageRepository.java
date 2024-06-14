@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -15,6 +16,7 @@ import java.util.List;
  * @date 2022/1/12 9:11 PM
  */
 @Repository
+@Transactional(rollbackFor = Exception.class)
 public interface ErrorMessageRepository extends JpaRepository<ErrorMessage, Long> {
 
     @Query(nativeQuery = true,
@@ -23,7 +25,7 @@ public interface ErrorMessageRepository extends JpaRepository<ErrorMessage, Long
                    "event=:event " +
                    "and error_status='WAITING' " +
                    "order by message_id ASC " +
-                   "limit :count ")
+                   "limit :count for update nowait")
     List<ErrorMessage> findErrorMessageByEventLimitByCount(@Param("event")String event, @Param("count")Integer count);
 
     @Query(nativeQuery = true,
@@ -32,7 +34,7 @@ public interface ErrorMessageRepository extends JpaRepository<ErrorMessage, Long
                     "original_topic is not null " +
                     "and error_status='WAITING' " +
                     "order by message_id ASC " +
-                    "limit 1000 ")
+                    "limit 1000 for update nowait")
     List<ErrorMessage> findErrorMessageByOriginalExists();
 
     ErrorMessage findFirstByMessageIdAndGroupId(@Param("messageId")Long messageId, @Param("groupId")String groupId);
