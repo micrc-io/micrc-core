@@ -1,11 +1,13 @@
 package io.micrc.core.message.store;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.persistence.LockModeType;
 import java.util.List;
 
 /**
@@ -18,6 +20,9 @@ import java.util.List;
 @Repository
 @Transactional(rollbackFor = Exception.class)
 public interface IdempotentMessageRepository extends JpaRepository<IdempotentMessage, Long> {
+
+    @Lock(value = LockModeType.PESSIMISTIC_WRITE)
+    IdempotentMessage findFirstBySequenceAndReceiver(Long sequence, String receiver);
 
     /**
      * 查找所有发送方

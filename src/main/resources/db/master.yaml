@@ -12,3 +12,6 @@ databaseChangeLog:
   - include:
       file: schema/message/message-schema-20240607.yaml
       relativeToChangelogFile: false
+  - include:
+      file: schema/message/message-schema-20240615.yaml
+      relativeToChangelogFile: false

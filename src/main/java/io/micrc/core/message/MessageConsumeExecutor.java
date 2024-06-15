@@ -32,11 +32,31 @@ public class MessageConsumeExecutor {
     private IdempotentMessageRepository idempotentMessageRepository;
 
     @Transactional(rollbackFor = Exception.class)
+    public boolean preExecute(HashMap<String, String> messageDetail) {
+        Long messageId = Long.valueOf(messageDetail.get("messageId"));
+        String serviceName = messageDetail.get("serviceName");
+        IdempotentMessage idempotentMessage = idempotentMessageRepository.findFirstBySequenceAndReceiver(messageId, serviceName);
+        if (idempotentMessage == null) {
+            idempotentMessage = new IdempotentMessage();
+            idempotentMessage.setSender(messageDetail.get("senderHost"));
+            idempotentMessage.setSequence(messageId);
+            idempotentMessage.setReceiver(serviceName);
+            idempotentMessage.setStatus("RECEIVING");
+            idempotentMessageRepository.save(idempotentMessage);
+        }
+        return received(idempotentMessage, serviceName, messageId.toString());
+    }
+
+    private static boolean received(IdempotentMessage idempotentMessage, String serviceName, String messageId) {
+        log.warn("接收重复{}: 消息{}", serviceName, messageId);
+        return "RECEIVED".equals(idempotentMessage.getStatus());
+    }
+
+    @Transactional(rollbackFor = Exception.class)
     public Object execute(HashMap<String, String> messageDetail, ProceedingJoinPoint proceedingJoinPoint, boolean custom, HashMap mapping) throws Throwable {
         String eventName = messageDetail.get("event");
         String messageGroupId = messageDetail.get("groupId");
         String messageId = messageDetail.get("messageId");
-        String senderHost = messageDetail.get("senderHost");
         String topicName = messageDetail.get("topicName");
         String adapterName = messageDetail.get("adapterName");
         String serviceName = messageDetail.get("serviceName");
@@ -44,10 +64,11 @@ public class MessageConsumeExecutor {
         try {
             log.info("接收开始{}: 消息{}，参数{}，死信{}", serviceName, messageId, targetContent, null != messageGroupId);
             Object executeResult = null;
-            IdempotentMessage idempotentMessage = new IdempotentMessage();
-            idempotentMessage.setSender(senderHost);
-            idempotentMessage.setSequence(Long.valueOf(messageId));
-            idempotentMessage.setReceiver(serviceName);
+            IdempotentMessage idempotentMessage = idempotentMessageRepository.findFirstBySequenceAndReceiver(Long.valueOf(messageId), serviceName);
+            if (received(idempotentMessage, serviceName, messageId)) {
+                return null;
+            }
+            idempotentMessage.setStatus("RECEIVED");
             idempotentMessageRepository.save(idempotentMessage);
             String batchModel = (String) mapping.get("batchModel");
             String batchModelPath = "/" + batchModel;
@@ -61,14 +82,8 @@ public class MessageConsumeExecutor {
             log.info("接收成功{}: 消息{}", serviceName, messageId);
             return executeResult;
         } catch (Throwable e) {
-            if (e instanceof DataIntegrityViolationException && e.getCause() instanceof ConstraintViolationException
-                    && ((ConstraintViolationException) e.getCause()).getSQLException().getErrorCode() == 1062) {
-                log.warn("接收重复{}: 消息{}", serviceName, messageId);
-                return null;
-            } else {
-                log.error("接收失败{}: 消息{}, 错误信息{}", serviceName, messageId, e.getLocalizedMessage());
-                throw e;
-            }
+            log.error("接收失败{}: 消息{}, 错误信息{}", serviceName, messageId, e.getLocalizedMessage());
+            throw e;
         }
     }
 

@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - changeSet:
+      id: message-message-idempotent-add-status-0.0.46
+      author: micrc
+      preConditions:
+        - onFail: MARK_RAN
+          not:
+            - columnExists:
+                tableName: message_idempotent_message
+                columnName: status
+      changes:
+        - addColumn:
+            tableName: message_idempotent_message
+            columns:
+              - column:
+                  name: status
+                  type: VARCHAR(255)
+                  remarks: status

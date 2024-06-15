@@ -106,6 +106,12 @@ public class MessageConsumeRouterExecution implements Ordered {
         messageDetail.put("adapterName", adapter.getSimpleName());
         messageDetail.put("serviceName", serviceName);
         messageDetail.put("content", JsonUtil.transform(mappingString, consumerRecord.value()));
+        boolean consumed = messageConsumeExecutor.preExecute(messageDetail);
+        if (consumed) {
+            // 重复消息
+            acknowledgment.acknowledge();
+            return null;
+        }
         Object result = messageConsumeExecutor.execute(messageDetail, proceedingJoinPoint, messageAdapter.custom(), mapping);
         acknowledgment.acknowledge();
         return result;

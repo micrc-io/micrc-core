@@ -89,7 +89,7 @@ public class MessageEnvironmentProcessor implements EnvironmentPostProcessor {
         // 是否自动提交
         properties.setProperty("spring.kafka.consumer.enable-auto-commit", "false");
         // 批消费并发量，小于或等于Topic的分区数
-        properties.setProperty("spring.kafka.consumer.batch.concurrency", "3");
+        properties.setProperty("spring.kafka.consumer.batch.concurrency", "1");
         // 监听器设置手动应答
         properties.setProperty("spring.kafka.listener.ack-mode", "MANUAL_IMMEDIATE");
         // 日志级别

@@ -21,6 +21,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.Environment;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.Acknowledgment;
@@ -152,6 +153,32 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
 
         Optional<String> profileStr = Optional.ofNullable(environment.getProperty("application.profiles"));
         List<String> profiles = Arrays.asList(profileStr.orElse("").split(","));
+        KafkaTemplate<String, String> kafkaTemplate = findKafkaTemplate(eventInfo, profiles);
+
+        ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(objectMessage);
+        future.completable().whenCompleteAsync((sendResult, throwable) -> {
+            resolveSendResult(eventInfo, isCopyEvent, throwable, messageId, groupId, content);
+        });
+    }
+
+    private void resolveSendResult(EventsInfo.Event eventInfo, Boolean isCopyEvent, Throwable throwable, Long messageId, Object groupId, String content) {
+        if (null == throwable) {
+            // 发送成功 则 删除错误记录
+            ErrorMessage errorMessage = new ErrorMessage();
+            errorMessage.setMessageId(messageId);
+            errorMessage.setGroupId((String) groupId);
+            producerTemplate.requestBody("publish://success-sending-resolve", errorMessage);
+            log.info("发送成功: " + messageId + "，是否死信" + (groupId != null));
+        } else {
+            // 发送失败 则 记录错误信息/累加错误次数
+            ErrorMessage errorMessage = constructErrorMessage(eventInfo, content, messageId, isCopyEvent, throwable.getLocalizedMessage());
+            producerTemplate.requestBody("publish://error-sending-resolve", errorMessage);
+            log.error("发送失败: " + messageId + "，是否死信" + (groupId != null));
+        }
+    }
+
+    @NotNull
+    private KafkaTemplate<String, String> findKafkaTemplate(EventsInfo.Event eventInfo, List<String> profiles) {
         KafkaTemplate<String, String> kafkaTemplate;
         if (profiles.contains("default") || profiles.contains("local")) {
             kafkaTemplate = applicationContext.getBean("kafkaTemplate", KafkaTemplate.class);
@@ -175,23 +202,7 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
             }
             kafkaTemplate = applicationContext.getBean("kafkaTemplate" + provider, KafkaTemplate.class);
         }
-
-        ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(objectMessage);
-        future.completable().whenCompleteAsync((sendResult, throwable) -> {
-            if (null == throwable) {
-                // 发送成功 则 删除错误记录
-                ErrorMessage errorMessage = new ErrorMessage();
-                errorMessage.setMessageId(messageId);
-                errorMessage.setGroupId((String) groupId);
-                producerTemplate.requestBody("publish://success-sending-resolve", errorMessage);
-                log.info("发送成功: " + messageId + "，是否死信" + (groupId != null));
-            } else {
-                // 发送失败 则 记录错误信息/累加错误次数
-                ErrorMessage errorMessage = constructErrorMessage(eventInfo, content, messageId, isCopyEvent, throwable.getLocalizedMessage());
-                producerTemplate.requestBody("publish://error-sending-resolve", errorMessage);
-                log.error("发送失败: " + messageId + "，是否死信" + (groupId != null));
-            }
-        });
+        return kafkaTemplate;
     }
 
     private ErrorMessage constructErrorMessage(EventsInfo.Event eventInfo, String content, Long messageId, Boolean isCopyEvent, String error) {
@@ -338,6 +349,10 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
 
     @Override
     public void configure() throws Exception {
+
+        onException(PessimisticLockingFailureException.class)
+                .handled(true);
+
         // 通用消息存储路由
         from("eventstore://store")
                 .routeId("eventstore://store")
@@ -463,7 +478,7 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
                     .process(exchange -> {
                         EventMessage eventMessage = exchange.getIn().getBody(EventMessage.class);
                         EventsInfo.EventMapping eventMapping = JsonUtil.writeValueAsObject(eventMessage.getOriginalMapping(), EventsInfo.EventMapping.class);
-                        MessageRouteConfiguration.EventsInfo.Event event = MessageRouteConfiguration.EventsInfo.Event.builder()
+                        EventsInfo.Event event = EventsInfo.Event.builder()
                                 .topicName(eventMessage.getOriginalTopic())
                                 .eventName(eventMessage.getRegion())
                                 .eventMappings(Arrays.asList(eventMapping)).build();
@@ -476,7 +491,7 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
                     .process(exchange -> {
                         ErrorMessage errorMessage = exchange.getIn().getBody(ErrorMessage.class);
                         EventsInfo.EventMapping eventMapping = JsonUtil.writeValueAsObject(errorMessage.getOriginalMapping(), EventsInfo.EventMapping.class);
-                        MessageRouteConfiguration.EventsInfo.Event event = MessageRouteConfiguration.EventsInfo.Event.builder()
+                        EventsInfo.Event event = EventsInfo.Event.builder()
                                 .topicName(errorMessage.getOriginalTopic())
                                 .eventName(errorMessage.getEvent())
                                 .eventMappings(Arrays.asList(eventMapping)).build();

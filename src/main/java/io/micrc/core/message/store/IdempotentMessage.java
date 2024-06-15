@@ -41,4 +41,9 @@ public class IdempotentMessage {
      * 接收方
      */
     private String receiver;
+
+    /**
+     * 状态
+     */
+    private String status;
 }
