@@ -36,11 +36,11 @@ public interface EventMessageRepository extends JpaRepository<EventMessage, Long
                     "ms.original_topic is not null " +
                     "and ms.status ='WAITING' " +
                     "order by ms.message_id asc " +
-                    "limit 1000 for update nowait")
+                    "limit 100 for update nowait")
     List<EventMessage> findEventMessageByOriginalExists();
 
     /**
-     * 清理入口，已发送的事件1000条
+     * 清理入口，已发送的事件100条
      *
      * @param region    region
      * @param count     count
@@ -64,7 +64,7 @@ public interface EventMessageRepository extends JpaRepository<EventMessage, Long
                     "and ms.status ='SENT' " +
                     "and ms.create_time < (UNIX_TIMESTAMP() - 604800) * 1000 " +
                     "order by ms.message_id asc " +
-                    "limit 1000 for update nowait")
+                    "limit 100 for update nowait")
     List<Long> findSentIdByOriginalExists();
 
     /**

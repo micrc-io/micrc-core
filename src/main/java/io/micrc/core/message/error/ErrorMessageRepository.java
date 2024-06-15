@@ -34,7 +34,7 @@ public interface ErrorMessageRepository extends JpaRepository<ErrorMessage, Long
                     "original_topic is not null " +
                     "and error_status='WAITING' " +
                     "order by message_id ASC " +
-                    "limit 1000 for update nowait")
+                    "limit 100 for update nowait")
     List<ErrorMessage> findErrorMessageByOriginalExists();
 
     ErrorMessage findFirstByMessageIdAndGroupId(@Param("messageId")Long messageId, @Param("groupId")String groupId);
