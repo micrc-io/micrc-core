@@ -2,14 +2,8 @@ package io.micrc.core.message;
 
 import io.micrc.core.annotations.message.Adapter;
 import io.micrc.core.annotations.message.MessageAdapter;
-import io.micrc.core.message.store.EventMessage;
-import io.micrc.core.message.store.EventMessageRepository;
-import io.micrc.core.message.store.IdempotentMessage;
-import io.micrc.core.message.store.IdempotentMessageRepository;
 import io.micrc.lib.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.camel.EndpointInject;
-import org.apache.camel.ProducerTemplate;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -18,16 +12,17 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.aspectj.lang.reflect.MethodSignature;
-import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Optional;
 /**
  * 消息消费路由执行
  *
@@ -40,14 +35,8 @@ import java.util.*;
 @Configuration
 public class MessageConsumeRouterExecution implements Ordered {
 
-    @EndpointInject
-    private ProducerTemplate template;
-
     @Autowired
-    private EventMessageRepository eventMessageRepository;
-
-    @Autowired
-    private IdempotentMessageRepository idempotentMessageRepository;
+    private MessageConsumeExecutor messageConsumeExecutor;
 
     @Pointcut("@annotation(io.micrc.core.annotations.message.MessageExecution)")
     public void annotationPointCut() {/* leave it out */}
@@ -69,6 +58,8 @@ public class MessageConsumeRouterExecution implements Ordered {
         if (null == consumerRecord || null == acknowledgment) {
             throw new IllegalArgumentException("sys args error");
         }
+        HashMap<String, String> messageDetail = new HashMap<>();
+        transMessageHeaders(consumerRecord, messageDetail);
 
         // 解析监听器注解参数
         Class<?>[] interfaces = proceedingJoinPoint.getTarget().getClass().getInterfaces();
@@ -77,19 +68,9 @@ public class MessageConsumeRouterExecution implements Ordered {
                     "businesses service implementation class must only implement it's interface. ");
         }
         Class<?> adapter = interfaces[0];
-        String adapterName = adapter.getSimpleName();
         MessageAdapter messageAdapter = adapter.getAnnotation(MessageAdapter.class);
-
-        // 解析消息详情
-        HashMap<String, String> messageDetail = new HashMap<>();
-        transMessageHeaders(consumerRecord, messageDetail);
-        String eventName = messageDetail.get("event");
-        String messageGroupId = messageDetail.get("groupId");
-        String mappingMapString = messageDetail.get("mappingMap");
-        String messageId = messageDetail.get("messageId");
-        String senderHost = messageDetail.get("senderHost");
-
         Adapter[]  adapters = messageAdapter.value();
+        String eventName = messageDetail.get("event");
         Optional<Adapter> optionalAnnotation = Arrays.stream(adapters).filter(a -> a.eventName().equals(eventName)).findFirst();
         Adapter annotation = optionalAnnotation.orElse(null);
         if (null == annotation) {
@@ -100,8 +81,8 @@ public class MessageConsumeRouterExecution implements Ordered {
         String servicePath = annotation.commandServicePath();
         String[] servicePathSplit = servicePath.split("\\.");
         String serviceName = servicePathSplit[servicePathSplit.length - 1];
-        messageDetail.put("serviceName", serviceName);
 
+        String mappingMapString = messageDetail.get("mappingMap");
         HashMap mappingMap = JsonUtil.writeValueAsObject(mappingMapString, HashMap.class);
         Object mappingObj = mappingMap.get(serviceName);
         HashMap mapping = JsonUtil.writeObjectAsObject(mappingObj, HashMap.class);
@@ -114,62 +95,20 @@ public class MessageConsumeRouterExecution implements Ordered {
 
         KafkaListener listenerAnnotation = getListenerAnnotation(proceedingJoinPoint);
         String listenerGroupId = listenerAnnotation.groupId();
+        String messageGroupId = messageDetail.get("groupId");
         if (null != messageGroupId && !messageGroupId.isEmpty() && !messageGroupId.equals(listenerGroupId)) {
             // 发给其他指定组的无关死信
             acknowledgment.acknowledge();
             return null;
         }
 
-        Object sourceContent = consumerRecord.value();
-        String targetContent = JsonUtil.transform(mappingString, sourceContent);
-        messageDetail.put("content", targetContent);
-        log.info("接收开始{}: 消息{}，参数{}，死信{}", serviceName, messageId, targetContent, null != messageGroupId);
-        try {
-            Object executeResult = null;
-            IdempotentMessage idempotentMessage = new IdempotentMessage();
-            idempotentMessage.setSender(senderHost);
-            idempotentMessage.setSequence(Long.valueOf(messageId));
-            idempotentMessage.setReceiver(serviceName);
-            idempotentMessageRepository.save(idempotentMessage);
-            String batchModel = (String) mapping.get("batchModel");
-            String batchModelPath = "/" + batchModel;
-            if (batchModel != null && !batchModel.isEmpty() && JsonUtil.readPath(targetContent, batchModelPath) instanceof List) {
-                copyEvent(mapping, consumerRecord, targetContent, batchModelPath, eventName);
-            } else if (messageAdapter.custom()) {
-                executeResult = proceedingJoinPoint.proceed(proceedingJoinPoint.getArgs());
-            } else {
-                template.requestBody("message://" + adapterName + "-" + eventName + "-" + serviceName, targetContent);
-            }
-            log.info("接收成功{}: 消息{}", serviceName, messageId);
-            return executeResult;
-        } catch (Throwable e) {
-            if (e instanceof DataIntegrityViolationException && e.getCause() instanceof ConstraintViolationException
-                    && ((ConstraintViolationException) e.getCause()).getSQLException().getErrorCode() == 1062) {
-                log.warn("接收重复{}: 消息{}", serviceName, messageId);
-                return null;
-            } else {
-                log.error("接收失败{}: 消息{}, 错误信息{}", serviceName, messageId, e.getLocalizedMessage());
-                throw e;
-            }
-        } finally {
-            acknowledgment.acknowledge();
-        }
-    }
-
-    private void copyEvent(HashMap mapping, ConsumerRecord<?, ?> consumerRecord, String targetContent, String batchModelPath, String eventName) {
-        mapping.put("mappingPath", ".");
-        mapping.put("batchModel", null);
-        ConsumerRecord<?, ?> finalConsumerRecord = consumerRecord;
-        ((List) JsonUtil.readPath(targetContent, batchModelPath)).forEach(eventData -> {
-            EventMessage eventMessage = new EventMessage();
-            String splitContentString = JsonUtil.patch(targetContent, batchModelPath, JsonUtil.writeValueAsString(eventData));
-            eventMessage.setContent(splitContentString);
-            eventMessage.setOriginalTopic(finalConsumerRecord.topic());
-            eventMessage.setOriginalMapping(JsonUtil.writeValueAsString(mapping));
-            eventMessage.setRegion(eventName);
-            eventMessage.setStatus("WAITING");
-            eventMessageRepository.save(eventMessage);
-        });
+        messageDetail.put("topicName", consumerRecord.topic());
+        messageDetail.put("adapterName", adapter.getSimpleName());
+        messageDetail.put("serviceName", serviceName);
+        messageDetail.put("content", JsonUtil.transform(mappingString, consumerRecord.value()));
+        Object result = messageConsumeExecutor.execute(messageDetail, proceedingJoinPoint, messageAdapter.custom(), mapping);
+        acknowledgment.acknowledge();
+        return result;
     }
 
     private static KafkaListener getListenerAnnotation(ProceedingJoinPoint proceedingJoinPoint) throws NoSuchMethodException {

@@ -1,5 +1,6 @@
 package io.micrc.core.message.springboot;
 
+import io.micrc.core.message.MessageConsumeExecutor;
 import io.micrc.core.message.MessageConsumeRouterExecution;
 import io.micrc.core.message.MessageRouteConfiguration;
 import io.micrc.core.message.store.MessagePublisherSchedule;
@@ -51,7 +52,8 @@ import java.util.*;
 @Import({
         MessageRouteConfiguration.class,
         MessagePublisherSchedule.class,
-        MessageConsumeRouterExecution.class
+        MessageConsumeRouterExecution.class,
+        MessageConsumeExecutor.class
 })
 @EntityScan(basePackages = {"io.micrc.core.message.store", "io.micrc.core.message.error"})
 @EnableJpaRepositories(basePackages = {"io.micrc.core.message.store", "io.micrc.core.message.error"})
