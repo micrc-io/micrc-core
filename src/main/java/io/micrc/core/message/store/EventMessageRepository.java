@@ -75,6 +75,6 @@ public interface EventMessageRepository extends JpaRepository<EventMessage, Long
      */
     @Query(nativeQuery = true,
             value = "select ms.message_id from message_message_store ms " +
-                    "where ms.message_id in :messageIds for update nowait")
+                    "where ms.message_id in :messageIds")
     List<Long> findUnRemoveIdsByMessageIds(@Param(value = "messageIds") List<Long> messageIds);
 }

@@ -29,7 +29,7 @@ public interface IdempotentMessageRepository extends JpaRepository<IdempotentMes
      *
      * @return  sender
      */
-    @Query(nativeQuery = true, value = "select distinct sender from message_idempotent_message for update nowait")
+    @Query(nativeQuery = true, value = "select distinct sender from message_idempotent_message")
     List<String> findSender();
 
     /**
@@ -42,6 +42,7 @@ public interface IdempotentMessageRepository extends JpaRepository<IdempotentMes
     @Query(nativeQuery = true,
             value = "select sequence from message_idempotent_message " +
                     "where sender=:sender " +
+                    "and status='RECEIVED' " +
                     "order by sequence asc " +
                     "limit :count for update nowait")
     List<Long> findMessageIdsBySenderLimitCount(@Param("sender") String sender, @Param("count") Integer count);
@@ -56,7 +57,8 @@ public interface IdempotentMessageRepository extends JpaRepository<IdempotentMes
     @Query(nativeQuery = true,
             value = "select sequence from message_idempotent_message " +
                     "where sequence in :messageIds " +
-                    "and receiver=:receiver for update nowait")
+                    "and status='RECEIVED' " +
+                    "and receiver=:receiver")
     List<Long> filterMessageIdByMessageIdsAndReceiver(@Param("messageIds") List<Long> messageIds, @Param("receiver") String receiver);
 
     /**

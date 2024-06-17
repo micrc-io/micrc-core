@@ -292,6 +292,9 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
             body.put("receiver", eventMapping.getMappingKey());
             String endpoint = "rest://post:/api/check-idempotent-consumed?host=" + spliceHost(eventMapping.receiverAddress);
             String response = producerTemplate.requestBodyAndHeaders(endpoint, JsonUtil.writeValueAsString(body), constructHeaders(), String.class);
+            if (response.startsWith("{")) {
+                response = "[]"; // HTTP调用错误并直接返回入参作为响应，需特殊处理
+            }
             result = JsonUtil.writeValueAsList(response, Long.class);
         }
         if (!result.isEmpty()) {
@@ -339,6 +342,9 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
         body.put("messageIds", messageIds);
         String endpoint = "rest://post:/api/check-store-removed?host=" + spliceHost(senderAddress);
         String response = producerTemplate.requestBodyAndHeaders(endpoint, JsonUtil.writeValueAsString(body), constructHeaders(), String.class);
+        if (response.startsWith("{")) {
+            response = JsonUtil.writeValueAsString(messageIds); // HTTP调用错误并直接返回入参作为响应，需特殊处理
+        }
         List<Long> unRemoveIds = JsonUtil.writeValueAsList(response, Long.class);
         messageIds.removeAll(unRemoveIds);
         if (!messageIds.isEmpty()) {
