@@ -46,8 +46,11 @@ public class MessageConsumeExecutor {
     }
 
     private static boolean received(IdempotentMessage idempotentMessage, String serviceName, String messageId) {
-        log.warn("接收重复{}: 消息{}", serviceName, messageId);
-        return "RECEIVED".equals(idempotentMessage.getStatus());
+        boolean received = "RECEIVED".equals(idempotentMessage.getStatus());
+        if (received) {
+            log.warn("接收重复{}: 消息{}", serviceName, messageId);
+        }
+        return received;
     }
 
     @Transactional(rollbackFor = Exception.class)

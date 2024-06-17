@@ -54,7 +54,7 @@ public interface EventMessageRepository extends JpaRepository<EventMessage, Long
                     "and ms.status ='SENT' " +
                     "and ms.create_time < (UNIX_TIMESTAMP() - 604800) * 1000 " +
                     "order by ms.message_id asc " +
-                    "limit :count for update nowait")
+                    "limit :count")
     List<Long> findSentIdByRegionLimitCount(@Param(value = "region") String region, @Param("count") Integer count);
 
     @Query(nativeQuery = true,
@@ -64,7 +64,7 @@ public interface EventMessageRepository extends JpaRepository<EventMessage, Long
                     "and ms.status ='SENT' " +
                     "and ms.create_time < (UNIX_TIMESTAMP() - 604800) * 1000 " +
                     "order by ms.message_id asc " +
-                    "limit 100 for update nowait")
+                    "limit 100")
     List<Long> findSentIdByOriginalExists();
 
     /**

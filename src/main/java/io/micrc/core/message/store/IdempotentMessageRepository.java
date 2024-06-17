@@ -44,7 +44,7 @@ public interface IdempotentMessageRepository extends JpaRepository<IdempotentMes
                     "where sender=:sender " +
                     "and status='RECEIVED' " +
                     "order by sequence asc " +
-                    "limit :count for update nowait")
+                    "limit :count")
     List<Long> findMessageIdsBySenderLimitCount(@Param("sender") String sender, @Param("count") Integer count);
 
     /**
