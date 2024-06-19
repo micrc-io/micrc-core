@@ -1,0 +1,16 @@
+databaseChangeLog:
+  - changeSet:
+      id: message-message-store-add-status-region-create_time-index-0.0.46
+      author: micrc
+      changes:
+        - createIndex:
+            tableName: message_message_store
+            indexName: status_index
+            columns:
+              - column:
+                  name: status
+              - column:
+                  name: region
+              - column:
+                  name: create_time
+            unique: false

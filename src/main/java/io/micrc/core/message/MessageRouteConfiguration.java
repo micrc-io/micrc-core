@@ -53,6 +53,9 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
     @Autowired
     Environment environment;
 
+    @Autowired
+    EventMessageRepository eventMessageRepository;
+
     @Override
     public void setApplicationContext(@NotNull ApplicationContext applicationContext) throws BeansException {
         this.applicationContext = applicationContext;
@@ -91,22 +94,6 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
         } catch (Exception e) {
             acknowledgment.nack(Duration.ofMillis(0L));
         }
-    }
-
-    /**
-     * 组装事件消息
-     *
-     * @param body                  body
-     * @param currentCommandJson    currentCommandJson
-     * @return                      EventMessage
-     */
-    @Consume("eventstore://get-event-message")
-    public EventMessage getEventMessage(@Body String body, @Header("currentCommandJson") String currentCommandJson) {
-        EventMessage eventMessage = new EventMessage();
-        eventMessage.setContent(currentCommandJson);
-        eventMessage.setRegion(body);
-        eventMessage.setStatus("WAITING");
-        return eventMessage;
     }
 
     /**
@@ -363,16 +350,17 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
         from("eventstore://store")
                 .routeId("eventstore://store")
                 .transacted()
-                .setHeader("currentCommandJson", body())
-                .setHeader("pointer", constant("/event/eventName"))
-                .to("json-patch://select")
-                .choice()
-                .when(body().isNotNull())
-                .to("eventstore://get-event-message")
-                .bean(EventMessageRepository.class, "save")
-                .endChoice()
-                .end()
-                .end();
+                .process(exchange -> {
+                    String content = exchange.getIn().getBody(String.class);
+                    String eventName = (String) JsonUtil.readPath(content, "/event/eventName");
+                    if (eventName != null && EventsInfo.getAllEvents().stream().anyMatch(event -> eventName.equals(event.getEventName()))) {
+                        EventMessage eventMessage = new EventMessage();
+                        eventMessage.setContent(content);
+                        eventMessage.setRegion(eventName);
+                        eventMessage.setStatus("WAITING");
+                        eventMessageRepository.save(eventMessage);
+                    }
+                });
 
         // 正常消息发送路由
         from("publish://send-normal")
@@ -442,7 +430,7 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
                 .routeId("eventstore://sender")
                 // 需要发送的事件
                 .bean(EventsInfo.class, "getAllEvents")
-                .split(new SplitList())
+                .split(new SplitList()).parallelProcessing()
                     .setProperty("eventInfo", body())
                     .bean(ErrorMessageRepository.class, "findErrorMessageByEventLimitByCount(${exchange.properties.get(eventInfo).getEventName()}, 10)")
                     .setHeader("errorMessageCount", simple("${body.size}"))
@@ -574,19 +562,19 @@ public class MessageRouteConfiguration extends RouteBuilder implements Applicati
     @NoArgsConstructor
     public static class EventsInfo {
 
-        private final List<Event> eventsCache = new ArrayList<>();
-        private final HashMap<String, Event> eventsInfo = new HashMap<>();
+        private static final List<Event> eventsCache = new ArrayList<>();
+        private static final HashMap<String, Event> eventsInfo = new HashMap<>();
 
-        public void put(String key, Event value) {
-            this.eventsInfo.put(key, value);
-            this.eventsCache.add(value);
+        public static void put(String key, Event value) {
+            eventsInfo.put(key, value);
+            eventsCache.add(value);
         }
 
-        public List<Event> getAllEvents() {
-            return this.eventsCache;
+        public static List<Event> getAllEvents() {
+            return eventsCache;
         }
 
-        public Event get(String key) {
+        public static Event get(String key) {
             return eventsInfo.get(key);
         }
 

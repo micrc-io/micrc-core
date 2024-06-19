@@ -21,11 +21,11 @@ public interface EventMessageRepository extends JpaRepository<EventMessage, Long
     @Query(nativeQuery = true,
             value = "select ms.* from message_message_store ms " +
                     "where " +
-                    "ms.region = :region " +
-                    "and ms.status ='WAITING' " +
-                    "and (json_extract(ms.content,'$.event.appointmentTime') is null or json_extract(ms.content,'$.event.appointmentTime') < UNIX_TIMESTAMP() * 1000)" +
+                    "ms.status ='WAITING' " +
+                    "and ms.region = :region " +
+                    "and (json_extract(ms.content,'$.event.appointmentTime') is null or json_extract(ms.content,'$.event.appointmentTime') < UNIX_TIMESTAMP() * 1000) " +
                     "and ms.original_topic is null " +
-                    "order by ms.message_id asc " +
+                    "order by ms.create_time asc " +
                     "limit :count for update nowait")
     List<EventMessage> findEventMessageByRegionLimitByCount(
             @Param(value = "region") String region, @Param(value = "count") Integer count);
@@ -33,9 +33,9 @@ public interface EventMessageRepository extends JpaRepository<EventMessage, Long
     @Query(nativeQuery = true,
             value = "select ms.* from message_message_store ms " +
                     "where " +
-                    "ms.original_topic is not null " +
-                    "and ms.status ='WAITING' " +
-                    "order by ms.message_id asc " +
+                    "ms.status ='WAITING' " +
+                    "and ms.original_topic is not null " +
+                    "order by ms.create_time asc " +
                     "limit 100 for update nowait")
     List<EventMessage> findEventMessageByOriginalExists();
 
@@ -49,21 +49,21 @@ public interface EventMessageRepository extends JpaRepository<EventMessage, Long
     @Query(nativeQuery = true,
             value = "select ms.message_id from message_message_store ms " +
                     "where " +
-                    "ms.region = :region " +
+                    "ms.status ='SENT' " +
+                    "and ms.region = :region " +
                     "and ms.original_topic is null " +
-                    "and ms.status ='SENT' " +
                     "and ms.create_time < (UNIX_TIMESTAMP() - 604800) * 1000 " +
-                    "order by ms.message_id asc " +
+                    "order by ms.create_time asc " +
                     "limit :count")
     List<Long> findSentIdByRegionLimitCount(@Param(value = "region") String region, @Param("count") Integer count);
 
     @Query(nativeQuery = true,
             value = "select ms.message_id from message_message_store ms " +
                     "where " +
-                    "ms.original_topic is not null " +
-                    "and ms.status ='SENT' " +
+                    "ms.status ='SENT' " +
+                    "and ms.original_topic is not null " +
                     "and ms.create_time < (UNIX_TIMESTAMP() - 604800) * 1000 " +
-                    "order by ms.message_id asc " +
+                    "order by ms.create_time asc " +
                     "limit 100")
     List<Long> findSentIdByOriginalExists();
 

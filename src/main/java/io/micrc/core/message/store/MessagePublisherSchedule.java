@@ -32,7 +32,7 @@ public class MessagePublisherSchedule {
     @EndpointInject
     private ProducerTemplate producerTemplate;
 
-    @Scheduled(initialDelay = 1, fixedDelay = 1)
+    @Scheduled(initialDelay = 1000, fixedDelay = 1000)
     @SchedulerLock(name = "MessagePublisherSchedule")
     public void adapt() {
         if (!isStarted("eventstore://sender")) {
@@ -41,7 +41,7 @@ public class MessagePublisherSchedule {
         producerTemplate.sendBody("eventstore://sender", System.currentTimeMillis());
     }
 
-    @Scheduled(initialDelay = 1, fixedDelay = 1)
+    @Scheduled(initialDelay = 1000, fixedDelay = 1000)
     @SchedulerLock(name = "MessageCleanSchedule")
     public void clean() {
         if (!isStarted("eventstore://clear")) {

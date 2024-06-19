@@ -111,24 +111,28 @@ public class ApplicationBusinessesServiceRouteConfiguration extends MicrcRouteBu
                 .otherwise()
                     .setBody(exchangeProperty("batchIntegrateResult"))
                     .split(new SplitList())
-                        .bean(JsonUtil.class, "writeValueAsString")
-                        .setHeader("path", simple("${exchange.properties.get(batchNamePath)}"))
-                        .setHeader("value", body())
-                        .setBody(exchangeProperty("commandJson"))
-                        .to("json-patch://patch")
-                        .setProperty("commandJson", body())
-                        .process(exchange -> {
-                            // 需要批处理的全部标记为未完成，并初始化
-                            List<CommandParamIntegration> batchIntegrate = ClassCastUtils.castArrayList(
-                                    exchange.getProperty("batchIntegrate", List.class), CommandParamIntegration.class)
-                                    .stream().peek(ba -> ba.setIntegrationComplete(false)).collect(Collectors.toList());
-                            exchange.setProperty("commandParamIntegrations", batchIntegrate);
-                        })
-                        .dynamicRouter(method(IntegrationCommandParams.class, "dynamicIntegrate"))
-                        .to("direct://executor-data-one")
+                        .to("direct://executor-data-batch-item")
                     .end()
                 .endChoice()
                 .end();
+
+        from("direct://executor-data-batch-item")
+                .transacted("PROPAGATION_REQUIRES_NEW")
+                .bean(JsonUtil.class, "writeValueAsString")
+                .setHeader("path", simple("${exchange.properties.get(batchNamePath)}"))
+                .setHeader("value", body())
+                .setBody(exchangeProperty("commandJson"))
+                .to("json-patch://patch")
+                .setProperty("commandJson", body())
+                .process(exchange -> {
+                    // 需要批处理的全部标记为未完成，并初始化
+                    List<CommandParamIntegration> batchIntegrate = ClassCastUtils.castArrayList(
+                                    exchange.getProperty("batchIntegrate", List.class), CommandParamIntegration.class)
+                            .stream().peek(ba -> ba.setIntegrationComplete(false)).collect(Collectors.toList());
+                    exchange.setProperty("commandParamIntegrations", batchIntegrate);
+                })
+                .dynamicRouter(method(IntegrationCommandParams.class, "dynamicIntegrate"))
+                .to("direct://executor-data-one");
 
         from("direct://handle-request")
                 .setProperty("command", body())
