@@ -142,7 +142,7 @@ public class CamelComponentTempConfiguration {
                                     try {
                                         Document document = documentBuilder.parse(new ByteArrayInputStream(xml.getBytes()));
                                         return ((Node) xPath.evaluate(p, document, XPathConstants.NODE)).getTextContent();
-                                    } catch (SAXException | IOException | XPathExpressionException e) {
+                                    } catch (Exception e) {
                                         return null;
                                     }
                                 }).collect(Collectors.toList());
