@@ -337,7 +337,7 @@ class IntegrationParams {
         if (null == routeContent) {
             return null;
         }
-        routeContent = cleanInnerXml(routeContent);
+//        routeContent = cleanInnerXml(routeContent);
         DocumentBuilder db = DocumentBuilderFactory.newInstance().newDocumentBuilder();
         XPath xPath = XPathFactory.newInstance().newXPath();
         Document document = db.parse(new ByteArrayInputStream(routeContent.getBytes()));
@@ -347,7 +347,7 @@ class IntegrationParams {
     private static String cleanInnerXml(String routeContent) {
         Matcher matcher = PATTERN.matcher(routeContent);
         while (matcher.find()) {
-            routeContent = routeContent.replace(matcher.group(), "");
+            routeContent = routeContent.replace(matcher.group(), "\"\"");
         }
         return routeContent;
     }
