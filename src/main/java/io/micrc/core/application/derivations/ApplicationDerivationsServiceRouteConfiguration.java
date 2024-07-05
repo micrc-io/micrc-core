@@ -35,6 +35,8 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -180,6 +182,8 @@ public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteB
  */
 @Slf4j
 class IntegrationParams {
+
+    private static final Pattern PATTERN = Pattern.compile("\"<.*>\"");
 
     /**
      * 动态集成所有需要的外部参数
@@ -333,11 +337,19 @@ class IntegrationParams {
         if (null == routeContent) {
             return null;
         }
+        routeContent = cleanInnerXml(routeContent);
         DocumentBuilder db = DocumentBuilderFactory.newInstance().newDocumentBuilder();
         XPath xPath = XPathFactory.newInstance().newXPath();
         Document document = db.parse(new ByteArrayInputStream(routeContent.getBytes()));
-        String routeName = ((Node) xPath.evaluate("/routes/route[1]/from/@uri", document, XPathConstants.NODE)).getTextContent();
-        return routeName;
+        return ((Node) xPath.evaluate("/routes/route[1]/from/@uri", document, XPathConstants.NODE)).getTextContent();
+    }
+
+    private static String cleanInnerXml(String routeContent) {
+        Matcher matcher = PATTERN.matcher(routeContent);
+        while (matcher.find()) {
+            routeContent = routeContent.replace(matcher.group(), "");
+        }
+        return routeContent;
     }
 
     /**
