@@ -14,6 +14,7 @@ import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangeProperties;
+import org.jetbrains.annotations.Nullable;
 import org.springframework.data.domain.Example;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -35,8 +36,6 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -106,15 +105,7 @@ public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteB
                 .when(constant("QUERY").isEqualTo(simple("${exchange.properties.get(current).get(type)}")))
                     .bean(IntegrationParams.class, "executeQuery")
                 .endChoice()
-                .when(constant("GENERAL_TECHNOLOGY").isEqualTo(simple("${exchange.properties.get(current).get(type)}")))
-                    .setHeader("from", simple("${exchange.properties.get(current).get(routeName)}"))
-                    .setHeader("script", simple("${exchange.properties.get(current).get(logic)}"))
-                    .setHeader("executeType", constant("ROUTE"))
-                    .setHeader("variable", simple("${exchange.properties.get(current).get(variable)}"))
-                    .setBody(simple("${exchange.properties.get(current).get(params)}"))
-                    .to("dynamic-executor://execute")
-                .endChoice()
-                .when(constant("SPECIAL_TECHNOLOGY").isEqualTo(simple("${exchange.properties.get(current).get(type)}")))
+                .otherwise()
                     .setHeader("from", simple("${exchange.properties.get(current).get(routeName)}"))
                     .setHeader("script", simple("${exchange.properties.get(current).get(logic)}"))
                     .setHeader("executeType", simple("${exchange.properties.get(current).get(technologyType)}"))
@@ -183,8 +174,6 @@ public class ApplicationDerivationsServiceRouteConfiguration extends MicrcRouteB
 @Slf4j
 class IntegrationParams {
 
-    private static final Pattern PATTERN = Pattern.compile("\"<.*>\"");
-
     /**
      * 动态集成所有需要的外部参数
      *
@@ -226,10 +215,11 @@ class IntegrationParams {
         Map<String, Object> current = ClassCastUtils.castHashMap(properties.get("current"), String.class, Object.class);
         String name = (String) current.get("name");
         ParamIntegration.Type currentIntegrateType = (ParamIntegration.Type) current.get("type");
-        if (ParamIntegration.Type.QUERY.equals(currentIntegrateType) && body instanceof Optional) {
-            body = ((Optional<?>) body).orElse(null);
-        } else if (ParamIntegration.Type.GENERAL_TECHNOLOGY.equals(currentIntegrateType)
-                || ParamIntegration.Type.SPECIAL_TECHNOLOGY.equals(currentIntegrateType)) {
+        if (ParamIntegration.Type.QUERY.equals(currentIntegrateType)) {
+            if (body instanceof Optional) {
+                body = ((Optional<?>) body).orElse(null);
+            }
+        } else {
             body = JsonUtil.readPath((String) body, "");
         }
         log.info("衍生已集成：{}，结果：{}", name, JsonUtil.writeValueAsString(body));
@@ -260,7 +250,7 @@ class IntegrationParams {
             throws XPathExpressionException, IOException, SAXException, ParserConfigurationException {
         List<ParamIntegration> unIntegrateParams = ClassCastUtils.castArrayList(exchange.getProperty("unIntegrateParams"), ParamIntegration.class);
         List<String[]> timePathList = ClassCastUtils.castArrayList(exchange.getProperty("timePaths"), String[].class);
-        String param = exchange.getProperty("buffer", String.class);
+        String json = exchange.getProperty("buffer", String.class);
         Map<String, Object> executableIntegrationInfo = new HashMap<>();
         int checkNumber = -1;
         do {
@@ -272,84 +262,83 @@ class IntegrationParams {
             ParamIntegration paramIntegration = JsonUtil.writeObjectAsObject(unIntegrateParams.get(checkNumber), ParamIntegration.class);
             // 转换请求参数
             AtomicReference<String> value = new AtomicReference<>();
-            if (ParamIntegration.Type.SPECIAL_TECHNOLOGY.equals(paramIntegration.getType())
-                    || ParamIntegration.Type.GENERAL_TECHNOLOGY.equals(paramIntegration.getType())) {
-                paramIntegration.getParamMappings().stream().findFirst().ifPresent(mapping -> {
-                    value.set(JsonUtil.transAndCheck(mapping, param, null));
-                    // 需要执行DMN的时候，时间格式需要转换
-                    if (TechnologyType.DMN.equals(paramIntegration.getTechnologyType())) {
-                        value.set(TimeReplaceUtil.matchTimePathAndReplaceTime(timePathList, "", value.get(), String.class));// 根目录路径为""
-                    }
-                });
-                // 检查当前查询是否可执行
-                if (null == value.get()) {
-                    continue;
-                }
-            }
             if (ParamIntegration.Type.QUERY.equals(paramIntegration.getType())) {
                 List<String> params = paramIntegration.getParamMappings().stream()
-                        .map(mapping -> JsonUtil.transAndCheck(mapping, param, null)).collect(Collectors.toList());
+                        .map(mapping -> JsonUtil.transAndCheck(mapping, json, null)).collect(Collectors.toList());
                 if (params.stream().anyMatch(Objects::isNull)) {
                     continue;
                 }
+                executableIntegrationInfo.put("name", paramIntegration.getConcept());
+                executableIntegrationInfo.put("type", paramIntegration.getType());
                 executableIntegrationInfo.put("params", params);
                 executableIntegrationInfo.put("repositoryPath", paramIntegration.getRepositoryPath());
                 executableIntegrationInfo.put("method", paramIntegration.getQueryMethod());
             } else if (ParamIntegration.Type.SPECIAL_TECHNOLOGY.equals(paramIntegration.getType())) {
-                String routeContent = null;
-                if (null != paramIntegration.getFilePath() && !paramIntegration.getFilePath().isEmpty()) {
-                    routeContent = FileUtils.fileReader(paramIntegration.getFilePath(), List.of("xml", "dmn", "groovy", "jslt"));
-                } else if (null != paramIntegration.getContentPath() && !paramIntegration.getContentPath().isEmpty()) {
-                    routeContent = (String) JsonUtil.readPath(param, paramIntegration.getContentPath());
-                }
-                executableIntegrationInfo.put("logic", routeContent); // 路由内容为null时，会根据technologyType执行内置路由
-                executableIntegrationInfo.put("params", value.get());
-                executableIntegrationInfo.put("variable", JsonUtil.transform(paramIntegration.getVariableMapping(), param));
-                executableIntegrationInfo.put("technologyType", paramIntegration.getTechnologyType());
-                if (TechnologyType.ROUTE.equals(paramIntegration.getTechnologyType())) {
-                    String routeName = findRouteName(routeContent);
-                    executableIntegrationInfo.put("routeName", routeName);
-                }
-            } else if (ParamIntegration.Type.GENERAL_TECHNOLOGY.equals(paramIntegration.getType())) {
-                String routeContent = null;
-                if (null != paramIntegration.getFilePath() && !paramIntegration.getFilePath().isEmpty()) {
-                    routeContent = FileUtils.fileReader(paramIntegration.getFilePath(), List.of("xml"));
-                } else if (null != paramIntegration.getContentPath() && !paramIntegration.getContentPath().isEmpty()) {
-                    routeContent = (String) JsonUtil.readPath(param, paramIntegration.getContentPath());
-                }
-                if (null == routeContent) {
+                transParam2Value(paramIntegration, value, json, timePathList);
+                if (null == value.get()) {
                     continue;
                 }
-                executableIntegrationInfo.put("logic", routeContent);
-                executableIntegrationInfo.put("params", value.get());
-                executableIntegrationInfo.put("variable", JsonUtil.transform(paramIntegration.getVariableMapping(), param));
-                String routeName = findRouteName(routeContent);
-                executableIntegrationInfo.put("routeName", routeName);
+                String scriptContent = getScriptContent(paramIntegration, List.of("xml", "dmn", "groovy", "jslt"), json);
+                TechnologyType technologyType = paramIntegration.getTechnologyType();
+                collectTechnologyProperty(executableIntegrationInfo, paramIntegration, scriptContent, value, json, technologyType);
+            } else if (ParamIntegration.Type.GENERAL_TECHNOLOGY.equals(paramIntegration.getType())) {
+                transParam2Value(paramIntegration, value, json, timePathList);
+                if (null == value.get()) {
+                    continue;
+                }
+                String scriptContent = getScriptContent(paramIntegration, List.of("xml", "groovy"), json);
+                if (null == scriptContent) {
+                    continue;
+                }
+                TechnologyType technologyType = scriptContent.trim().startsWith("<routes xmlns") ? TechnologyType.ROUTE : TechnologyType.GROOVY;
+                collectTechnologyProperty(executableIntegrationInfo, paramIntegration, scriptContent, value, json, technologyType);
             }
-            executableIntegrationInfo.put("name", paramIntegration.getConcept());
-            executableIntegrationInfo.put("type", paramIntegration.getType());
         } while (null == executableIntegrationInfo.get("name"));
         log.info("衍生可集成：{}，参数：{}", executableIntegrationInfo.get("name"), executableIntegrationInfo.get("params"));
         return executableIntegrationInfo;
+    }
+
+    private static void collectTechnologyProperty(Map<String, Object> executableIntegrationInfo, ParamIntegration paramIntegration, String scriptContent, AtomicReference<String> value, String json, TechnologyType technologyType) throws ParserConfigurationException, SAXException, IOException, XPathExpressionException {
+        executableIntegrationInfo.put("name", paramIntegration.getConcept());
+        executableIntegrationInfo.put("type", paramIntegration.getType());
+        executableIntegrationInfo.put("logic", scriptContent);
+        executableIntegrationInfo.put("params", value.get());
+        executableIntegrationInfo.put("variable", JsonUtil.transform(paramIntegration.getVariableMapping(), json));
+        executableIntegrationInfo.put("technologyType", technologyType);
+        if (TechnologyType.ROUTE.equals(technologyType)) {
+            executableIntegrationInfo.put("routeName", findRouteName(scriptContent));
+        }
+    }
+
+    @Nullable
+    private static String getScriptContent(ParamIntegration paramIntegration, List<String> xml, String json) {
+        String routeContent = null;
+        if (null != paramIntegration.getFilePath() && !paramIntegration.getFilePath().isEmpty()) {
+            routeContent = FileUtils.fileReader(paramIntegration.getFilePath(), xml);
+        } else if (null != paramIntegration.getContentPath() && !paramIntegration.getContentPath().isEmpty()) {
+            routeContent = (String) JsonUtil.readPath(json, paramIntegration.getContentPath());
+        }
+        return routeContent;
+    }
+
+    private static void transParam2Value(ParamIntegration paramIntegration, AtomicReference<String> value, String json, List<String[]> timePathList) {
+        paramIntegration.getParamMappings().stream().findFirst().ifPresent(mapping -> {
+            value.set(JsonUtil.transAndCheck(mapping, json, null));
+            // 需要执行DMN的时候，时间格式需要转换
+            if (TechnologyType.DMN.equals(paramIntegration.getTechnologyType())) {
+                value.set(TimeReplaceUtil.matchTimePathAndReplaceTime(timePathList, "", value.get(), String.class));// 根目录路径为""
+            }
+        });
     }
 
     private static String findRouteName(String routeContent) throws ParserConfigurationException, SAXException, IOException, XPathExpressionException {
         if (null == routeContent) {
             return null;
         }
-//        routeContent = cleanInnerXml(routeContent);
         DocumentBuilder db = DocumentBuilderFactory.newInstance().newDocumentBuilder();
         XPath xPath = XPathFactory.newInstance().newXPath();
         Document document = db.parse(new ByteArrayInputStream(routeContent.getBytes()));
         return ((Node) xPath.evaluate("/routes/route[1]/from/@uri", document, XPathConstants.NODE)).getTextContent();
-    }
-
-    private static String cleanInnerXml(String routeContent) {
-        Matcher matcher = PATTERN.matcher(routeContent);
-        while (matcher.find()) {
-            routeContent = routeContent.replace(matcher.group(), "\"\"");
-        }
-        return routeContent;
     }
 
     /**
