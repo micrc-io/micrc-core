@@ -222,7 +222,8 @@ class IntegrationParams {
         } else {
             body = JsonUtil.readPath((String) body, "");
         }
-        log.info("衍生已集成：{}，结果：{}", name, "platform".equals(name) ? "......" : JsonUtil.writeValueAsString(body));
+        boolean ignoreParam = "platform".equals(name) || "operate".equals(name);
+        log.info("衍生已集成：{}，结果：{}", name, ignoreParam ? "......" : JsonUtil.writeValueAsString(body));
         List<ParamIntegration> paramIntegrations = ClassCastUtils.castArrayList(exchange.getProperties().get("paramIntegrations"), ParamIntegration.class);
         // 将上次执行的结果放回至原有属性集成参数之中
         ParamIntegration find = paramIntegrations.stream()
