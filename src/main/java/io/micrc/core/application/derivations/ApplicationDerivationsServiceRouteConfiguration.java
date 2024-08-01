@@ -222,7 +222,7 @@ class IntegrationParams {
         } else {
             body = JsonUtil.readPath((String) body, "");
         }
-        log.info("衍生已集成：{}，结果：{}", name, JsonUtil.writeValueAsString(body));
+        log.info("衍生已集成：{}，结果：{}", name, "platform".equals(name) ? "......" : JsonUtil.writeValueAsString(body));
         List<ParamIntegration> paramIntegrations = ClassCastUtils.castArrayList(exchange.getProperties().get("paramIntegrations"), ParamIntegration.class);
         // 将上次执行的结果放回至原有属性集成参数之中
         ParamIntegration find = paramIntegrations.stream()
@@ -294,7 +294,8 @@ class IntegrationParams {
                 collectTechnologyProperty(executableIntegrationInfo, paramIntegration, scriptContent, value, json, technologyType);
             }
         } while (null == executableIntegrationInfo.get("name"));
-        log.info("衍生可集成：{}，参数：{}", executableIntegrationInfo.get("name"), executableIntegrationInfo.get("params"));
+        boolean ignoreParam = "env".equals(executableIntegrationInfo.get("name")) || "operate".equals(executableIntegrationInfo.get("name"));
+        log.info("衍生可集成：{}，参数：{}", executableIntegrationInfo.get("name"), ignoreParam ? "......" : executableIntegrationInfo.get("params"));
         return executableIntegrationInfo;
     }
 
